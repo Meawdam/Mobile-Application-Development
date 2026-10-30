@@ -1,0 +1,9 @@
+{
+  "name": "prod-cli",
+  "version": "1.0.0",
+  "description": "Project commands for installing dependencies and running the frontend or backend",
+  "bin": {
+    "prod": "index.js"
+  },
+  "private": true
+}
