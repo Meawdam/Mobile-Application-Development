@@ -25,7 +25,7 @@ const upload = multer({
   limits: {
     fileSize: maxImageSize,
     files: 1,
-    fields: 3,
+    fields: 4,
   },
   fileFilter: (req, file, callback) => {
     if (!allowedImageTypes[file.mimetype]) {

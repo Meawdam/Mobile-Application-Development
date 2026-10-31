@@ -4,7 +4,9 @@ const { removeFile } = require("./asset_upload");
 class AssetsController {
   async getAvailableAssets(req, res, next) {
     try {
-      const assets = await assetService.getAvailableAsset();
+      const assets = await assetService.getAvailableAsset(
+        req.user && req.user.id,
+      );
       return res.status(200).json({ data: assets });
     } catch (error) {
       next(error);
@@ -31,7 +33,7 @@ class AssetsController {
 
   async createAsset(req, res, next) {
     try {
-      const { name, description, down_payment } = req.body;
+      const { name, description, down_payment, return_before } = req.body;
 
       if (
         typeof name !== "string" ||
@@ -39,12 +41,17 @@ class AssetsController {
         typeof description !== "string" ||
         !description.trim() ||
         down_payment === undefined ||
-        down_payment === ""
+        down_payment === "" ||
+        typeof return_before !== "string" ||
+        !return_before.trim()
       ) {
         await removeFile(req.file.path);
         return res
           .status(400)
-          .json({ message: "Name, description, image, and down_payment are required" });
+          .json({
+            message:
+              "name, description, image, down_payment, and return_before are required",
+          });
       }
 
       const newAsset = await assetService.createAsset(req.user.id, {
@@ -52,6 +59,7 @@ class AssetsController {
         description: description.trim(),
         image: `/uploads/${req.file.filename}`,
         down_payment,
+        return_before: return_before.trim(),
       });
 
       return res.status(201).json({
@@ -72,8 +80,10 @@ class AssetsController {
     try {
       const { approval, approval_message } = req.body;
 
-      if (!approval) {
-        return res.status(400).json({ message: "Approval status is required" });
+      if (!["approved", "not approve"].includes(approval)) {
+        return res.status(400).json({
+          message: "Approval status must be approved or not approve",
+        });
       }
 
       const result = await assetService.approveAsset(req.params.id, {

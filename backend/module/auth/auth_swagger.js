@@ -59,9 +59,6 @@
  *                 type: string
  *                 format: password
  *                 example: strong-password
- *               role:
- *                 type: string
- *                 example: user
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -76,7 +73,7 @@
  *                 data:
  *                   $ref: '#/components/schemas/User'
  *       400:
- *         description: Required fields are missing, or username/email is already taken
+ *         description: Required fields are missing, or username/email is already taken. New accounts always receive the user role.
  *         content:
  *           application/json:
  *             schema:

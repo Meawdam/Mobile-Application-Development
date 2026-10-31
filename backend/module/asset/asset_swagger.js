@@ -27,6 +27,11 @@
  *         down_payment:
  *           type: number
  *           example: 250
+ *         return_before:
+ *           type: string
+ *           format: date
+ *           description: Last date by which the asset must be returned
+ *           example: '2026-11-08'
  *         status:
  *           type: string
  *           example: ready
@@ -63,7 +68,10 @@
  *   get:
  *     tags: [Assets]
  *     summary: Get available assets
- *     description: Returns approved assets that are ready.
+ *     description: Returns approved assets that are ready. Authentication is optional; when authenticated, the user's own assets are excluded.
+ *     security:
+ *       - bearerAuth: []
+ *       - {}
  *     responses:
  *       200:
  *         description: Available assets
@@ -87,7 +95,7 @@
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [name, description, image, down_payment]
+ *             required: [name, description, image, down_payment, return_before]
  *             properties:
  *               name:
  *                 type: string
@@ -102,6 +110,11 @@
  *               down_payment:
  *                 type: number
  *                 example: 250
+ *               return_before:
+ *                 type: string
+ *                 format: date
+ *                 description: Last date by which the asset must be returned
+ *                 example: '2026-11-08'
  *     responses:
  *       201:
  *         description: Asset submitted for admin approval
@@ -116,7 +129,7 @@
  *                 data:
  *                   $ref: '#/components/schemas/Asset'
  *       400:
- *         description: Required fields are missing, image is missing, or the image format is unsupported
+ *         description: Required fields are missing, the return date is invalid, image is missing, or the image format is unsupported
  *         content:
  *           application/json:
  *             schema:
@@ -240,7 +253,7 @@
  *             properties:
  *               approval:
  *                 type: string
- *                 enum: [approved, rejected]
+ *                 enum: [approved, not approve]
  *                 example: approved
  *               approval_message:
  *                 type: string
@@ -266,7 +279,7 @@
  *                     approval_message:
  *                       type: string
  *       400:
- *         description: Approval status is required
+ *         description: Approval status must be approved or not approve
  *       401:
  *         description: Access token is required
  *       403:
