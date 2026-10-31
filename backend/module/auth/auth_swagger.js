@@ -181,3 +181,29 @@
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Log out the current user
+ *     description: Requires a valid JWT. Remove the token from the client after logout; JWTs are not revoked server-side.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout acknowledged
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Logged out successfully. Remove the token from the client.
+ *       401:
+ *         description: Access token is required
+ *       403:
+ *         description: Token is invalid or expired
+ */
