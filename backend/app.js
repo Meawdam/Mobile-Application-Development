@@ -29,10 +29,16 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = 3000;
-db.connect((error) => {
-  if (error) {
+async function startServer() {
+  try {
+    await db.query("SELECT 1");
+  } catch (error) {
     console.error("Unable to connect to the database:", error.message);
-    db.destroy();
+    try {
+      await db.end();
+    } catch (closeError) {
+      console.error("Unable to close the database pool:", closeError.message);
+    }
     process.exitCode = 1;
     return;
   }
@@ -41,4 +47,6 @@ db.connect((error) => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`Swagger UI running on http://localhost:${PORT}/api-docs`);
   });
-});
+}
+
+startServer();
