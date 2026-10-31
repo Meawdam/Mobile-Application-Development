@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const openApiSpecification = require("./swagger");
+const db = require("./db_config");
 
 const app = express();
 
@@ -23,6 +24,15 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+db.connect((error) => {
+  if (error) {
+    console.error("Unable to connect to the database:", error.message);
+    db.destroy();
+    process.exitCode = 1;
+    return;
+  }
+
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  });
 });
