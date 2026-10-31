@@ -6,7 +6,7 @@ class UserService {
     }
 
     async getUserById(id) {
-        const user = userRepository.findById(id);
+        const user = await userRepository.findById(id);
         if(!user) {
             const err = new Error("User not found");
             err.status = 404;
@@ -16,4 +16,4 @@ class UserService {
     }
 }
 
-module.export = new UserService();
+module.exports = new UserService();
