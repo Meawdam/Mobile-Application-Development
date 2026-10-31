@@ -1,13 +1,13 @@
-# คู่มือเริ่มต้นใช้งานโปรเจกต์
+# Project Setup Guide
 
-## สิ่งที่ต้องติดตั้งก่อน
+## Prerequisites
 
-- [Git](https://git-scm.com/) สำหรับโคลนโปรเจกต์
-- [Node.js และ npm](https://nodejs.org/) สำหรับติดตั้งและรัน backend
-- [Flutter SDK](https://docs.flutter.dev/get-started/install) สำหรับติดตั้ง dependencies และรัน frontend
-- อุปกรณ์หรือ emulator ที่ Flutter รองรับ หากต้องการรัน frontend
+- [Git](https://git-scm.com/) to clone the project
+- [Node.js and npm](https://nodejs.org/) to install and run the backend
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) to install dependencies and run the frontend
+- A Flutter-supported device or emulator if you want to run the frontend
 
-ตรวจสอบว่าเรียกใช้เครื่องมือจาก Terminal ได้:
+Make sure these tools are available from your terminal:
 
 ```powershell
 git --version
@@ -16,18 +16,18 @@ npm --version
 flutter --version
 ```
 
-## 1. โคลนโปรเจกต์
+## 1. Clone the project
 
-เปิด PowerShell หรือ Terminal แล้วโคลนโปรเจกต์:
+Open PowerShell or a terminal and clone the project:
 
 ```powershell
 git clone https://github.com/Meawdam/Mobile-Application-Development.git
-cd mobile_application_development
+cd Mobile-Application-Development
 ```
 
-## 2. ติดตั้งคำสั่ง CLI
+## 2. Install the CLI
 
-รันคำสั่งต่อไปนี้จากโฟลเดอร์หลักของโปรเจกต์:
+Run the following commands from the project root:
 
 ```powershell
 cd cli
@@ -35,42 +35,42 @@ npm link
 cd ..
 ```
 
-`npm link` จะลงทะเบียนคำสั่ง `prod` ให้เรียกใช้ได้จาก Terminal หลังติดตั้งแล้ว ให้รันคำสั่ง CLI จากโฟลเดอร์หลักของโปรเจกต์
+`npm link` registers the `prod` command so it can be used from your terminal. After installation, run the CLI commands from the project root.
 
-## 3. ติดตั้ง dependencies
+## 3. Install dependencies
 
 ```powershell
 prod i
 ```
 
-หรือใช้คำสั่งแบบเต็ม:
+Or use the full command:
 
 ```powershell
 prod install
 ```
 
-CLI จะติดตั้ง dependencies ของ backend ด้วย `npm install` ก่อน จากนั้นติดตั้ง dependencies ของ frontend ด้วย `flutter pub get` หากขั้นตอนใดล้มเหลว คำสั่งจะหยุดและแสดงข้อผิดพลาด
+The CLI first installs the backend dependencies with `npm install`, then installs the frontend dependencies with `flutter pub get`. If either step fails, the command stops and displays an error.
 
-## 4. รัน frontend หรือ backend
+## 4. Run the frontend or backend
 
 ```powershell
 prod run
 ```
 
-ใช้ปุ่มลูกศรขึ้น/ลงเพื่อเลือก **Run frontend** หรือ **Run backend** แล้วกด Enter เมนูนี้ต้องใช้ใน Terminal แบบโต้ตอบ
+Use the up/down arrow keys to select **Run frontend** or **Run backend**, then press Enter. This menu requires an interactive terminal.
 
-## คำสั่ง CLI
+## CLI commands
 
-| คำสั่ง | ผลลัพธ์ |
+| Command | Result |
 | --- | --- |
-| `prod i` | ติดตั้ง dependencies ของ backend และ frontend |
-| `prod install` | ทำงานเหมือน `prod i` |
-| `prod run` | เปิดเมนูให้เลือกรัน frontend หรือ backend ด้วยปุ่มลูกศร |
-| `prod --help` | แสดงวิธีใช้คำสั่ง |
+| `prod i` | Installs the backend and frontend dependencies |
+| `prod install` | Same as `prod i` |
+| `prod run` | Opens a menu to select the frontend or backend using the arrow keys |
+| `prod --help` | Displays command usage |
 
-| ตัวเลือกในเมนู `prod run` | คำสั่งที่ CLI ใช้ |
+| `prod run` menu option | Command used by the CLI |
 | --- | --- |
-| Run frontend | รัน `flutter run` ในโฟลเดอร์ `frontend` |
-| Run backend | รัน `nodemon app.js` ผ่าน `npm run dev` ในโฟลเดอร์ `backend` |
+| Run frontend | Runs `flutter run` in the `frontend` directory |
+| Run backend | Runs `nodemon app.js` using `npm run dev` in the `backend` directory |
 
-> **หมายเหตุ:** การรัน backend ต้องมีไฟล์ `backend/app.js` ก่อน หากยังไม่มีไฟล์นี้ ให้เพิ่ม entry point ของ backend ก่อนเลือก Run backend
+> **Note:** Running the backend requires `backend/app.js`. If this file does not exist, add a backend entry point before selecting Run backend.
