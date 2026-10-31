@@ -39,5 +39,6 @@ db.connect((error) => {
 
   app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`swagger running on http://localhost:3000/api-docs.json`);
   });
 });
