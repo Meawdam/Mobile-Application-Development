@@ -8,6 +8,7 @@ router.use(authenticateToken);
 router.get("/all", authorizeRoles("admin"), borrowsController.getAllBorrows);
 router.get("/my", borrowsController.getMyBorrows);
 router.post("/", borrowsController.requestBorrow);
+router.patch("/:id/cancel", borrowsController.cancelRequest);
 router.post("/:id/pay", borrowsController.processPayment);
 router.patch("/:id/return", borrowsController.returnAsset);
 router.patch("/:id/confirm-return", borrowsController.confirmReturn);

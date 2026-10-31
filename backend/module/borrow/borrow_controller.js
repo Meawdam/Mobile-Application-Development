@@ -21,16 +21,14 @@ class BorrowController {
 
   async requestBorrow(req, res, next) {
     try {
-      const { asset_id, borrow_date, deadline } = req.body;
+      const { asset_id } = req.body;
 
-      if (!asset_id || !borrow_date || !deadline) {
+      if (!asset_id) {
         return res.status(400).json({ message: "Missing required parameters" });
       }
 
       const result = await borrowsService.requestBorrow(req.user.id, {
         asset_id,
-        borrow_date,
-        deadline,
       });
 
       return res.status(201).json({
@@ -45,6 +43,18 @@ class BorrowController {
   async processPayment(req, res, next) {
     try {
       const result = await borrowsService.processPayment(
+        req.params.id,
+        req.user.id,
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async cancelRequest(req, res, next) {
+    try {
+      const result = await borrowsService.cancelRequest(
         req.params.id,
         req.user.id,
       );
