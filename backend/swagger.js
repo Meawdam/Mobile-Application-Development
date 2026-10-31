@@ -16,10 +16,10 @@ const openApiSpecification = swaggerJsdoc({
     ],
   },
   apis: [
-    "./module/auth/auth_routes.js",
-    "./module/user/user_routes.js",
-    "./module/asset/asset_routes.js",
-    "./module/borrow/borrow_route.js",
+    "./module/auth/auth_swagger.js",
+    "./module/user/user_swagger.js",
+    "./module/asset/asset_swagger.js",
+    "./module/borrow/borrow_swagger.js",
   ],
 });
 
