@@ -73,4 +73,6 @@ Use the up/down arrow keys to select **Run frontend** or **Run backend**, then p
 | Run frontend | Runs `flutter run` in the `frontend` directory |
 | Run backend | Runs `nodemon app.js` using `npm run dev` in the `backend` directory |
 
-> **Note:** Running the backend requires `backend/app.js`. If this file does not exist, add a backend entry point before selecting Run backend.
+## API documentation
+
+After starting the backend, open [http://localhost:3000/api-docs](http://localhost:3000/api-docs) to browse and try the API endpoints in Swagger UI. The OpenAPI specification is also available at [http://localhost:3000/api-docs.json](http://localhost:3000/api-docs.json).
