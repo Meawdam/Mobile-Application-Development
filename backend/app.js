@@ -19,6 +19,7 @@ app.get("/api-docs.json", (req, res) => {
 app.use("/api/auth", require("./module/auth/auth_routes"));
 app.use("/api/users", require("./module/user/user_routes"));
 app.use("/api/assets", require("./module/asset/asset_routes"));
+app.use("/api/borrows", require("./module/borrow/borrow_route"));
 
 app.use((err, req, res, next) => {
   console.error("Unhandled Error:", err);
