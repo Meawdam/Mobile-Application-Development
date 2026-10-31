@@ -21,16 +21,14 @@ class BorrowController {
 
   async requestBorrow(req, res, next) {
     try {
-      const { asset_id, borrow_date, deadline } = req.body;
+      const { asset_id } = req.body;
 
-      if (!asset_id || !borrow_date || !deadline) {
+      if (!asset_id) {
         return res.status(400).json({ message: "Missing required parameters" });
       }
 
       const result = await borrowsService.requestBorrow(req.user.id, {
         asset_id,
-        borrow_date,
-        deadline,
       });
 
       return res.status(201).json({

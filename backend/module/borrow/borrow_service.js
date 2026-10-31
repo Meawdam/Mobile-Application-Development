@@ -10,11 +10,41 @@ class BorrowService {
     return await borrowsRepository.findByBorrowerId(borrowerId);
   }
 
-  async requestBorrow(borrowerId, { asset_id, borrow_date, deadline }) {
+  async requestBorrow(borrowerId, { asset_id }) {
     const asset = await assetsRepository.findById(asset_id);
     if (!asset) {
       const err = new Error("Asset not found");
       err.status = 404;
+      throw err;
+    }
+
+    const returnBefore =
+      asset.return_before instanceof Date
+        ? [
+            asset.return_before.getFullYear(),
+            String(asset.return_before.getMonth() + 1).padStart(2, "0"),
+            String(asset.return_before.getDate()).padStart(2, "0"),
+          ].join("-")
+        : asset.return_before;
+    const parsedReturnBefore =
+      typeof returnBefore === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(returnBefore)
+        ? new Date(`${returnBefore}T00:00:00.000Z`)
+        : null;
+
+    if (
+      !parsedReturnBefore ||
+      Number.isNaN(parsedReturnBefore.getTime()) ||
+      parsedReturnBefore.toISOString().slice(0, 10) !== returnBefore
+    ) {
+      const err = new Error("The asset does not have a valid return date");
+      err.status = 400;
+      throw err;
+    }
+
+    if (returnBefore < new Date().toISOString().slice(0, 10)) {
+      const err = new Error("The asset return date has passed");
+      err.status = 400;
       throw err;
     }
 
@@ -33,8 +63,6 @@ class BorrowService {
     const borrowId = await borrowsRepository.createBorrow({
       asset_id,
       borrower_id: borrowerId,
-      borrow_date,
-      deadline,
     });
 
     return {
@@ -76,6 +104,12 @@ class BorrowService {
     if (borrow.borrower_id !== borrowerId) {
       const err = new Error("Forbidden: You are not the borrower of this item");
       err.status = 403;
+      throw err;
+    }
+
+    if (borrow.return_before_passed) {
+      const err = new Error("The asset return date has passed");
+      err.status = 400;
       throw err;
     }
 

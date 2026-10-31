@@ -18,11 +18,20 @@ class AssetRepository {
     return rows[0];
   }
 
-  async createAsset({owner_id, image, name, description, down_payment}) {
+  async createAsset({
+    owner_id,
+    image,
+    name,
+    description,
+    down_payment,
+    return_before,
+  }) {
     const [result] = await db.query(
-        `INSERT INTO asset (owner_id, image, name, description, down_payment, status, approval)
-        VALUES(?, ?, ?, ?, ?, 'ready', 'pending')`,
-        [owner_id, image, name, description, down_payment]
+      `INSERT INTO asset (
+        owner_id, image, name, description, down_payment, return_before, status, approval
+      )
+        VALUES(?, ?, ?, ?, ?, ?, 'ready', 'pending')`,
+      [owner_id, image, name, description, down_payment, return_before],
     );
     return result.insertId;
   }

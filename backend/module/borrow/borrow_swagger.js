@@ -32,14 +32,17 @@
  *         borrow_date:
  *           type: string
  *           format: date
+ *           description: Set automatically when the borrow request is paid and the asset is borrowed
  *           example: '2026-11-01'
- *         deadline:
+ *         return_before:
  *           type: string
  *           format: date
+ *           description: The asset's return-by date set by its owner
  *           example: '2026-11-08'
- *         giveback_date:
+ *         return_date:
  *           type: string
  *           format: date-time
+ *           description: Set when the owner confirms the return
  *           nullable: true
  *         status:
  *           type: string
@@ -58,19 +61,11 @@
  *             $ref: '#/components/schemas/Borrow'
  *     BorrowRequest:
  *       type: object
- *       required: [asset_id, borrow_date, deadline]
+ *       required: [asset_id]
  *       properties:
  *         asset_id:
  *           type: integer
  *           example: 4
- *         borrow_date:
- *           type: string
- *           format: date
- *           example: '2026-11-01'
- *         deadline:
- *           type: string
- *           format: date
- *           example: '2026-11-08'
  */
 
 /**
@@ -134,7 +129,7 @@
  *       201:
  *         description: Borrow request submitted
  *       400:
- *         description: Required parameters are missing, the asset is unavailable, or the user owns the asset
+ *         description: Required parameters are missing, the asset return date has passed, the asset is unavailable, or the user owns the asset
  *       401:
  *         description: Access token is required
  *       403:
@@ -187,6 +182,8 @@
  *     responses:
  *       200:
  *         description: Return request submitted for owner confirmation
+ *       400:
+ *         description: The asset return date has passed
  *       401:
  *         description: Access token is required
  *       403:

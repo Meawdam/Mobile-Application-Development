@@ -5,8 +5,9 @@ class BorrowRepository {
   async findAll() {
     const [rows] = await db.query(`
       SELECT 
-        b.id, b.borrow_date, b.deadline, b.giveback_date, b.status, b.payment_status,
-        a.id AS asset_id, a.name AS asset_name, a.image AS asset_image, a.down_payment,
+        b.id, b.borrow_date, b.return_date, b.status, b.payment_status,
+        a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
+        a.down_payment, a.return_before,
         u.id AS borrower_id, u.username AS borrower_name, u.email AS borrower_email,
         owner.username AS owner_name
       FROM borrow b
@@ -23,8 +24,9 @@ class BorrowRepository {
     const [rows] = await db.query(
       `
       SELECT 
-        b.id, b.borrow_date, b.deadline, b.giveback_date, b.status, b.payment_status,
-        a.id AS asset_id, a.name AS asset_name, a.image AS asset_image, a.description, a.down_payment,
+        b.id, b.borrow_date, b.return_date, b.status, b.payment_status,
+        a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
+        a.description, a.down_payment, a.return_before,
         owner.username AS owner_name
       FROM borrow b
       JOIN asset a ON b.asset_id = a.id
@@ -40,7 +42,8 @@ class BorrowRepository {
   async findById(id) {
     const [rows] = await db.query(
       `
-      SELECT b.*, a.owner_id 
+      SELECT b.*, a.owner_id, a.return_before,
+        a.return_before < CURRENT_DATE() AS return_before_passed
       FROM borrow b
       JOIN asset a ON b.asset_id = a.id
       WHERE b.id = ?
@@ -50,13 +53,13 @@ class BorrowRepository {
     return rows[0];
   }
 
-  async createBorrow({ asset_id, borrower_id, borrow_date, deadline }) {
+  async createBorrow({ asset_id, borrower_id }) {
     const [result] = await db.query(
       `
-      INSERT INTO borrow (asset_id, borrower_id, borrow_date, deadline, status, payment_status)
-      VALUES (?, ?, ?, ?, 'requested', 'unpaid')
+      INSERT INTO borrow (asset_id, borrower_id, borrow_date, status, payment_status)
+      VALUES (?, ?, NULL, 'requested', 'unpaid')
     `,
-      [asset_id, borrower_id, borrow_date, deadline],
+      [asset_id, borrower_id],
     );
     return result.insertId;
   }
@@ -70,8 +73,12 @@ class BorrowRepository {
       params.push(paymentStatus);
     }
 
+    if (status === "borrowed") {
+      sql += ", borrow_date = CURRENT_DATE()";
+    }
+
     if (status === "returned_confirmed") {
-      sql += ", giveback_date = NOW()";
+      sql += ", return_date = NOW()";
     }
 
     sql += " WHERE id = ?";
