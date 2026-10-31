@@ -6,7 +6,7 @@ const openApiSpecification = swaggerJsdoc({
     info: {
       title: "Mobile Application Development API",
       version: "1.0.0",
-      description: "API documentation for the authentication and user endpoints.",
+      description: "API documentation for the authentication, user, and asset endpoints.",
     },
     servers: [
       {
@@ -15,7 +15,11 @@ const openApiSpecification = swaggerJsdoc({
       },
     ],
   },
-  apis: ["./module/auth/auth_routes.js", "./module/user/user_routes.js"],
+  apis: [
+    "./module/auth/auth_routes.js",
+    "./module/user/user_routes.js",
+    "./module/asset/asset_routes.js",
+  ],
 });
 
 module.exports = openApiSpecification;

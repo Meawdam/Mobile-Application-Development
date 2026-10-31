@@ -9,17 +9,18 @@ class AssetService {
         return await assetRepository.findAll();
     }
 
-    async getAssetByID(id) {
+    async getAssetById(id) {
         const asset = await assetRepository.findById(id);
         if(!asset) {
             const err = new Error("Asset not found");
             err.status = 404;
             throw err;
         }
+        return asset;
     }
 
     async createAsset(ownerId, data) {
-        const assetId = await assetsRepository.createAsset({
+        const assetId = await assetRepository.createAsset({
             owner_id: ownerId,
             ...data
         });
@@ -27,7 +28,7 @@ class AssetService {
     }
 
     async approveAsset(id, {approval, approval_message}) {
-        const asset = await assetRepository.findById();
+        const asset = await assetRepository.findById(id);
          if(!asset) {
             const err = new Error("Asset not found");
             err.status = 404;
@@ -52,7 +53,8 @@ class AssetService {
             throw err;
         }
 
-        await assetsRepository.deleteAsset(id, owner_id);
+        await assetRepository.deleteAsset(id, owner_id);
+        return { id };
     }
 }
 
