@@ -58,12 +58,6 @@ class AuthController {
     }
   }
 
-  logout(req, res) {
-    return res.status(200).json({
-      message: "Logged out successfully. Remove the token from the client.",
-    });
-  }
-
 }
 
 module.exports = new AuthController();
