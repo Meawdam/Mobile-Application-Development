@@ -78,8 +78,10 @@ class AssetsController {
     try {
       const { approval, approval_message } = req.body;
 
-      if (!approval) {
-        return res.status(400).json({ message: "Approval status is required" });
+      if (!["approved", "not approve"].includes(approval)) {
+        return res.status(400).json({
+          message: "Approval status must be approved or not approve",
+        });
       }
 
       const result = await assetService.approveAsset(req.params.id, {

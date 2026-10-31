@@ -62,6 +62,12 @@ class AssetService {
     }
 
     async approveAsset(id, {approval, approval_message}) {
+        if (!["approved", "not approve"].includes(approval)) {
+            const err = new Error("Approval status must be approved or not approve");
+            err.status = 400;
+            throw err;
+        }
+
         const asset = await assetRepository.findById(id);
          if(!asset) {
             const err = new Error("Asset not found");

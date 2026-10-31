@@ -5,7 +5,7 @@ const authRepository = require("./auth_repository");
 const JWT_SECRET = "PleASeA";
 
 class AuthService {
-  async register({ username, email, password, role }) {
+  async register({ username, email, password }) {
     const existingUsername = await authRepository.findByUsername(username);
     if (existingUsername) {
       const err = new Error("Username is already taken");
@@ -26,10 +26,10 @@ class AuthService {
       username,
       email,
       password: hashedPassword,
-      role,
+      role: "user",
     });
 
-    return { id: userId, username, email, role };
+    return { id: userId, username, email, role: "user" };
   }
 
   async login({ username, password }) {

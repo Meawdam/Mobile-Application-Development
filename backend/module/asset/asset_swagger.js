@@ -250,7 +250,7 @@
  *             properties:
  *               approval:
  *                 type: string
- *                 enum: [approved, rejected]
+ *                 enum: [approved, not approve]
  *                 example: approved
  *               approval_message:
  *                 type: string
@@ -276,7 +276,7 @@
  *                     approval_message:
  *                       type: string
  *       400:
- *         description: Approval status is required
+ *         description: Approval status must be approved or not approve
  *       401:
  *         description: Access token is required
  *       403:

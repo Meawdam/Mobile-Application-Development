@@ -3,7 +3,7 @@ const db = require("../../db_config");
 class AssetRepository {
   async findAllApproved() {
     const [rows] = await db.query(
-      "SELECT * FROM asset WHERE approval = 'approved' AND status = 'ready'",
+      "SELECT * FROM asset WHERE approval = 'approved' AND status = 'ready' AND return_before >= CURRENT_DATE()",
     );
     return rows;
   }

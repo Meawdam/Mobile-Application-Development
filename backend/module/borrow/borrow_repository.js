@@ -54,46 +54,168 @@ class BorrowRepository {
   }
 
   async createBorrow({ asset_id, borrower_id }) {
-    const [result] = await db.query(
-      `
-      INSERT INTO borrow (asset_id, borrower_id, borrow_date, status, payment_status)
-      VALUES (?, ?, NULL, 'requested', 'unpaid')
-    `,
-      [asset_id, borrower_id],
-    );
-    return result.insertId;
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [assetResult] = await connection.query(
+        `SELECT id FROM asset
+         WHERE id = ? AND owner_id <> ? AND status = 'ready'
+           AND approval = 'approved' AND return_before >= CURRENT_DATE()
+         FOR UPDATE`,
+        [asset_id, borrower_id],
+      );
+
+      if (assetResult.length === 0) {
+        const err = new Error("Asset is no longer available for borrowing");
+        err.status = 409;
+        throw err;
+      }
+
+      const [activeBorrows] = await connection.query(
+        `SELECT id FROM borrow
+         WHERE asset_id = ?
+           AND status IN ('requested', 'approved', 'borrowed', 'returned_pending')
+         LIMIT 1`,
+        [asset_id],
+      );
+      if (activeBorrows.length > 0) {
+        const err = new Error("Asset already has an active borrow request");
+        err.status = 409;
+        throw err;
+      }
+
+      const [result] = await connection.query(
+        `INSERT INTO borrow (
+          asset_id, borrower_id, borrow_date, status, payment_status
+        ) VALUES (?, ?, NULL, 'requested', 'unpaid')`,
+        [asset_id, borrower_id],
+      );
+      await connection.commit();
+      return result.insertId;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 
-  async updateStatus(id, status, paymentStatus) {
-    let sql = "UPDATE borrow SET status = ?";
-    const params = [status];
+  async markBorrowed(id, borrowerId, assetId) {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [assets] = await connection.query(
+        `SELECT id FROM asset
+         WHERE id = ? AND status = 'ready' AND approval = 'approved'
+           AND return_before >= CURRENT_DATE()
+         FOR UPDATE`,
+        [assetId],
+      );
+      if (assets.length === 0) {
+        const err = new Error("Asset is no longer available for borrowing");
+        err.status = 409;
+        throw err;
+      }
 
-    if (paymentStatus) {
-      sql += ", payment_status = ?";
-      params.push(paymentStatus);
+      const [borrowResult] = await connection.query(
+        `UPDATE borrow
+         SET status = 'borrowed', payment_status = 'paid',
+             borrow_date = CURRENT_DATE()
+         WHERE id = ? AND borrower_id = ? AND status = 'requested'
+           AND payment_status = 'unpaid'`,
+        [id, borrowerId],
+      );
+      if (borrowResult.affectedRows === 0) {
+        await connection.rollback();
+        return false;
+      }
+
+      const [assetResult] = await connection.query(
+        `UPDATE asset SET status = 'borrowed'
+         WHERE id = ? AND status = 'ready' AND return_before >= CURRENT_DATE()`,
+        [assetId],
+      );
+      if (assetResult.affectedRows === 0) {
+        const err = new Error("Reserved asset is no longer available");
+        err.status = 409;
+        throw err;
+      }
+
+      await connection.commit();
+      return true;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
     }
+  }
 
-    if (status === "borrowed") {
-      sql += ", borrow_date = CURRENT_DATE()";
-    }
-
-    if (status === "returned_confirmed") {
-      sql += ", return_date = NOW()";
-    }
-
-    sql += " WHERE id = ?";
-    params.push(id);
-
-    const [result] = await db.query(sql, params);
+  async cancelRequest(id, borrowerId) {
+    const [result] = await db.query(
+      `UPDATE borrow SET status = 'rejected'
+       WHERE id = ? AND borrower_id = ? AND status = 'requested'
+         AND payment_status = 'unpaid'`,
+      [id, borrowerId],
+    );
     return result.affectedRows > 0;
   }
 
-  async updateAssetStatus(assetId, status) {
-    await db.query("UPDATE asset SET status = ? WHERE id = ?", [
-      status,
-      assetId,
-    ]);
+  async markReturnPending(id, borrowerId) {
+    const [result] = await db.query(
+      `UPDATE borrow SET status = 'returned_pending'
+       WHERE id = ? AND borrower_id = ? AND status = 'borrowed'`,
+      [id, borrowerId],
+    );
+    return result.affectedRows > 0;
   }
+
+  async confirmReturn(id, assetId) {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [assets] = await connection.query(
+        "SELECT id FROM asset WHERE id = ? AND status = 'borrowed' FOR UPDATE",
+        [assetId],
+      );
+      if (assets.length === 0) {
+        const err = new Error("Borrowed asset is no longer available");
+        err.status = 409;
+        throw err;
+      }
+
+      const [borrowResult] = await connection.query(
+        `UPDATE borrow
+         SET status = 'returned_confirmed', payment_status = 'refunded',
+             return_date = NOW()
+         WHERE id = ? AND status = 'returned_pending'`,
+        [id],
+      );
+      if (borrowResult.affectedRows === 0) {
+        await connection.rollback();
+        return false;
+      }
+
+      const [assetResult] = await connection.query(
+        "UPDATE asset SET status = 'ready' WHERE id = ? AND status = 'borrowed'",
+        [assetId],
+      );
+      if (assetResult.affectedRows === 0) {
+        const err = new Error("Borrowed asset is no longer available");
+        err.status = 409;
+        throw err;
+      }
+
+      await connection.commit();
+      return true;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
 }
 
 module.exports = new BorrowRepository();
