@@ -1,9 +1,20 @@
 const db = require("../../db_config");
 
 class AssetRepository {
-  async findAllApproved() {
+  async findAllApproved(excludedOwnerId) {
+    const ownerFilter =
+      excludedOwnerId === undefined || excludedOwnerId === null
+        ? ""
+        : " AND owner_id <> ?";
+    const params =
+      excludedOwnerId === undefined || excludedOwnerId === null
+        ? []
+        : [excludedOwnerId];
     const [rows] = await db.query(
-      "SELECT * FROM asset WHERE approval = 'approved' AND status = 'ready' AND return_before >= CURRENT_DATE()",
+      `SELECT * FROM asset
+       WHERE approval = 'approved' AND status = 'ready'
+         AND return_before >= CURRENT_DATE()${ownerFilter}`,
+      params,
     );
     return rows;
   }

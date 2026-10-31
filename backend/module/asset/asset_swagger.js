@@ -68,7 +68,10 @@
  *   get:
  *     tags: [Assets]
  *     summary: Get available assets
- *     description: Returns approved assets that are ready.
+ *     description: Returns approved assets that are ready. Authentication is optional; when authenticated, the user's own assets are excluded.
+ *     security:
+ *       - bearerAuth: []
+ *       - {}
  *     responses:
  *       200:
  *         description: Available assets

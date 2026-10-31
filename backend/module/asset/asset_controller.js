@@ -4,7 +4,9 @@ const { removeFile } = require("./asset_upload");
 class AssetsController {
   async getAvailableAssets(req, res, next) {
     try {
-      const assets = await assetService.getAvailableAsset();
+      const assets = await assetService.getAvailableAsset(
+        req.user && req.user.id,
+      );
       return res.status(200).json({ data: assets });
     } catch (error) {
       next(error);

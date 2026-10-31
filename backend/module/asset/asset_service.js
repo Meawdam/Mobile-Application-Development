@@ -1,8 +1,8 @@
 const assetRepository = require("./asset_repository");
 
 class AssetService {
-    async getAvailableAsset() {
-        return await assetRepository.findAllApproved();
+    async getAvailableAsset(excludedOwnerId) {
+        return await assetRepository.findAllApproved(excludedOwnerId);
     }
 
     async getAllAsset() {

@@ -2,9 +2,13 @@ const jwt = require("jsonwebtoken");
 
 const JWT_SECRET = "PleASeA";
 
-const authenticateToken = (req, res, next) => {
+const authenticate = (req, res, next, optional) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
+
+  if (!authHeader && optional) {
+    return next();
+  }
 
   if (!token) {
     return res.status(401).json({ message: "Access token required" });
@@ -18,5 +22,11 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+const authenticateToken = (req, res, next) =>
+  authenticate(req, res, next, false);
+
+authenticateToken.optional = (req, res, next) =>
+  authenticate(req, res, next, true);
 
 module.exports = authenticateToken;

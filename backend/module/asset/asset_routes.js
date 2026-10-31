@@ -5,7 +5,7 @@ const authenticateToken = require('../../middlewares/authMiddleware');
 const authorizeRoles = require('../../middlewares/roleMiddleware');
 const { uploadAssetImage } = require('./asset_upload');
 
-router.get('/', assetsController.getAvailableAssets);
+router.get('/', authenticateToken.optional, assetsController.getAvailableAssets);
 
 router.use(authenticateToken);
 router.post('/', uploadAssetImage, assetsController.createAsset);
