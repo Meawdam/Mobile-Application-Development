@@ -3,6 +3,7 @@ const router = express.Router();
 const assetsController = require('./asset_controller');
 const authenticateToken = require('../../middlewares/authMiddleware');
 const authorizeRoles = require('../../middlewares/roleMiddleware');
+const { uploadAssetImage } = require('./asset_upload');
 
 /**
  * @swagger
@@ -28,8 +29,8 @@ const authorizeRoles = require('../../middlewares/roleMiddleware');
  *           example: Mirrorless camera in good condition
  *         image:
  *           type: string
- *           nullable: true
- *           example: https://example.com/camera.jpg
+ *           description: Public URL path for the uploaded image
+ *           example: /uploads/08ab835d-f75d-4c19-89f2-808a210f18c6.jpg
  *         down_payment:
  *           type: number
  *           example: 250
@@ -93,10 +94,10 @@ router.use(authenticateToken);
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [name, down_payment]
+ *             required: [name, description, image, down_payment]
  *             properties:
  *               name:
  *                 type: string
@@ -106,8 +107,8 @@ router.use(authenticateToken);
  *                 example: Mirrorless camera in good condition
  *               image:
  *                 type: string
- *                 nullable: true
- *                 example: https://example.com/camera.jpg
+ *                 format: binary
+ *                 description: JPEG, PNG, GIF, or WebP image up to 5 MB
  *               down_payment:
  *                 type: number
  *                 example: 250
@@ -125,7 +126,7 @@ router.use(authenticateToken);
  *                 data:
  *                   $ref: '#/components/schemas/Asset'
  *       400:
- *         description: Name and down_payment are required
+ *         description: Required fields are missing, image is missing, or the image format is unsupported
  *         content:
  *           application/json:
  *             schema:
@@ -138,8 +139,10 @@ router.use(authenticateToken);
  *               $ref: '#/components/schemas/Error'
  *       403:
  *         description: Token is invalid
+ *       413:
+ *         description: Image exceeds the 5 MB upload limit
  */
-router.post('/', assetsController.createAsset);
+router.post('/', uploadAssetImage, assetsController.createAsset);
 
 /**
  * @swagger

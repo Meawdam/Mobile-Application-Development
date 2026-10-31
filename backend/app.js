@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("node:path");
 const swaggerUi = require("swagger-ui-express");
 const openApiSpecification = require("./swagger");
 const db = require("./db_config");
@@ -8,6 +9,7 @@ const app = express();
 
 app.use(express.json());
 app.use(cors());
+app.use("/uploads", express.static(path.join(__dirname, "upload")));
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openApiSpecification));
 app.get("/api-docs.json", (req, res) => {

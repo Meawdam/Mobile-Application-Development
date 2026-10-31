@@ -1,4 +1,5 @@
 const assetService = require("./asset_service");
+const { removeFile } = require("./asset_upload");
 
 class AssetsController {
   async getAvailableAssets(req, res, next) {
@@ -30,18 +31,26 @@ class AssetsController {
 
   async createAsset(req, res, next) {
     try {
-      const { name, description, image, down_payment } = req.body;
+      const { name, description, down_payment } = req.body;
 
-      if (!name || down_payment === undefined) {
+      if (
+        typeof name !== "string" ||
+        !name.trim() ||
+        typeof description !== "string" ||
+        !description.trim() ||
+        down_payment === undefined ||
+        down_payment === ""
+      ) {
+        await removeFile(req.file.path);
         return res
           .status(400)
-          .json({ message: "Name and down_payment are required" });
+          .json({ message: "Name, description, image, and down_payment are required" });
       }
 
       const newAsset = await assetService.createAsset(req.user.id, {
-        name,
-        description,
-        image,
+        name: name.trim(),
+        description: description.trim(),
+        image: `/uploads/${req.file.filename}`,
         down_payment,
       });
 
@@ -50,6 +59,11 @@ class AssetsController {
         data: newAsset,
       });
     } catch (error) {
+      try {
+        await removeFile(req.file.path);
+      } catch (cleanupError) {
+        console.error("Failed to remove uploaded image after asset creation failed:", cleanupError);
+      }
       next(error);
     }
   }
