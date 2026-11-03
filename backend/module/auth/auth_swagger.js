@@ -18,6 +18,10 @@
  *           type: string
  *           format: email
  *           example: jane@example.com
+ *         phone_num:
+ *           type: string
+ *           nullable: true
+ *           example: '+66812345678'
  *         role:
  *           type: string
  *           example: user
@@ -46,7 +50,7 @@
  *         application/json:
  *           schema:
  *             type: object
- *             required: [username, email, password]
+ *             required: [username, email, password, phone_num]
  *             properties:
  *               username:
  *                 type: string
@@ -59,6 +63,10 @@
  *                 type: string
  *                 format: password
  *                 example: strong-password
+ *               phone_num:
+ *                 type: string
+ *                 maxLength: 10
+ *                 example: '0812345678'
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -92,11 +100,12 @@
  *         application/json:
  *           schema:
  *             type: object
- *             required: [username, password]
+ *             required: [email, password]
  *             properties:
- *               username:
+ *               email:
  *                 type: string
- *                 example: jane_doe
+ *                 format: email
+ *                 example: jane@example.com
  *               password:
  *                 type: string
  *                 format: password
@@ -124,7 +133,7 @@
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       401:
- *         description: Invalid username or password
+ *         description: Invalid email or password
  *         content:
  *           application/json:
  *             schema:

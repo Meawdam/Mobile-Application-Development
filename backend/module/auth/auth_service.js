@@ -5,7 +5,8 @@ const authRepository = require("./auth_repository");
 const JWT_SECRET = "PleASeA";
 
 class AuthService {
-  async register({ username, email, password }) {
+  async register({ username, email, password, phone_num }) {
+    email = email.trim().toLowerCase();
     const existingUsername = await authRepository.findByUsername(username);
     if (existingUsername) {
       const err = new Error("Username is already taken");
@@ -26,23 +27,24 @@ class AuthService {
       username,
       email,
       password: hashedPassword,
+      phone_num,
       role: "user",
     });
 
-    return { id: userId, username, email, role: "user" };
+    return { id: userId, username, email, phone_num, role: "user" };
   }
 
-  async login({ username, password }) {
-    const user = await authRepository.findByUsername(username);
+  async login({ email, password }) {
+    const user = await authRepository.findByEmail(email.trim().toLowerCase());
     if (!user) {
-      const err = new Error("Invalid username or password");
+      const err = new Error("Invalid email or password");
       err.status = 401;
       throw err;
     }
 
     const isPasswordValid = await argon2.verify(user.password, password);
     if (!isPasswordValid) {
-      const err = new Error("Invalid username or password");
+      const err = new Error("Invalid email or password");
       err.status = 401;
       throw err;
     }
@@ -50,6 +52,7 @@ class AuthService {
     const payload = {
       id: user.id,
       username: user.username,
+      email: user.email,
       role: user.role,
     };
 
@@ -61,6 +64,7 @@ class AuthService {
         id: user.id,
         username: user.username,
         email: user.email,
+        phone_num: user.phone_num,
         role: user.role,
       },
     };

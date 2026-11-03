@@ -212,11 +212,11 @@ class BorrowService {
       throw err;
     }
 
-    const updated = await borrowsRepository.confirmReturn(
+    const result = await borrowsRepository.confirmReturn(
       borrowId,
       borrow.asset_id,
     );
-    if (!updated) {
+    if (!result) {
       const err = new Error("Return request is no longer awaiting confirmation");
       err.status = 409;
       throw err;
@@ -224,6 +224,7 @@ class BorrowService {
 
     return {
       message: "Return confirmed and asset is now ready for borrowing again",
+      fine_amount: result.fine_amount,
     };
   }
 }

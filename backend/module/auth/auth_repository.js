@@ -15,10 +15,10 @@ class AuthRepository {
     return rows[0];
   }
 
-  async createUser({ username, email, password, role = "user" }) {
+  async createUser({ username, email, password, phone_num, role = "user" }) {
     const [result] = await db.query(
-      "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)",
-      [username, email, password, role],
+      "INSERT INTO users (username, email, password, phone_num, role) VALUES (?, ?, ?, ?, ?)",
+      [username, email, password, phone_num, role],
     );
     return result.insertId;
   }
