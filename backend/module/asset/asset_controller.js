@@ -6,6 +6,7 @@ class AssetsController {
     try {
       const assets = await assetService.getAvailableAsset(
         req.user && req.user.id,
+        req.query.q,
       );
       return res.status(200).json({ data: assets });
     } catch (error) {
@@ -33,7 +34,14 @@ class AssetsController {
 
   async createAsset(req, res, next) {
     try {
-      const { name, description, down_payment, return_before } = req.body;
+      const {
+        name,
+        description,
+        down_payment,
+        price,
+        pickup_point,
+        return_before,
+      } = req.body;
 
       if (
         typeof name !== "string" ||
@@ -42,6 +50,10 @@ class AssetsController {
         !description.trim() ||
         down_payment === undefined ||
         down_payment === "" ||
+        price === undefined ||
+        price === "" ||
+        typeof pickup_point !== "string" ||
+        !pickup_point.trim() ||
         typeof return_before !== "string" ||
         !return_before.trim()
       ) {
@@ -50,7 +62,7 @@ class AssetsController {
           .status(400)
           .json({
             message:
-              "name, description, image, down_payment, and return_before are required",
+              "name, description, image, down_payment, price, pickup_point, and return_before are required",
           });
       }
 
@@ -59,6 +71,8 @@ class AssetsController {
         description: description.trim(),
         image: `/uploads/${req.file.filename}`,
         down_payment,
+        price,
+        pickup_point: pickup_point.trim(),
         return_before: return_before.trim(),
       });
 

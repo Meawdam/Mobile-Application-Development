@@ -1,7 +1,7 @@
 const db = require("../../db_config");
 
 class AssetRepository {
-  async findAllApproved(excludedOwnerId) {
+  async findAllApproved(excludedOwnerId, searchTerm) {
     const ownerFilter =
       excludedOwnerId === undefined || excludedOwnerId === null
         ? ""
@@ -10,10 +10,17 @@ class AssetRepository {
       excludedOwnerId === undefined || excludedOwnerId === null
         ? []
         : [excludedOwnerId];
+    const searchFilter = searchTerm
+      ? " AND (name LIKE ? OR description LIKE ? OR pickup_point LIKE ?)"
+      : "";
+    if (searchTerm) {
+      const pattern = `%${searchTerm}%`;
+      params.push(pattern, pattern, pattern);
+    }
     const [rows] = await db.query(
       `SELECT * FROM asset
        WHERE approval = 'approved' AND status = 'ready'
-         AND return_before >= CURRENT_DATE()${ownerFilter}`,
+         AND return_before >= CURRENT_DATE()${ownerFilter}${searchFilter}`,
       params,
     );
     return rows;
@@ -35,14 +42,26 @@ class AssetRepository {
     name,
     description,
     down_payment,
+    price,
+    pickup_point,
     return_before,
   }) {
     const [result] = await db.query(
       `INSERT INTO asset (
-        owner_id, image, name, description, down_payment, return_before, status, approval
+        owner_id, image, name, description, down_payment, price, pickup_point,
+        return_before, status, approval
       )
-        VALUES(?, ?, ?, ?, ?, ?, 'ready', 'pending')`,
-      [owner_id, image, name, description, down_payment, return_before],
+        VALUES(?, ?, ?, ?, ?, ?, ?, ?, 'ready', 'pending')`,
+      [
+        owner_id,
+        image,
+        name,
+        description,
+        down_payment,
+        price,
+        pickup_point,
+        return_before,
+      ],
     );
     return result.insertId;
   }

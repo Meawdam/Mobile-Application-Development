@@ -76,3 +76,25 @@ Use the up/down arrow keys to select **Run frontend** or **Run backend**, then p
 ## API documentation
 
 After starting the backend, open [http://localhost:3000/api-docs](http://localhost:3000/api-docs) to browse and try the API endpoints in Swagger UI. The OpenAPI specification is also available at [http://localhost:3000/api-docs.json](http://localhost:3000/api-docs.json).
+
+## Database update and features
+
+Before running the backend against an existing database, apply
+`backend/migrations/20261103_add_rental_fields.sql` to add asset prices and
+pickup points and stored borrow fines. The `phone_num` column is included in
+the current database schema. The complete current schema is provided in
+`backend/schema.json`. Existing assets receive a price of `0` and an empty
+pickup point from the migration; set those values before relisting them if
+they should have a late-return fine or pickup location.
+
+The configured database account does not have permission to alter tables, so
+apply the migration using a database account with `ALTER TABLE` privileges
+before using asset pricing, pickup points, or late-return fines.
+
+Login uses an email address (`POST /api/auth/login` with `email` and `password`).
+Asset listings support `GET /api/assets?q=search-term`, matching the asset name,
+description, and pickup point. A return confirmed after the asset's
+`return_before` date stores a fine equal to `price` for each overdue calendar
+day and returns the amount as `fine_amount`.
+
+Run backend tests from the `backend` directory with `npm test`.

@@ -1,8 +1,22 @@
 const assetRepository = require("./asset_repository");
 
 class AssetService {
-    async getAvailableAsset(excludedOwnerId) {
-        return await assetRepository.findAllApproved(excludedOwnerId);
+    async getAvailableAsset(excludedOwnerId, searchTerm) {
+        if (searchTerm !== undefined && typeof searchTerm !== "string") {
+            const err = new Error("q must be a string");
+            err.status = 400;
+            throw err;
+        }
+        const normalizedSearchTerm = searchTerm?.trim();
+        if (normalizedSearchTerm && normalizedSearchTerm.length > 100) {
+            const err = new Error("q must not exceed 100 characters");
+            err.status = 400;
+            throw err;
+        }
+        return await assetRepository.findAllApproved(
+            excludedOwnerId,
+            normalizedSearchTerm,
+        );
     }
 
     async getAllAsset() {
@@ -20,6 +34,30 @@ class AssetService {
     }
 
     async createAsset(ownerId, data) {
+        const price = Number(data.price);
+        if (
+            data.price === undefined ||
+            data.price === null ||
+            data.price === "" ||
+            !Number.isSafeInteger(price) ||
+            price < 0 ||
+            price > 2147483647 ||
+            !/^\d+$/.test(String(data.price))
+        ) {
+            const err = new Error("price must be a non-negative whole number within the database range");
+            err.status = 400;
+            throw err;
+        }
+        if (
+            typeof data.pickup_point !== "string" ||
+            !data.pickup_point.trim() ||
+            data.pickup_point.trim().length > 255
+        ) {
+            const err = new Error("pickup_point is required");
+            err.status = 400;
+            throw err;
+        }
+
         const dateParts =
             typeof data.return_before === "string"
                 ? /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(data.return_before)
@@ -50,11 +88,15 @@ class AssetService {
         const assetId = await assetRepository.createAsset({
             owner_id: ownerId,
             ...data,
+            price,
+            pickup_point: data.pickup_point.trim(),
             return_before: normalizedReturnBefore,
         });
         return {
             id: assetId,
             ...data,
+            price,
+            pickup_point: data.pickup_point.trim(),
             return_before: normalizedReturnBefore,
             approval: "pending",
             status: "ready",

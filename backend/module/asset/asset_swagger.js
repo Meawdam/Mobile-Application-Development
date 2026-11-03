@@ -27,6 +27,13 @@
  *         down_payment:
  *           type: number
  *           example: 250
+ *         price:
+ *           type: integer
+ *           description: Daily late-return fine in the same currency
+ *           example: 100
+ *         pickup_point:
+ *           type: string
+ *           example: Library front desk
  *         return_before:
  *           type: string
  *           format: date
@@ -69,6 +76,15 @@
  *     tags: [Assets]
  *     summary: Get available assets
  *     description: Returns approved assets that are ready. Authentication is optional; when authenticated, the user's own assets are excluded.
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: false
+ *         description: Search asset name, description, or pickup point
+ *         schema:
+ *           type: string
+ *           maxLength: 100
+ *         example: camera
  *     security:
  *       - bearerAuth: []
  *       - {}
@@ -95,7 +111,7 @@
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [name, description, image, down_payment, return_before]
+ *             required: [name, description, image, down_payment, price, pickup_point, return_before]
  *             properties:
  *               name:
  *                 type: string
@@ -110,6 +126,14 @@
  *               down_payment:
  *                 type: number
  *                 example: 250
+ *               price:
+ *                 type: integer
+ *                 minimum: 0
+ *                 description: Daily late-return fine
+ *                 example: 100
+ *               pickup_point:
+ *                 type: string
+ *                 example: Library front desk
  *               return_before:
  *                 type: string
  *                 format: date

@@ -6,6 +6,7 @@ class BorrowRepository {
     const [rows] = await db.query(`
       SELECT 
         b.id, b.borrow_date, b.return_date, b.status, b.payment_status,
+        b.fine_amount,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
         a.down_payment, a.return_before,
         u.id AS borrower_id, u.username AS borrower_name, u.email AS borrower_email,
@@ -25,6 +26,7 @@ class BorrowRepository {
       `
       SELECT 
         b.id, b.borrow_date, b.return_date, b.status, b.payment_status,
+        b.fine_amount,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
         a.description, a.down_payment, a.return_before,
         owner.username AS owner_name
@@ -86,8 +88,8 @@ class BorrowRepository {
 
       const [result] = await connection.query(
         `INSERT INTO borrow (
-          asset_id, borrower_id, borrow_date, status, payment_status
-        ) VALUES (?, ?, NULL, 'requested', 'unpaid')`,
+          asset_id, borrower_id, borrow_date, status, payment_status, fine_amount
+        ) VALUES (?, ?, NULL, 'requested', 'unpaid', 0)`,
         [asset_id, borrower_id],
       );
       await connection.commit();
@@ -175,7 +177,9 @@ class BorrowRepository {
     try {
       await connection.beginTransaction();
       const [assets] = await connection.query(
-        "SELECT id FROM asset WHERE id = ? AND status = 'borrowed' FOR UPDATE",
+        `SELECT id, GREATEST(DATEDIFF(CURRENT_DATE(), return_before), 0) * price
+           AS fine_amount
+         FROM asset WHERE id = ? AND status = 'borrowed' FOR UPDATE`,
         [assetId],
       );
       if (assets.length === 0) {
@@ -187,9 +191,9 @@ class BorrowRepository {
       const [borrowResult] = await connection.query(
         `UPDATE borrow
          SET status = 'returned_confirmed', payment_status = 'refunded',
-             return_date = NOW()
+             return_date = NOW(), fine_amount = ?
          WHERE id = ? AND status = 'returned_pending'`,
-        [id],
+        [assets[0].fine_amount, id],
       );
       if (borrowResult.affectedRows === 0) {
         await connection.rollback();
@@ -207,7 +211,7 @@ class BorrowRepository {
       }
 
       await connection.commit();
-      return true;
+      return { fine_amount: Number(assets[0].fine_amount) };
     } catch (error) {
       await connection.rollback();
       throw error;
