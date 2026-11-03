@@ -53,6 +53,10 @@
  *           type: string
  *           enum: [unpaid, paid, refunded]
  *           example: unpaid
+ *         fine_amount:
+ *           type: integer
+ *           description: Stored late-return fine, calculated as asset price per overdue day
+ *           example: 100
  *     BorrowListResponse:
  *       type: object
  *       properties:
@@ -248,7 +252,16 @@
  *           type: integer
  *     responses:
  *       200:
- *         description: Return confirmed, payment refunded, and asset made available
+ *         description: Return confirmed, payment refunded, fine calculated, and asset made available
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 fine_amount:
+ *                   type: integer
  *       400:
  *         description: The item has already been returned or no return request is pending
  *       409:

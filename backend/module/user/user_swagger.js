@@ -14,6 +14,14 @@
  *         username:
  *           type: string
  *           example: jane_doe
+ *         email:
+ *           type: string
+ *           format: email
+ *           example: jane@example.com
+ *         phone_num:
+ *           type: string
+ *           maxLength: 10
+ *           example: '0812345678'
  *         role:
  *           type: string
  *           example: user

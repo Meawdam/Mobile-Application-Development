@@ -3,16 +3,27 @@ const authService = require("./auth_service");
 class AuthController {
   async register(req, res, next) {
     try {
-      const { username, email, password } = req.body;
+      const { username, email, password, phone_num } = req.body;
 
-      if (!username || !email || !password) {
+      if (
+        typeof username !== "string" ||
+        !username.trim() ||
+        typeof email !== "string" ||
+        !email.trim() ||
+        typeof password !== "string" ||
+        !password ||
+        typeof phone_num !== "string" ||
+        !phone_num.trim() ||
+        phone_num.trim().length > 10
+      ) {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
       const newUser = await authService.register({
-        username,
-        email,
+        username: username.trim(),
+        email: email.trim(),
         password,
+        phone_num: phone_num.trim(),
       });
 
       return res.status(201).json({
@@ -26,14 +37,19 @@ class AuthController {
 
   async login(req, res, next) {
     try {
-      const { username, password } = req.body;
+      const { email, password } = req.body;
 
-      if (!username || !password) {
+      if (
+        typeof email !== "string" ||
+        !email.trim() ||
+        typeof password !== "string" ||
+        !password
+      ) {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
       const result = await authService.login({
-        username,
+        email: email.trim(),
         password,
       });
 
