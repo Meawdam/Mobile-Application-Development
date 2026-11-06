@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'models/borrow_models.dart';
-import 'payment_page.dart';
-import 'utils/date_format_th.dart';
-import 'utils/responsive.dart';
+import '../../../models/borrow_models.dart';
+import '../../../utils/date_format_th.dart';
+import '../../../utils/responsive.dart';
+import '../../payment/payment_module.dart';
 
 const _bg = Color(0xFFF5F7FB);
 const _primary = Color(0xFF3B54F6);

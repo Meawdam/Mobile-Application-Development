@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'my_borrowed_items_page.dart';
-import 'utils/responsive.dart';
+import '../../../utils/responsive.dart';
+import '../../borrowed_items/borrowed_items_module.dart';
 
 const _bg = Color(0xFFF5F7FB);
 const _primary = Color(0xFF5C6FF5);

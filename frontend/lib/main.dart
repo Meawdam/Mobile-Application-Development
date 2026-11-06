@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'my_borrowed_items_page.dart';
+import 'modules/borrowed_items/borrowed_items_module.dart';
 
 void main() {
   runApp(const MainApp());
