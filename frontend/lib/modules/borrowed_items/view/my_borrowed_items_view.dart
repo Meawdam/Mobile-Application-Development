@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'borrow_details_page.dart';
-import 'borrow_request_page.dart';
-import 'models/borrow_models.dart';
-import 'utils/date_format_th.dart';
-import 'utils/responsive.dart';
+import '../../../models/borrow_models.dart';
+import '../../../utils/date_format_th.dart';
+import '../../../utils/responsive.dart';
+import '../../borrow_details/borrow_details_module.dart';
+import '../../borrow_request/borrow_request_module.dart';
 
 const _bg = Color(0xFFF5F7FB);
 const _navy = Color(0xFF1A2138);

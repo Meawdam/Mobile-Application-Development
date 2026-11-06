@@ -1,8 +1,6 @@
 
 import 'package:flutter/material.dart';
-import 'admin/admin_sidebar.dart';
-import 'admin/approve_items_page.dart';
-import 'admin/users_history_page.dart';
+import 'modules/admin/admin_module.dart';
 
 void main() {
   runApp(const AdminPreviewApp());
