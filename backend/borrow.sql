@@ -37,7 +37,7 @@ CREATE TABLE `asset` (
   `approval` enum('pending','approved','not approve') DEFAULT 'pending',
   `approval_message` text DEFAULT NULL,
   `down_payment` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `return_before` timestamp NOT NULL,
+  `return_before` date NOT NULL,
   `price` int(11) NOT NULL,
   `pickup_point` varchar(255) NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()

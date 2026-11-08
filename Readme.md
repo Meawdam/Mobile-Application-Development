@@ -79,17 +79,17 @@ After starting the backend, open [http://localhost:3000/api-docs](http://localho
 
 ## Database update and features
 
-Before running the backend against an existing database, apply
-`backend/migrations/20261103_add_rental_fields.sql` to add asset prices and
-pickup points and stored borrow fines. The `phone_num` column is included in
-the current database schema. The complete current schema is provided in
-`backend/schema.json`. Existing assets receive a price of `0` and an empty
-pickup point from the migration; set those values before relisting them if
-they should have a late-return fine or pickup location.
+For an existing database, apply
+`backend/migrations/20261106_change_return_before_to_date.sql` using a database
+account with `ALTER TABLE` privileges. `return_before` is a date-only value;
+using `DATE` instead of `TIMESTAMP` also supports dates beyond 2038. New
+databases should use the schema in `backend/borrow.sql`. If an asset already
+has a zero date, update it to its intended date; the original date cannot be
+recovered from that stored value.
 
 The configured database account does not have permission to alter tables, so
-apply the migration using a database account with `ALTER TABLE` privileges
-before using asset pricing, pickup points, or late-return fines.
+schema migrations must be applied using a database account with `ALTER TABLE`
+privileges.
 
 Login uses an email address (`POST /api/auth/login` with `email` and `password`).
 Asset listings support `GET /api/assets?q=search-term`, matching the asset name,
