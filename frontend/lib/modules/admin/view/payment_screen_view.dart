@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'all_transactions_screen.dart'; // นำเข้าหน้าประวัติทั้งหมด
+import 'all_transactions_screen_view.dart'; // นำเข้าหน้าประวัติทั้งหมด
 
 class PaymentScreen extends StatelessWidget {
   const PaymentScreen({super.key});

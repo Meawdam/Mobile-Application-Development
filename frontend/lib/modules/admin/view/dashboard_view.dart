@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dashboard_requests.dart';
-import 'payment_screen.dart';
-import 'approve_items.dart';
+import 'dashboard_requests_view.dart';
+import 'payment_screen_view.dart';
+import 'approve_items_view.dart';
 
 class BorrowAdminApp extends StatelessWidget {
   const BorrowAdminApp({super.key});

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/modules/admin/view/admin_sidebar.dart';
-import 'package:frontend/modules/admin/view/approve_items.dart';
-import 'package:frontend/modules/admin/view/dashboard.dart';
-import 'package:frontend/modules/admin/view/users_history.dart';
+import 'package:frontend/modules/admin/view/admin_sidebar_view.dart';
+import 'package:frontend/modules/admin/view/approve_items_view.dart';
+import 'package:frontend/modules/admin/view/dashboard_view.dart';
+import 'package:frontend/modules/admin/view/users_history_view.dart';
 
 void main() {
   runApp(const AdminPreviewApp());
