@@ -1,5 +1,7 @@
-
+﻿
 import 'package:flutter/material.dart';
+import 'controller/approve_items_controller.dart';
+import 'model/approve_item_model.dart';
 
 class ApproveItemsPage extends StatefulWidget {
   const ApproveItemsPage({super.key});
@@ -9,201 +11,415 @@ class ApproveItemsPage extends StatefulWidget {
 }
 
 class _ApproveItemsPageState extends State<ApproveItemsPage> {
-  final noteController = TextEditingController();
+  final TextEditingController noteController = TextEditingController();
 
-  final items = [
-    {'name': 'Calculus Textbook Vol. 1', 'owner': 'Thanakon W.', 'time': 'Today 10:40'},
-    {'name': 'Canon M50 Camera', 'owner': 'Natthawut K.', 'time': 'Today 09:05'},
-    {'name': 'Bluetooth Speaker', 'owner': 'Phimchanok S.', 'time': 'Yesterday 17:30'},
-  ];
+  late final ApproveItemsController controller;
 
-  int selectedIndex = 0;
-  bool decided = false;
+  @override
+  void initState() {
+    super.initState();
+    controller = ApproveItemsController();
+    controller.addListener(_refresh);
+  }
+
+  void _refresh() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   @override
   void dispose() {
     noteController.dispose();
+    controller.removeListener(_refresh);
+    controller.dispose();
     super.dispose();
   }
 
-  void decide(bool approve) {
-    if (!approve && noteController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a reason before rejecting.')),
-      );
-      return;
-    }
+  void _openDetails(ApproveItem item) {
+    noteController.clear();
 
-    setState(() {
-      items.removeAt(selectedIndex);
-      selectedIndex = items.isEmpty ? -1 : 0;
-      noteController.clear();
-      decided = true;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(approve ? 'Item approved' : 'Item rejected')),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasItem = selectedIndex >= 0 && selectedIndex < items.length;
-
-    return Container(
-      color: const Color(0xFFF0EEEE),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Approve Items',
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-          const Text(
-            'Items will be displayed on the home page only when approved and status is set to "Available"',
-            style: TextStyle(color: Colors.black54),
-          ),
-          const SizedBox(height: 18),
-          Expanded(
-            child: Row(
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.88,
+            decoration: const BoxDecoration(
+              color: Color(0xFFF5F5F5),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+            ),
+            child: Column(
               children: [
-                SizedBox(
-                  width: 265,
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        children: [
-                          Text('Pending ${items.length}',
-                              style: const TextStyle(
-                                  color: Color(0xFF1800A8),
-                                  fontWeight: FontWeight.bold)),
-                          const Divider(),
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: items.length,
-                              itemBuilder: (context, index) {
-                                final item = items[index];
-                                return Card(
-                                  color: selectedIndex == index
-                                      ? const Color(0xFFE8F1FF)
-                                      : Colors.white,
-                                  child: ListTile(
-                                    leading: const Icon(Icons.image,
-                                        color: Colors.blue),
-                                    title: Text(item['name']!,
-                                        style: const TextStyle(fontSize: 13)),
-                                    subtitle: Text(
-                                      '${item['owner']} - ${item['time']}',
-                                      style: const TextStyle(fontSize: 10),
-                                    ),
-                                    onTap: () => setState(() {
-                                      selectedIndex = index;
-                                      noteController.clear();
-                                    }),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () => setState(() => decided = true),
-                            child: const Text('Decided'),
-                          ),
-                        ],
-                      ),
-                    ),
+                const SizedBox(height: 10),
+                Container(
+                  width: 42,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                const SizedBox(width: 16),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 12, 10, 12),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Item Details',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
                 Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(22),
-                      child: hasItem && !decided
-                          ? _detail(items[selectedIndex])
-                          : const Center(
-                              child: Text('No pending item selected')),
-                    ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: _buildDetails(item),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    18,
+                    10,
+                    18,
+                    14 + MediaQuery.of(sheetContext).viewInsets.bottom,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _decide(
+                            item.id,
+                            item.name,
+                            false,
+                            sheetContext,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: const Text('Reject'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => _decide(
+                            item.id,
+                            item.name,
+                            true,
+                            sheetContext,
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: const Text('Approve'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _detail(Map<String, String> item) {
+  Widget _buildDetails(ApproveItem item) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(item['name']!,
-            style: const TextStyle(
-                fontSize: 18, fontWeight: FontWeight.bold)),
-        Text('Owner: ${item['owner']} - Submitted ${item['time']}'),
-        const SizedBox(height: 20),
-        Container(
-          height: 110,
-          width: 110,
-          decoration: BoxDecoration(
-            color: Colors.blue.shade100,
-            borderRadius: BorderRadius.circular(20),
+        Center(
+          child: Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(
+              Icons.inventory_2_outlined,
+              size: 55,
+              color: Color(0xFF1260C5),
+            ),
           ),
-          child: const Icon(Icons.image, size: 55, color: Colors.blue),
         ),
-        const SizedBox(height: 22),
-        _info('Details', '1st-year item, good condition, no markings'),
-        _info('Rental Fee', '10 ฿ per day'),
-        _info('Deposit', '100 ฿'),
-        _info('Item Status', 'Pending - Ready upon approval'),
-        const SizedBox(height: 18),
-        const Text('Reason / Note',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 20),
+        _detailRow('Item Name', item.name),
+        _detailRow('Owner', item.owner),
+        _detailRow('Submitted', item.time),
+        _detailRow('Category', item.category),
+        _detailRow('Description', item.description),
+        const SizedBox(height: 8),
+        const Text(
+          'Rejection reason (required when rejecting)',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: noteController,
           maxLines: 3,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'Required when rejecting',
+          decoration: InputDecoration(
+            hintText: 'Enter reason for rejection...',
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-        ),
-        const Spacer(),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            OutlinedButton(
-              onPressed: () => decide(false),
-              style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red),
-              child: const Text('Reject'),
-            ),
-            const SizedBox(width: 10),
-            ElevatedButton(
-              onPressed: () => decide(true),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white),
-              child: const Text('Approve'),
-            ),
-          ],
         ),
       ],
     );
   }
 
-  Widget _info(String label, String value) {
+  Widget _detailRow(String title, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 110, child: Text(label)),
-          Expanded(
-            child: Text(value, textAlign: TextAlign.right),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.black54,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
   }
+
+  Future<void> _decide(
+    String itemId,
+    String itemName,
+    bool approve,
+    BuildContext sheetContext,
+  ) async {
+    final reason = noteController.text.trim();
+
+    if (!approve && reason.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a reason for rejection.'),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(approve ? 'Approve Item' : 'Reject Item'),
+        content: Text(
+          approve
+              ? 'Are you sure you want to approve "$itemName"?'
+              : 'Are you sure you want to reject "$itemName"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: approve ? Colors.green : Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final success = approve
+        ? controller.approveItem(itemId)
+        : controller.rejectItem(itemId, reason);
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to process this item.'),
+        ),
+      );
+      return;
+    }
+
+    if (sheetContext.mounted) {
+      Navigator.pop(sheetContext);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          approve
+              ? 'Item approved successfully!'
+              : 'Item rejected successfully!',
+        ),
+        backgroundColor: approve ? Colors.green : Colors.red,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = controller.items;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF0EEEE),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(18, 22, 18, 4),
+              child: Text(
+                'Approve Items',
+                style: TextStyle(
+                  fontSize: 27,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 18),
+              child: Text(
+                'Review and approve submitted items',
+                style: TextStyle(color: Colors.black54),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.pending_actions,
+                      color: Colors.orange,
+                    ),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'Pending',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 12),
+                    CircleAvatar(
+                      radius: 13,
+                      backgroundColor: Colors.orange.shade100,
+                      child: Text(
+                        '${controller.pendingCount}',
+                        style: const TextStyle(
+                          color: Colors.deepOrange,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: items.isEmpty
+                  ? const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle_outline,
+                            size: 55,
+                            color: Colors.green,
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'No pending items',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'All requests have been reviewed.',
+                            style: TextStyle(color: Colors.black54),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(14),
+                            leading: CircleAvatar(
+                              radius: 25,
+                              backgroundColor: Colors.blue.shade50,
+                              child: const Icon(
+                                Icons.inventory_2_outlined,
+                                color: Color(0xFF1260C5),
+                              ),
+                            ),
+                            title: Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                '${item.owner} â€¢ ${item.time}',
+                              ),
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => _openDetails(item),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+

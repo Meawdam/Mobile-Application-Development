@@ -1,5 +1,7 @@
-
+﻿
 import 'package:flutter/material.dart';
+import 'controller/users_history_controller.dart';
+import 'model/user_history_model.dart';
 
 class UsersHistoryPage extends StatefulWidget {
   const UsersHistoryPage({super.key});
@@ -9,226 +11,701 @@ class UsersHistoryPage extends StatefulWidget {
 }
 
 class _UsersHistoryPageState extends State<UsersHistoryPage> {
-  String filter = 'All';
-  String search = '';
+  final Color backgroundColor = const Color(0xFFF2EFF3);
+  final Color primaryColor = const Color(0xFF2100B5);
 
-  final logs = [
-    ['30 Oct. 11:12', 'Finance', 'Payment successful 245฿', 'User'],
-    ['30 Oct. 11:10', 'Rental', 'Requested to rent Casio fx-991EX', 'User'],
-    ['29 Oct. 16:08', 'Rental', 'Picked up Lab Coat Size M', 'User'],
-    ['27 Oct. 14:30', 'Rental', 'Confirmed item return - Calculus Textbook Vol. 1', 'User'],
-    ['1 Oct. 10:02', 'Account', 'Account rejected', 'Admin'],
-    ['29 Oct. 20:17', 'Account', 'Account approved', 'Admin'],
-  ];
+  late final UsersHistoryController controller;
+
+  bool isUserDropdownExpanded = false;
+
+  final TextEditingController userSearchController =
+      TextEditingController();
+
+  final FocusNode userSearchFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    controller = UsersHistoryController();
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    userSearchController.dispose();
+    userSearchFocusNode.dispose();
+    super.dispose();
+  }
+
+  // Select another user.
+  void selectUser(UserHistoryUser user) {
+    controller.selectUser(user.id);
+    controller.searchUsers('');
+
+    userSearchController.clear();
+    userSearchFocusNode.unfocus();
+
+    setState(() {
+      isUserDropdownExpanded = false;
+    });
+  }
+
+  // Open or close dropdown.
+  void toggleUserDropdown() {
+    setState(() {
+      isUserDropdownExpanded = !isUserDropdownExpanded;
+    });
+  }
+
+  // Suspend or activate account.
+  void toggleSuspend() {
+    final user = controller.selectedUser;
+    final isSuspended = controller.isSelectedUserSuspended;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            isSuspended ? 'Activate Account?' : 'Suspend Account?',
+          ),
+          content: Text(
+            isSuspended
+                ? 'Do you want to activate ${user.name}?'
+                : 'Do you want to suspend ${user.name}?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                controller.toggleSuspend();
+
+                Navigator.pop(dialogContext);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isSuspended
+                          ? 'Account activated'
+                          : 'Account suspended',
+                    ),
+                  ),
+                );
+              },
+              child: Text(
+                isSuspended ? 'Activate' : 'Suspend',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Reset activity filters.
+  void resetFilters() {
+    controller.resetFilters();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = logs.where((log) {
-      final matchesFilter = filter == 'All' || log[1] == filter;
-      final matchesSearch =
-          log.join(' ').toLowerCase().contains(search.toLowerCase());
-      return matchesFilter && matchesSearch;
-    }).toList();
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) {
+        final user = controller.selectedUser;
+        final isSuspended = controller.isSelectedUserSuspended;
+        final filteredUsers = controller.filteredUsers;
+        final filteredActivities = controller.filteredActivities;
 
-    return Container(
-      color: const Color(0xFFF0EEEE),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Users & History',
-                        style: TextStyle(
-                            fontSize: 32, fontWeight: FontWeight.bold)),
-                    Text('View activity logs for each user',
-                        style: TextStyle(color: Colors.black54)),
-                  ],
-                ),
-              ),
-              SizedBox(
-                width: 260,
-                child: TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'Search',
-                    prefixIcon: Icon(Icons.search),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide.none,
-                      borderRadius: BorderRadius.all(Radius.circular(25)),
+        return Container(
+          color: backgroundColor,
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Page heading.
+                  const Text(
+                    'Users & History',
+                    style: TextStyle(
+                      fontSize: 29,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF252329),
                     ),
                   ),
-                  onChanged: (value) => setState(() => search = value),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 34,
-                    backgroundColor: Colors.grey.shade400,
-                    child: const Text('S',
-                        style: TextStyle(fontSize: 25, color: Colors.black)),
+
+                  const SizedBox(height: 5),
+
+                  Text(
+                    'View activity logs for each user',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  const Expanded(
+
+                  const SizedBox(height: 20),
+
+                  const Text(
+                    'Select User',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // User dropdown and search.
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(
+                        color: Colors.grey.shade300,
+                      ),
+                    ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Somchai J.',
-                            style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold)),
-                        Text('Approved by Admin Suphaphorn on Oct 1, 2026',
-                            style: TextStyle(color: Colors.black54)),
+                        // Selected user.
+                        InkWell(
+                          onTap: toggleUserDropdown,
+                          borderRadius: BorderRadius.circular(15),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 15,
+                              vertical: 14,
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 19,
+                                  backgroundColor: Colors.grey.shade200,
+                                  child: Text(
+                                    user.initial,
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    user.name,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  isUserDropdownExpanded
+                                      ? Icons.keyboard_arrow_up
+                                      : Icons.keyboard_arrow_down,
+                                  color: primaryColor,
+                                  size: 28,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // One search field - always visible.
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            12,
+                            0,
+                            12,
+                            12,
+                          ),
+                          child: TextField(
+                            controller: userSearchController,
+                            focusNode: userSearchFocusNode,
+                            onTap: () {
+                              setState(() {
+                                isUserDropdownExpanded = true;
+                              });
+                            },
+                            onChanged: (value) {
+                              controller.searchUsers(value);
+
+                              setState(() {
+                                isUserDropdownExpanded = true;
+                              });
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Search user by name...',
+                              prefixIcon: const Icon(Icons.search),
+                              suffixIcon:
+                                  userSearchController.text.isNotEmpty
+                                      ? IconButton(
+                                          onPressed: () {
+                                            userSearchController.clear();
+                                            controller.searchUsers('');
+
+                                            setState(() {
+                                              isUserDropdownExpanded = true;
+                                            });
+
+                                            userSearchFocusNode.requestFocus();
+                                          },
+                                          icon: const Icon(Icons.close),
+                                        )
+                                      : null,
+                              filled: true,
+                              fillColor: const Color(0xFFF3F1F5),
+                              contentPadding:
+                                  const EdgeInsets.symmetric(
+                                vertical: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Search results.
+                        if (isUserDropdownExpanded) ...[
+                          Divider(
+                            height: 1,
+                            color: Colors.grey.shade300,
+                          ),
+
+                          if (filteredUsers.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(18),
+                              child: Center(
+                                child: Text(
+                                  'No users found',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            ...filteredUsers.map((listedUser) {
+                              final isSelected =
+                                  listedUser.id == user.id;
+
+                              return Column(
+                                children: [
+                                  InkWell(
+                                    onTap: () => selectUser(listedUser),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 15,
+                                        vertical: 12,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 19,
+                                            backgroundColor:
+                                                Colors.grey.shade200,
+                                            child: Text(
+                                              listedUser.initial,
+                                              style: const TextStyle(
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              listedUser.name,
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          if (isSelected)
+                                            const Icon(
+                                              Icons.check_circle,
+                                              color: Colors.green,
+                                            )
+                                          else
+                                            const Icon(
+                                              Icons.chevron_right,
+                                              color: Colors.grey,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  if (listedUser != filteredUsers.last)
+                                    Divider(
+                                      height: 1,
+                                      color: Colors.grey.shade200,
+                                      indent: 15,
+                                      endIndent: 15,
+                                    ),
+                                ],
+                              );
+                            }),
+                        ],
                       ],
                     ),
                   ),
-                  _stat('All Rental Records', '10'),
-                  _stat('Lending', '6'),
-                  _stat('Overdue', '1', warning: true),
-                  const SizedBox(width: 8),
-                  OutlinedButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text('Suspend Account'),
-                          content: const Text(
-                              'Are you sure you want to suspend this account?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Cancel'),
+
+                  const SizedBox(height: 22),
+
+                  // User profile.
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(17),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F3FA),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 2,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 35,
+                              backgroundColor: Colors.grey.shade300,
+                              child: Text(
+                                user.initial,
+                                style: const TextStyle(
+                                  fontSize: 27,
+                                  color: Colors.black,
+                                ),
+                              ),
                             ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Confirm'),
+                            const SizedBox(width: 15),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    user.name,
+                                    style: const TextStyle(
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    isSuspended
+                                        ? 'Account suspended'
+                                        : 'Active account',
+                                    style: TextStyle(
+                                      color: isSuspended
+                                          ? Colors.red
+                                          : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red),
-                    child: const Text('Suspend Account'),
+
+                        const SizedBox(height: 22),
+
+                        Row(
+                          children: [
+                            _statCard(
+                              'All Records',
+                              user.total.toString(),
+                              const Color(0xFFEEEEEE),
+                            ),
+                            const SizedBox(width: 8),
+                            _statCard(
+                              'Lending',
+                              user.lending.toString(),
+                              const Color(0xFFEEEEEE),
+                            ),
+                            const SizedBox(width: 8),
+                            _statCard(
+                              'Overdue',
+                              user.overdue.toString(),
+                              const Color(0xFFFFCDD2),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        SizedBox(
+                          width: double.infinity,
+                          height: 42,
+                          child: OutlinedButton.icon(
+                            onPressed: toggleSuspend,
+                            icon: Icon(
+                              isSuspended
+                                  ? Icons.check_circle_outline
+                                  : Icons.block,
+                              color: isSuspended
+                                  ? Colors.green
+                                  : Colors.red,
+                              size: 19,
+                            ),
+                            label: Text(
+                              isSuspended
+                                  ? 'Activate Account'
+                                  : 'Suspend Account',
+                              style: TextStyle(
+                                color: isSuspended
+                                    ? Colors.green
+                                    : Colors.red,
+                                fontSize: 15,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: Colors.grey.shade500,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 25),
+
+                  // Activity Log.
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(17),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F3FA),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Activity Log',
+                          style: TextStyle(
+                            fontSize: 23,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _filterChip('All'),
+                            _filterChip('Rental'),
+                            _filterChip('Finance'),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: resetFilters,
+                            icon: const Icon(
+                              Icons.refresh,
+                              color: Color(0xFF7655B5),
+                            ),
+                            label: const Text(
+                              'Reset filters',
+                              style: TextStyle(
+                                color: Color(0xFF7655B5),
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const Divider(),
+                        const SizedBox(height: 8),
+
+                        if (filteredActivities.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.all(25),
+                            child: Center(
+                              child: Text(
+                                'No activity found',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          ...filteredActivities.map(
+                            (activity) => _activityCard(activity),
+                          ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        const Text('Activity Log',
-                            style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold)),
-                        ...['All', 'Account', 'Rental', 'Finance'].map(
-                          (type) => ChoiceChip(
-                            label: Text(type),
-                            selected: filter == type,
-                            onSelected: (_) =>
-                                setState(() => filter = type),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              filter = 'All';
-                              search = '';
-                            });
-                          },
-                          child: const Text('Export Log'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    const Row(
-                      children: [
-                        Expanded(flex: 2, child: Text('Date / Time')),
-                        Expanded(flex: 2, child: Text('Type')),
-                        Expanded(flex: 4, child: Text('Details')),
-                        Expanded(child: Text('Performed By')),
-                      ],
-                    ),
-                    const Divider(),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final log = filtered[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Row(
-                              children: [
-                                Expanded(flex: 2, child: Text(log[0])),
-                                Expanded(
-                                  flex: 2,
-                                  child: Text(log[1],
-                                      style: TextStyle(
-                                          color: log[1] == 'Finance'
-                                              ? Colors.green
-                                              : log[1] == 'Account'
-                                                  ? Colors.blue
-                                                  : Colors.orange)),
-                                ),
-                                Expanded(
-                                    flex: 4,
-                                    child: Text(log[2],
-                                        style: const TextStyle(fontSize: 12))),
-                                Expanded(child: Text(log[3])),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+        );
+      },
+    );
+  }
+
+  // Statistics card.
+  Widget _statCard(String title, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          vertical: 15,
+          horizontal: 4,
+        ),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 25,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Activity filter buttons.
+  Widget _filterChip(String filter) {
+    final selected = controller.selectedFilter == filter;
+
+    return ChoiceChip(
+      label: Text(filter),
+      selected: selected,
+      showCheckmark: selected,
+      onSelected: (_) {
+        controller.setFilter(filter);
+      },
+      selectedColor: const Color(0xFFE9DDF8),
+      backgroundColor: const Color(0xFFF8F3FA),
+      labelStyle: TextStyle(
+        color: selected
+            ? const Color(0xFF51416B)
+            : const Color(0xFF514B57),
+      ),
+      side: BorderSide(
+        color: selected
+            ? const Color(0xFFE9DDF8)
+            : Colors.grey.shade400,
+      ),
+    );
+  }
+
+  // Activity record card.
+  Widget _activityCard(UserHistoryActivity activity) {
+    final isFinance = activity.category == 'Finance';
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F9F9),
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(
+          color: Colors.grey.shade300,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  activity.date,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 14,
+                  ),
                 ),
               ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: isFinance
+                      ? const Color(0xFFE1F1E4)
+                      : const Color(0xFFE0EDFA),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  activity.category,
+                  style: TextStyle(
+                    color: isFinance ? Colors.green : Colors.blue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 13),
+
+          Text(
+            activity.title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          Text(
+            'Performed by: ${activity.performedBy}',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
             ),
           ),
         ],
       ),
     );
   }
-
-  Widget _stat(String title, String value, {bool warning = false}) {
-    return Container(
-      margin: const EdgeInsets.only(left: 7),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: warning ? Colors.red.shade100 : Colors.grey.shade300,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          Text(title, style: const TextStyle(fontSize: 10)),
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 23, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
 }
+
