@@ -1,3 +1,3 @@
-export 'view/admin_sidebar_view.dart';
-export 'view/approve_items_view.dart';
-export 'view/users_history_view.dart';
+export 'view/admin_sidebar.dart';
+export 'view/approve_items.dart';
+export 'view/users_history.dart';
