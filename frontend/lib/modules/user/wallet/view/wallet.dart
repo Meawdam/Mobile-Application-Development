@@ -26,7 +26,7 @@ class WalletScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    '฿5,000.00',
+                    '—',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 36,
@@ -37,30 +37,9 @@ class WalletScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            SizedBox(
+            const SizedBox(
               width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Top up wallet'),
-                    content: const TextField(
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Amount (฿)',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Close'),
-                      ),
-                    ],
-                  ),
-                ),
-                child: const Text('Top up'),
-              ),
+              child: OutlinedButton(onPressed: null, child: Text('Top up')),
             ),
           ],
         ),

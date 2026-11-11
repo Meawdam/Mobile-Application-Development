@@ -29,25 +29,19 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
     case '/my-lending':
       page = const _UserNavigationShell(initialIndex: 2);
     case '/item-detail':
-      page = ItemDetailScreen(
-        itemId: settings.arguments as String? ?? 'ast-01',
-      );
+      page = const ItemDetailScreen();
     case '/borrow-request':
-      page = BorrowRequestScreen(
-        itemId: settings.arguments as String? ?? 'ast-01',
-      );
+      page = const BorrowRequestScreen();
     case '/payment':
       page = const PaymentScreen();
     case '/borrow-details':
-      page = BorrowDetailsScreen(
-        recordId: settings.arguments as String? ?? 'BR-69-0142',
-      );
+      page = const BorrowDetailsScreen();
     case '/add-item':
       page = const AddItemScreen();
     case '/wallet':
       page = const WalletScreen();
     case '/edit-item':
-      page = EditItemScreen(itemId: settings.arguments as String? ?? '');
+      page = const EditItemScreen();
     case '/requests-returns':
       page = const RequestsReturnsScreen();
     case '/admin':

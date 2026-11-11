@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 
 class ItemDetailScreen extends StatelessWidget {
-  final String itemId;
-
-  const ItemDetailScreen({super.key, required this.itemId});
+  const ItemDetailScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Canon M50 Camera')),
+      appBar: AppBar(title: const Text('Item Details')),
       body: Column(
         children: [
           Expanded(
@@ -32,28 +30,28 @@ class ItemDetailScreen extends StatelessWidget {
                   const Row(
                     children: [
                       Chip(
-                        label: Text('Available'),
+                        label: Text('Status'),
                         backgroundColor: Color(0xFFE6F4EA),
                       ),
                       SizedBox(width: 8),
-                      Text('Good condition'),
+                      Text('Condition'),
                     ],
                   ),
                   const Text(
-                    'Canon M50 Camera',
+                    'Item Name',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  const Text('Camera in good condition, includes one lens.'),
+                  const Text('Item description'),
                   const SizedBox(height: 20),
                   const Row(
                     children: [
                       Expanded(
-                        child: _PriceCard(label: 'Price / day', value: '฿120'),
+                        child: _DetailCard(label: 'Price / day', value: '—'),
                       ),
                       SizedBox(width: 12),
                       Expanded(
-                        child: _PriceCard(label: 'Deposit', value: '฿1,500'),
+                        child: _DetailCard(label: 'Deposit', value: '—'),
                       ),
                     ],
                   ),
@@ -62,13 +60,13 @@ class ItemDetailScreen extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(Icons.location_on_outlined),
                     title: Text('Pickup & return location'),
-                    subtitle: Text('Central Canteen, Building 3'),
+                    subtitle: Text('—'),
                   ),
                   const ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(child: Icon(Icons.person)),
-                    title: Text('Somchai Jaidee'),
-                    subtitle: Text('Engineering Faculty · Verified'),
+                    title: Text('Owner'),
+                    subtitle: Text('—'),
                   ),
                 ],
               ),
@@ -76,23 +74,13 @@ class ItemDetailScreen extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    '฿120 / day + deposit ฿1,500',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pushNamed(
-                    context,
-                    '/borrow-request',
-                    arguments: itemId,
-                  ),
-                  child: const Text('Request to borrow'),
-                ),
-              ],
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () =>
+                    Navigator.pushNamed(context, '/borrow-request'),
+                child: const Text('Request to borrow'),
+              ),
             ),
           ),
         ],
@@ -101,11 +89,11 @@ class ItemDetailScreen extends StatelessWidget {
   }
 }
 
-class _PriceCard extends StatelessWidget {
+class _DetailCard extends StatelessWidget {
   final String label;
   final String value;
 
-  const _PriceCard({required this.label, required this.value});
+  const _DetailCard({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {

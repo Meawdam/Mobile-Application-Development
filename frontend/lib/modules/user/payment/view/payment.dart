@@ -26,7 +26,7 @@ class PaymentScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    '฿1,740',
+                    '—',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 32,
@@ -35,26 +35,25 @@ class PaymentScreen extends StatelessWidget {
                   ),
                   Divider(color: Colors.white24, height: 24),
                   Text(
-                    'Rental fee: ฿240 · Deposit: ฿1,500',
+                    'Rental fee: — · Deposit: —',
                     style: TextStyle(color: Colors.white),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
-            const Text('Wallet balance: ฿5,000.00'),
+            const Text('Wallet balance: —'),
             const SizedBox(height: 12),
             const Text(
               'The deposit will be held until the item is returned.',
               textAlign: TextAlign.center,
             ),
             const Spacer(),
-            SizedBox(
+            const SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () =>
-                    Navigator.pushNamed(context, '/borrow-details'),
-                child: const Text('Confirm payment'),
+                onPressed: null,
+                child: Text('Confirm payment'),
               ),
             ),
           ],

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
 class BorrowDetailsScreen extends StatelessWidget {
-  final String recordId;
-
-  const BorrowDetailsScreen({super.key, this.recordId = 'BR-69-0142'});
+  const BorrowDetailsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -22,17 +20,17 @@ class BorrowDetailsScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Portable Projector',
+                        'Item Name',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text('Rental ID: BR-69-0142'),
+                      Text('Rental ID: —'),
                     ],
                   ),
                 ),
-                Chip(label: Text('Borrowed')),
+                Chip(label: Text('Status')),
               ],
             ),
             const SizedBox(height: 16),
@@ -41,31 +39,19 @@ class BorrowDetailsScreen extends StatelessWidget {
               child: ListTile(
                 leading: Icon(Icons.event_repeat),
                 title: Text('Return date'),
-                subtitle: Text('3/11/2026 · 16:00 · 2 days remaining'),
+                subtitle: Text('—'),
               ),
             ),
             const SizedBox(height: 16),
             const Card(
               child: Column(
                 children: [
-                  ListTile(
-                    title: Text('Lender'),
-                    subtitle: Text('Somchai Jaidee · 08X-XXX-XXXX'),
-                  ),
+                  ListTile(title: Text('Lender'), subtitle: Text('—')),
                   Divider(height: 1),
-                  ListTile(
-                    title: Text('Pickup location'),
-                    subtitle: Text('Central Canteen, Building 3'),
-                  ),
+                  ListTile(title: Text('Pickup location'), subtitle: Text('—')),
                   Divider(height: 1),
-                  ListTile(
-                    title: Text('Rental fee'),
-                    trailing: Text('฿500 paid'),
-                  ),
-                  ListTile(
-                    title: Text('Deposit'),
-                    trailing: Text('฿1,000 held'),
-                  ),
+                  ListTile(title: Text('Rental fee'), trailing: Text('—')),
+                  ListTile(title: Text('Deposit'), trailing: Text('—')),
                 ],
               ),
             ),
@@ -80,10 +66,10 @@ class BorrowDetailsScreen extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _TimelineStep('Paid', true),
-                    _TimelineStep('Received', true),
-                    _TimelineStep('Borrowed', true),
-                    _TimelineStep('Returned', false),
+                    _TimelineStep('Paid'),
+                    _TimelineStep('Received'),
+                    _TimelineStep('Borrowed'),
+                    _TimelineStep('Returned'),
                   ],
                 ),
               ),
@@ -107,17 +93,13 @@ class BorrowDetailsScreen extends StatelessWidget {
 
 class _TimelineStep extends StatelessWidget {
   final String label;
-  final bool complete;
 
-  const _TimelineStep(this.label, this.complete);
+  const _TimelineStep(this.label);
 
   @override
   Widget build(BuildContext context) => Column(
     children: [
-      Icon(
-        complete ? Icons.check_circle : Icons.radio_button_unchecked,
-        color: complete ? Colors.green : Colors.grey,
-      ),
+      const Icon(Icons.radio_button_unchecked, color: Colors.grey),
       Text(label, style: const TextStyle(fontSize: 11)),
     ],
   );

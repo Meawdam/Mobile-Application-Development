@@ -1,25 +1,7 @@
 import 'package:flutter/material.dart';
 
-class AddItemScreen extends StatefulWidget {
+class AddItemScreen extends StatelessWidget {
   const AddItemScreen({super.key});
-
-  @override
-  State<AddItemScreen> createState() => _AddItemScreenState();
-}
-
-class _AddItemScreenState extends State<AddItemScreen> {
-  DateTime? _availableUntil;
-
-  Future<void> _selectDate() async {
-    final today = DateTime.now();
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _availableUntil ?? today.add(const Duration(days: 7)),
-      firstDate: today,
-      lastDate: today.add(const Duration(days: 730)),
-    );
-    if (date != null) setState(() => _availableUntil = date);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,81 +25,83 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 children: [
                   Icon(Icons.add_a_photo_outlined, size: 40),
                   SizedBox(height: 6),
-                  Text('Add Photo (Only 1 image supported)'),
+                  Text('Add Photo'),
                 ],
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
-              decoration: _decoration('Item Name', 'e.g., Canon M50 Camera'),
+            const TextField(
+              decoration: InputDecoration(
+                labelText: 'Item Name',
+                hintText: 'e.g., Canon M50 Camera',
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 16),
-            TextField(
+            const TextField(
               maxLines: 3,
-              decoration: _decoration(
-                'Item Details & Condition',
-                'Condition, accessories included, or important notes',
+              decoration: InputDecoration(
+                labelText: 'Item Details & Condition',
+                hintText: 'Condition, accessories included, or important notes',
+                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(
+                const Expanded(
                   child: TextField(
                     keyboardType: TextInputType.number,
-                    decoration: _decoration('Price (Baht / Day)', 'e.g. 120'),
+                    decoration: InputDecoration(
+                      labelText: 'Price (Baht / Day)',
+                      hintText: 'e.g. 120',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
+                const Expanded(
                   child: TextField(
                     keyboardType: TextInputType.number,
-                    decoration: _decoration('Deposit (Baht)', 'e.g. 1500'),
+                    decoration: InputDecoration(
+                      labelText: 'Deposit (Baht)',
+                      hintText: 'e.g. 1500',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            TextField(
+            const TextField(
               maxLines: 2,
-              decoration: _decoration(
-                'Pickup & return location',
-                'e.g., Central Canteen, Building 3',
+              decoration: InputDecoration(
+                labelText: 'Pickup & return location',
+                hintText: 'e.g., Central Canteen, Building 3',
+                border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
-            InkWell(
-              onTap: _selectDate,
-              child: InputDecorator(
-                decoration: _decoration('Lending end date', null).copyWith(
-                  suffixIcon: const Icon(Icons.calendar_today_outlined),
-                ),
-                child: Text(
-                  _availableUntil == null
-                      ? 'Select date'
-                      : '${_availableUntil!.day}/${_availableUntil!.month}/${_availableUntil!.year}',
-                ),
+            const TextField(
+              readOnly: true,
+              decoration: InputDecoration(
+                labelText: 'Lending end date',
+                hintText: 'Select date',
+                border: OutlineInputBorder(),
+                suffixIcon: Icon(Icons.calendar_today_outlined),
               ),
             ),
             const SizedBox(height: 24),
-            SizedBox(
+            const SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: null,
-                child: const Text('Submit for Admin Approval'),
+                child: Text('Submit for Admin Approval'),
               ),
             ),
-            const SizedBox(height: 8),
-            const Center(child: Text('UI preview only')),
           ],
         ),
       ),
     );
   }
-
-  InputDecoration _decoration(String label, String? hint) => InputDecoration(
-    labelText: label,
-    hintText: hint,
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-  );
 }

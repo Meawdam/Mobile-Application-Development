@@ -18,6 +18,7 @@ class RegisterScreen extends StatelessWidget {
           const TextField(
             decoration: InputDecoration(
               labelText: 'Full name',
+              hintText: 'Enter your full name',
               border: OutlineInputBorder(),
             ),
           ),
@@ -26,6 +27,7 @@ class RegisterScreen extends StatelessWidget {
             keyboardType: TextInputType.phone,
             decoration: InputDecoration(
               labelText: 'Phone number',
+              hintText: 'Enter your phone number',
               border: OutlineInputBorder(),
             ),
           ),
@@ -34,6 +36,7 @@ class RegisterScreen extends StatelessWidget {
             keyboardType: TextInputType.emailAddress,
             decoration: InputDecoration(
               labelText: 'Email',
+              hintText: 'example@email.com',
               border: OutlineInputBorder(),
             ),
           ),
@@ -42,6 +45,7 @@ class RegisterScreen extends StatelessWidget {
             obscureText: true,
             decoration: InputDecoration(
               labelText: 'Password',
+              hintText: 'At least 8 characters',
               border: OutlineInputBorder(),
             ),
           ),
@@ -50,6 +54,7 @@ class RegisterScreen extends StatelessWidget {
             obscureText: true,
             decoration: InputDecoration(
               labelText: 'Confirm password',
+              hintText: 'Re-enter password',
               border: OutlineInputBorder(),
             ),
           ),
