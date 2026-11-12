@@ -13,7 +13,7 @@ import 'modules/user/my_borrowed_items/view/my_borrowed_items.dart';
 import 'modules/user/my_lending_items/view/my_lending_items.dart';
 import 'modules/user/payment/view/payment.dart';
 import 'modules/user/requests_returns/view/requests_returns.dart';
-import 'modules/user/wallet/view/wallet.dart';
+import 'modules/user/wallet/view/wallet_view.dart';
 
 int? _readIntArg(Object? arguments) {
   if (arguments is int) return arguments;

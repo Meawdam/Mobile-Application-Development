@@ -40,8 +40,12 @@ class AddItemController extends ChangeNotifier {
       imageQuality: 85,
     );
     if (file == null) return;
-    _imageBytes = await file.readAsBytes();
-    _imageName = file.name;
+    setPickedImage(await file.readAsBytes(), file.name);
+  }
+
+  void setPickedImage(Uint8List bytes, String name) {
+    _imageBytes = bytes;
+    _imageName = name;
     notifyListeners();
   }
 
