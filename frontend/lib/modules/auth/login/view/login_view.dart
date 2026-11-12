@@ -1,7 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/modules/auth/login/controller/login_controller.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _loginController = LoginController();
+
+  void _login() {
+    final user = _loginController.login(
+      _emailController.text,
+      _passwordController.text,
+    );
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid email or password')),
+      );
+      return;
+    }
+
+    final route = switch (user.role) {
+      'admin' => '/admin',
+      'user' => '/home',
+      _ => null,
+    };
+
+    if (route == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This account has an unsupported role')),
+      );
+      return;
+    }
+
+    Navigator.of(context).pushNamedAndRemoveUntil(route, (_) => false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +70,9 @@ class LoginScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
-              const TextField(
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Email',
                   hintText: 'name@university.ac.th',
@@ -40,7 +81,8 @@ class LoginScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              const TextField(
+              TextField(
+                controller: _passwordController,
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: 'Password',
@@ -50,12 +92,7 @@ class LoginScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () =>
-                    Navigator.of(context)
-                        .pushNamedAndRemoveUntil('/home', (_) => false),
-                child: const Text('Log in'),
-              ),
+              ElevatedButton(onPressed: _login, child: const Text('Log in')),
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () => Navigator.pushNamed(context, '/register'),
