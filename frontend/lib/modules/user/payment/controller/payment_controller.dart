@@ -72,7 +72,9 @@ class PaymentController extends ChangeNotifier {
       );
     } on ApiException catch (e) {
       error = e.message;
-      await loadWallet();
+      try {
+        walletBalance = (await _walletApi.getWallet()).balance;
+      } catch (_) {}
       return null;
     } catch (_) {
       error = 'Unable to complete payment';
