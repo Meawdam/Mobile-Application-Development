@@ -1,4 +1,4 @@
-import 'package:frontend/modules/model/user/user_model.dart';
+import 'package:frontend/model/user/user_model.dart';
 
 enum RegisterResult {
   success,
