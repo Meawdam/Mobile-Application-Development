@@ -1,111 +1,113 @@
-// ทดสอบ AddItemController (หน้า Add Item)
-// ตรวจว่ากรอกฟอร์มแล้ว: ถ้าข้อมูลถูกต้องจะสร้างไอเทมสถานะรออนุมัติ
-// ถ้าข้อมูลผิดจะไม่สร้างไอเทม และบอก error ของช่องที่ผิด
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/modules/user/add_item/controller/add_item_controller.dart';
-import 'package:frontend/modules/user/shared/model/lending_item_model.dart';
+import 'package:frontend/services/asset_api.dart';
+
+class _FakeAssetApi extends AssetApi {
+  bool created = false;
+
+  @override
+  Future<AssetModel> createAsset({
+    required String name,
+    required String description,
+    required String downPayment,
+    required String price,
+    required String pickupPoint,
+    required String returnBefore,
+    required Uint8List imageBytes,
+    required String imageFilename,
+  }) async {
+    created = true;
+    return AssetModel(
+      id: 1,
+      ownerId: 1,
+      name: name,
+      description: description,
+      status: 'ready',
+      approval: 'pending',
+      downPayment: num.parse(downPayment),
+      returnBefore: returnBefore,
+      price: int.parse(price),
+      pickupPoint: pickupPoint,
+    );
+  }
+}
 
 void main() {
-  // กำหนด "วันนี้" เองให้เทสได้ผลเหมือนเดิมทุกวัน
-  final today = DateTime(2026, 11, 12);
-  final tomorrow = DateTime(2026, 11, 13);
+  AddItemController readyController(_FakeAssetApi api) {
+    final controller = AddItemController(assetApi: api);
+    controller.setPickedImage(Uint8List.fromList([1, 2, 3]), 'cam.jpg');
+    controller.setLendingEndDate(DateTime(2026, 12, 31));
+    return controller;
+  }
 
-  AddItemController newController() =>
-      AddItemController(ownerId: 'u1', now: () => today);
-
-  // กรอกถูกทุกช่อง -> ได้ไอเทมใหม่ที่ยังรอแอดมินอนุมัติ
-  test('1. creates an item pending admin approval when the form is valid', () {
-    final item = newController().submit(
+  test('1. creates an item when the form is valid', () async {
+    final api = _FakeAssetApi();
+    final result = await readyController(api).submit(
       name: 'Canon Camera',
+      description: 'Good condition',
       price: '120',
       deposit: '1500',
       pickupPoint: 'Canteen',
-      returnBefore: tomorrow,
     );
 
-    expect(item, isNotNull);
-    expect(item!.name, 'Canon Camera');
-    expect(item.pricePerDay, 120);
-    expect(item.deposit, 1500);
-    expect(item.approval, ApprovalStatus.pending);
+    expect(result, AddItemResult.success);
+    expect(api.created, isTrue);
   });
 
-  // ชื่อเป็นช่องว่างล้วน -> ไม่ผ่าน
-  test('2. rejects an empty item name', () {
-    final controller = newController();
-    final item = controller.submit(
+  test('2. rejects empty required fields', () async {
+    final result = await readyController(_FakeAssetApi()).submit(
       name: '   ',
+      description: 'desc',
       price: '120',
+      deposit: '1500',
       pickupPoint: 'Canteen',
-      returnBefore: tomorrow,
     );
 
-    expect(item, isNull);
-    expect(controller.errors.containsKey('name'), isTrue);
+    expect(result, AddItemResult.missingFields);
   });
 
-  // ราคาต้องเป็นจำนวนเต็มไม่ติดลบ (ติดลบ ทศนิยม ตัวอักษร ว่าง -> ไม่ผ่าน)
-  test('3. rejects a negative, decimal, non-numeric or empty price', () {
-    final controller = newController();
+  test('3. rejects a missing image', () async {
+    final controller = AddItemController(assetApi: _FakeAssetApi());
+    controller.setLendingEndDate(DateTime(2026, 12, 31));
 
-    for (final price in ['-5', '12.5', 'abc', '']) {
-      final item = controller.submit(
-        name: 'Camera',
-        price: price,
-        pickupPoint: 'Canteen',
-        returnBefore: tomorrow,
-      );
-      expect(item, isNull);
-    }
-    expect(controller.errors.containsKey('price'), isTrue);
+    final result = await controller.submit(
+      name: 'Camera',
+      description: 'desc',
+      price: '120',
+      deposit: '1500',
+      pickupPoint: 'Canteen',
+    );
+
+    expect(result, AddItemResult.missingImage);
   });
 
-  // มัดจำไม่บังคับกรอก ถ้าเว้นว่างให้เป็น 0
-  test('4. treats an empty deposit as 0', () {
-    final item = newController().submit(
+  test('4. rejects an invalid price', () async {
+    final result = await readyController(_FakeAssetApi()).submit(
       name: 'Camera',
-      price: '120',
-      deposit: '',
+      description: 'desc',
+      price: 'abc',
+      deposit: '1500',
       pickupPoint: 'Canteen',
-      returnBefore: tomorrow,
     );
 
-    expect(item!.deposit, 0);
+    expect(result, AddItemResult.invalidPrice);
   });
 
-  // จุดรับ-คืนต้องกรอก
-  test('5. rejects an empty pickup location', () {
-    final controller = newController();
-    final item = controller.submit(
+  test('5. rejects a missing lending end date', () async {
+    final controller = AddItemController(assetApi: _FakeAssetApi());
+    controller.setPickedImage(Uint8List.fromList([1]), 'cam.jpg');
+
+    final result = await controller.submit(
       name: 'Camera',
+      description: 'desc',
       price: '120',
-      pickupPoint: '',
-      returnBefore: tomorrow,
-    );
-
-    expect(item, isNull);
-    expect(controller.errors.containsKey('pickupPoint'), isTrue);
-  });
-
-  // วันที่ต้องเป็นวันนี้หรืออนาคต (เมื่อวานไม่ผ่าน วันนี้ผ่าน)
-  test('6. rejects a past date but accepts today', () {
-    final controller = newController();
-
-    final past = controller.submit(
-      name: 'Camera',
-      price: '120',
+      deposit: '1500',
       pickupPoint: 'Canteen',
-      returnBefore: DateTime(2026, 11, 11),
     );
-    expect(past, isNull);
-    expect(controller.errors.containsKey('returnBefore'), isTrue);
 
-    final todayItem = controller.submit(
-      name: 'Camera',
-      price: '120',
-      pickupPoint: 'Canteen',
-      returnBefore: today,
-    );
-    expect(todayItem, isNotNull);
+    expect(result, AddItemResult.missingLendingEndDate);
   });
 }

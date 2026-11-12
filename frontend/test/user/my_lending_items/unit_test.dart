@@ -1,29 +1,47 @@
-// ทดสอบ LendingItem (model) และ MyLendingController (หน้า My Lending)
-// ตรวจการแปลงข้อมูลจาก backend และการเพิ่ม/แก้/ลบ/นับไอเทม
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/modules/user/my_lending_items/controller/my_lending_controller.dart';
 import 'package:frontend/modules/user/shared/model/lending_item_model.dart';
+import 'package:frontend/services/asset_api.dart';
 
-// สร้างไอเทมตัวอย่าง
-LendingItem makeItem(
-  String id, {
-  ItemStatus status = ItemStatus.ready,
-  ApprovalStatus approval = ApprovalStatus.approved,
-}) {
-  return LendingItem(
-    id: id,
-    ownerId: 'u1',
-    name: 'Item $id',
-    pricePerDay: 100,
-    pickupPoint: 'Canteen',
-    returnBefore: DateTime(2030, 1, 31),
-    status: status,
-    approval: approval,
-  );
+class _FakeAssetApi extends AssetApi {
+  List<AssetModel> assets = [
+    const AssetModel(
+      id: 1,
+      ownerId: 1,
+      name: 'Camera',
+      description: 'desc',
+      status: 'ready',
+      approval: 'approved',
+      downPayment: 100,
+      returnBefore: '2030-01-31',
+      price: 50,
+      pickupPoint: 'Canteen',
+    ),
+    const AssetModel(
+      id: 2,
+      ownerId: 1,
+      name: 'Lens',
+      description: 'desc',
+      status: 'borrowed',
+      approval: 'approved',
+      downPayment: 200,
+      returnBefore: '2030-01-31',
+      price: 80,
+      pickupPoint: 'Library',
+    ),
+  ];
+
+  @override
+  Future<List<AssetModel>> getMyAssets() async => List.of(assets);
+
+  @override
+  Future<void> deleteAsset(int id) async {
+    assets.removeWhere((a) => a.id == id);
+  }
 }
 
 void main() {
-  // model: แปลง Map ที่ backend ส่งมา (ชื่อฟิลด์แบบ snake_case) เป็น LendingItem
   test('1. LendingItem.fromMap converts backend data correctly', () {
     final item = LendingItem.fromMap({
       'id': 7,
@@ -45,53 +63,23 @@ void main() {
     expect(item.approval, ApprovalStatus.notApproved);
   });
 
-  test('2. starts with an empty list', () {
-    final controller = MyLendingController();
+  test('2. load fetches the owner assets from the API', () async {
+    final controller = MyLendingController(assetApi: _FakeAssetApi());
+    await controller.load();
 
-    expect(controller.isEmpty, isTrue);
-    expect(controller.totalCount, 0);
+    expect(controller.loading, isFalse);
+    expect(controller.items.length, 2);
+    expect(controller.items.first.name, 'Camera');
   });
 
-  // เพิ่มไอเทมได้ แต่ id ซ้ำไม่ได้
-  test('3. addItem adds an item but rejects a duplicate id', () {
-    final controller = MyLendingController();
+  test('3. deleteAsset removes an item and reloads the list', () async {
+    final api = _FakeAssetApi();
+    final controller = MyLendingController(assetApi: api);
+    await controller.load();
 
-    expect(controller.addItem(makeItem('1')), isTrue);
-    expect(controller.addItem(makeItem('1')), isFalse);
-    expect(controller.totalCount, 1);
-  });
+    final error = await controller.deleteAsset(1);
 
-  test('4. updateItem changes an existing item, false if not found', () {
-    final controller = MyLendingController(initialItems: [makeItem('1')]);
-
-    expect(
-      controller.updateItem(makeItem('1').copyWith(name: 'New name')),
-      isTrue,
-    );
-    expect(controller.findById('1')!.name, 'New name');
-    expect(controller.updateItem(makeItem('zzz')), isFalse);
-  });
-
-  test('5. removeItem deletes an item, false if not found', () {
-    final controller = MyLendingController(initialItems: [makeItem('1')]);
-
-    expect(controller.removeItem('1'), isTrue);
-    expect(controller.totalCount, 0);
-    expect(controller.removeItem('1'), isFalse);
-  });
-
-  // นับไอเทมทั้งหมด / ที่กำลังถูกยืม / ที่รอแอดมินอนุมัติ
-  test('6. counts borrowed items and items waiting for approval', () {
-    final controller = MyLendingController(
-      initialItems: [
-        makeItem('1'),
-        makeItem('2', status: ItemStatus.borrowed),
-        makeItem('3', approval: ApprovalStatus.pending),
-      ],
-    );
-
-    expect(controller.totalCount, 3);
-    expect(controller.borrowedCount, 1);
-    expect(controller.waitingApprovalCount, 1);
+    expect(error, isNull);
+    expect(controller.items.map((i) => i.id), [2]);
   });
 }

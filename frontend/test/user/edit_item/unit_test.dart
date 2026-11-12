@@ -1,111 +1,99 @@
-// ทดสอบ EditItemController (หน้า Edit Item)
-// หน้านี้แก้ได้เฉพาะ ราคา มัดจำ จุดรับ-คืน วันที่คืน
-// ชื่อและรายละเอียดแก้ไม่ได้ และไอเทมที่กำลังถูกยืมอยู่ก็แก้ไม่ได้
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/modules/user/edit_item/controller/edit_item_controller.dart';
-import 'package:frontend/modules/user/shared/model/lending_item_model.dart';
+import 'package:frontend/services/asset_api.dart';
 
-void main() {
-  // ไอเทมตัวอย่างที่ใช้แก้ไขในทุกเทส
-  LendingItem makeItem({ItemStatus status = ItemStatus.ready}) => LendingItem(
-    id: '1',
-    ownerId: 'u1',
+class _FakeAssetApi extends AssetApi {
+  AssetModel asset = const AssetModel(
+    id: 1,
+    ownerId: 1,
     name: 'Canon Camera',
     description: 'Good condition',
-    pricePerDay: 120,
-    deposit: 1500,
+    status: 'ready',
+    approval: 'approved',
+    downPayment: 1500,
+    returnBefore: '2026-12-31',
+    price: 120,
     pickupPoint: 'Canteen',
-    returnBefore: DateTime(2026, 12, 31),
-    status: status,
   );
 
-  EditItemController newController({ItemStatus status = ItemStatus.ready}) =>
-      EditItemController(
-        makeItem(status: status),
-        now: () => DateTime(2026, 11, 12),
-      );
+  @override
+  Future<AssetModel> getAssetById(int id) async => asset;
 
-  // กรอกค่าใหม่ถูกต้อง -> บันทึกสำเร็จ และค่าในไอเทมเปลี่ยนตาม
-  test('1. updates price, deposit, pickup point and return date', () {
-    final controller = newController();
-    final result = controller.save(
+  @override
+  Future<AssetModel> updateAsset({
+    required int id,
+    required String name,
+    required String description,
+    required String downPayment,
+    required String price,
+    required String pickupPoint,
+    required String returnBefore,
+  }) async {
+    asset = AssetModel(
+      id: id,
+      ownerId: asset.ownerId,
+      name: name,
+      description: description,
+      status: asset.status,
+      approval: asset.approval,
+      downPayment: num.parse(downPayment),
+      returnBefore: returnBefore,
+      price: int.parse(price),
+      pickupPoint: pickupPoint,
+    );
+    return asset;
+  }
+}
+
+void main() {
+  test('1. loads an asset and saves valid edits', () async {
+    final api = _FakeAssetApi();
+    final controller = EditItemController(assetApi: api);
+    await controller.load(1);
+
+    final result = await controller.save(
+      name: 'Canon Camera',
+      description: 'Good condition',
       price: '200',
       deposit: '2000',
       pickupPoint: 'Library',
-      returnBefore: DateTime(2027, 1, 15),
     );
 
     expect(result, EditItemResult.success);
-    expect(controller.item.pricePerDay, 200);
-    expect(controller.item.deposit, 2000);
-    expect(controller.item.pickupPoint, 'Library');
-    expect(controller.item.returnBefore, DateTime(2027, 1, 15));
+    expect(controller.asset!.price, 200);
+    expect(controller.asset!.downPayment, 2000);
+    expect(controller.asset!.pickupPoint, 'Library');
   });
 
-  // ชื่อและรายละเอียดต้องเหมือนเดิมหลังบันทึก
-  test('2. keeps the name and description unchanged', () {
-    final controller = newController();
-    controller.save(
+  test('2. rejects empty required fields', () async {
+    final controller = EditItemController(assetApi: _FakeAssetApi());
+    await controller.load(1);
+
+    final result = await controller.save(
+      name: '',
+      description: 'Good condition',
       price: '200',
       deposit: '2000',
       pickupPoint: 'Library',
-      returnBefore: DateTime(2027, 1, 15),
     );
 
-    expect(controller.item.name, 'Canon Camera');
-    expect(controller.item.description, 'Good condition');
+    expect(result, EditItemResult.missingFields);
   });
 
-  // ราคาไม่ถูกต้อง -> บันทึกไม่ผ่าน และราคาเดิมยังอยู่
-  test('3. rejects an invalid price and keeps the old value', () {
-    final controller = newController();
-    final result = controller.save(
+  test('3. rejects an invalid price', () async {
+    final controller = EditItemController(assetApi: _FakeAssetApi());
+    await controller.load(1);
+
+    final result = await controller.save(
+      name: 'Canon Camera',
+      description: 'Good condition',
       price: 'abc',
       deposit: '2000',
       pickupPoint: 'Library',
-      returnBefore: DateTime(2027, 1, 15),
     );
 
-    expect(result, EditItemResult.validationFailed);
-    expect(controller.item.pricePerDay, 120);
-  });
-
-  // ไอเทมที่กำลังถูกยืมอยู่ แก้ไม่ได้
-  test('4. does not allow editing an item that is currently borrowed', () {
-    final controller = newController(status: ItemStatus.borrowed);
-    final result = controller.save(
-      price: '200',
-      deposit: '2000',
-      pickupPoint: 'Library',
-      returnBefore: DateTime(2027, 1, 15),
-    );
-
-    expect(result, EditItemResult.itemBorrowed);
-    expect(controller.item.pricePerDay, 120);
-  });
-
-  // hasChanges ใช้ดูว่าผู้ใช้แก้ค่าไปจากเดิมหรือยัง (เช่น เปิด/ปิดปุ่ม Save)
-  test('5. hasChanges tells whether the values differ from the item', () {
-    final controller = newController();
-    final sameDate = DateTime(2026, 12, 31);
-
-    expect(
-      controller.hasChanges(
-        price: '120',
-        deposit: '1500',
-        pickupPoint: 'Canteen',
-        returnBefore: sameDate,
-      ),
-      isFalse,
-    );
-    expect(
-      controller.hasChanges(
-        price: '999',
-        deposit: '1500',
-        pickupPoint: 'Canteen',
-        returnBefore: sameDate,
-      ),
-      isTrue,
-    );
+    expect(result, EditItemResult.invalidPrice);
+    expect(controller.asset!.price, 120);
   });
 }

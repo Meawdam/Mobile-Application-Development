@@ -1,13 +1,9 @@
 // ทดสอบ ConfirmReturnController (เจ้าของกดยืนยันว่าได้ของคืนแล้ว)
-// กฎ: ต้องเป็นเจ้าของ และผู้ยืมต้องแจ้งคืนมาก่อน (returnedPending)
-// เมื่อยืนยันแล้ว ไอเทมจะกลับมาพร้อมให้ยืมอีกครั้ง
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/modules/user/confirm_return/controller/confirm_return_controller.dart';
-import 'package:frontend/modules/user/my_lending_items/controller/my_lending_controller.dart';
 import 'package:frontend/modules/user/shared/model/lending_item_model.dart';
 import 'package:frontend/modules/user/shared/model/return_request_model.dart';
 
-// สร้างคำขอคืนตัวอย่าง (ค่าเริ่มต้น = ผู้ยืมแจ้งคืนแล้ว รอเจ้าของยืนยัน)
 ReturnRequest makeRequest(
   String id, {
   String owner = 'u1',
@@ -24,14 +20,18 @@ ReturnRequest makeRequest(
 }
 
 void main() {
-  late MyLendingController lending;
   late ConfirmReturnController controller;
 
-  // ก่อนทุกเทส: u1 มีไอเทม a1 ที่กำลังถูกยืม และมีคำขอ 4 แบบ
-  // 1 = รอยืนยัน, 2 = ยังไม่แจ้งคืน, 3 = ยืนยันแล้ว, 4 = ของคนอื่น
   setUp(() {
-    lending = MyLendingController(
-      initialItems: [
+    controller = ConfirmReturnController(
+      [
+        makeRequest('1'),
+        makeRequest('2', status: BorrowStatus.borrowed),
+        makeRequest('3', status: BorrowStatus.returnedConfirmed),
+        makeRequest('4', owner: 'other'),
+      ],
+      currentUserId: 'u1',
+      lendingItems: [
         LendingItem(
           id: 'a1',
           ownerId: 'u1',
@@ -42,16 +42,6 @@ void main() {
           status: ItemStatus.borrowed,
         ),
       ],
-    );
-    controller = ConfirmReturnController(
-      [
-        makeRequest('1'),
-        makeRequest('2', status: BorrowStatus.borrowed),
-        makeRequest('3', status: BorrowStatus.returnedConfirmed),
-        makeRequest('4', owner: 'other'),
-      ],
-      currentUserId: 'u1',
-      lending: lending,
     );
   });
 
@@ -65,7 +55,10 @@ void main() {
 
     expect(result, ConfirmReturnResult.success);
     expect(controller.awaitingCount, 0);
-    expect(lending.findById('a1')!.status, ItemStatus.ready);
+    expect(
+      controller.lendingItems.singleWhere((i) => i.id == 'a1').status,
+      ItemStatus.ready,
+    );
   });
 
   test('3. only the owner can confirm', () {

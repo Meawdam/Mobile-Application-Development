@@ -1,16 +1,26 @@
 import 'package:frontend/model/user/user_model.dart';
+import 'package:frontend/services/api_client.dart';
+import 'package:frontend/services/auth_api.dart';
 
 class LoginController {
-  UserModel? login(String email, String password) {
-    final normalizedEmail = email.trim().toLowerCase();
+  LoginController({AuthApi? authApi}) : _authApi = authApi ?? AuthApi();
 
-    for (final user in users) {
-      if (user.email.toLowerCase() == normalizedEmail &&
-          user.password == password) {
-        return user;
-      }
+  final AuthApi _authApi;
+
+  Future<UserModel?> login(String email, String password) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail.isEmpty || password.isEmpty) {
+      return null;
     }
 
-    return null;
+    try {
+      final result = await _authApi.login(
+        email: normalizedEmail,
+        password: password,
+      );
+      return result.user;
+    } on ApiException {
+      return null;
+    }
   }
 }

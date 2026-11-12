@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import '../../my_lending_items/controller/my_lending_controller.dart';
 import '../../shared/model/lending_item_model.dart';
 import '../../shared/model/return_request_model.dart';
 
@@ -21,15 +20,16 @@ class ConfirmReturnController extends ChangeNotifier {
   ConfirmReturnController(
     List<ReturnRequest> requests, {
     required this.currentUserId,
-    MyLendingController? lending,
+    List<LendingItem> lendingItems = const [],
   }) : _requests = List.of(requests),
-       _lending = lending;
+       _lendingItems = List.of(lendingItems);
 
   final String currentUserId;
-  final MyLendingController? _lending;
   final List<ReturnRequest> _requests;
+  final List<LendingItem> _lendingItems;
 
   List<ReturnRequest> get requests => List.unmodifiable(_requests);
+  List<LendingItem> get lendingItems => List.unmodifiable(_lendingItems);
 
   /// คำขอของเราที่ผู้ยืมแจ้งคืนแล้วและรอยืนยัน
   List<ReturnRequest> get awaitingConfirmation => _requests
@@ -63,8 +63,14 @@ class ConfirmReturnController extends ChangeNotifier {
     }
 
     _requests[index] = request.copyWith(status: BorrowStatus.returnedConfirmed);
-    // ไอเทมกลับมาพร้อมให้ยืมอีกครั้ง
-    _lending?.setStatus(request.assetId, ItemStatus.ready);
+
+    final lendingIndex =
+        _lendingItems.indexWhere((i) => i.id == request.assetId);
+    if (lendingIndex != -1) {
+      _lendingItems[lendingIndex] =
+          _lendingItems[lendingIndex].copyWith(status: ItemStatus.ready);
+    }
+
     notifyListeners();
     return ConfirmReturnResult.success;
   }

@@ -12,34 +12,55 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _loginController = LoginController();
+  bool _submitting = false;
 
-  void _login() {
-    final user = _loginController.login(
-      _emailController.text,
-      _passwordController.text,
-    );
+  Future<void> _login() async {
+    if (_submitting) return;
 
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid email or password')),
+    setState(() => _submitting = true);
+    try {
+      final user = await _loginController.login(
+        _emailController.text,
+        _passwordController.text,
       );
-      return;
+
+      if (!mounted) return;
+
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid email or password')),
+        );
+        return;
+      }
+
+      final route = switch (user.role) {
+        'admin' => '/admin',
+        'user' => '/home',
+        _ => null,
+      };
+
+      if (route == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This account has an unsupported role'),
+          ),
+        );
+        return;
+      }
+
+      Navigator.of(context).pushNamedAndRemoveUntil(route, (_) => false);
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
     }
+  }
 
-    final route = switch (user.role) {
-      'admin' => '/admin',
-      'user' => '/home',
-      _ => null,
-    };
-
-    if (route == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This account has an unsupported role')),
-      );
-      return;
-    }
-
-    Navigator.of(context).pushNamedAndRemoveUntil(route, (_) => false);
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -73,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Email',
                   hintText: 'name@university.ac.th',
                   border: OutlineInputBorder(),
@@ -84,7 +105,8 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passwordController,
                 obscureText: true,
-                decoration: InputDecoration(
+                onSubmitted: (_) => _login(),
+                decoration: const InputDecoration(
                   labelText: 'Password',
                   hintText: 'Enter your password',
                   border: OutlineInputBorder(),
@@ -92,10 +114,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              ElevatedButton(onPressed: _login, child: const Text('Log in')),
+              ElevatedButton(
+                onPressed: _submitting ? null : _login,
+                child: Text(_submitting ? 'Signing in...' : 'Log in'),
+              ),
               const SizedBox(height: 16),
               TextButton(
-                onPressed: () => Navigator.pushNamed(context, '/register'),
+                onPressed: _submitting
+                    ? null
+                    : () => Navigator.pushNamed(context, '/register'),
                 child: const Text('Create an account'),
               ),
             ],

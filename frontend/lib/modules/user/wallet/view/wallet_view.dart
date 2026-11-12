@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'package:frontend/modules/user/wallet/controller/wallet_controller.dart';
 
 class WalletScreen extends StatefulWidget {
@@ -10,57 +11,50 @@ class WalletScreen extends StatefulWidget {
 }
 
 class _WalletScreenState extends State<WalletScreen> {
-  final _walletController = WalletController();
+  final _controller = WalletController();
+  final _amountController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_onUpdate);
+    _controller.load();
+  }
+
+  void _onUpdate() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onUpdate);
+    _controller.dispose();
+    _amountController.dispose();
+    super.dispose();
+  }
 
   Future<void> _topUp() async {
-    var amountText = '';
-    final amount = await showDialog<int>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Top up wallet'),
-        content: TextField(
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          onChanged: (value) => amountText = value,
-          decoration: const InputDecoration(
-            labelText: 'Amount (฿)',
-            border: OutlineInputBorder(),
+    final amount = int.tryParse(_amountController.text.trim()) ?? 0;
+    final ok = await _controller.topUp(amount);
+    if (!mounted) return;
+
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            amount <= 0
+                ? 'Enter a positive amount'
+                : (_controller.error ?? 'Top up failed'),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final enteredAmount = int.tryParse(amountText);
-              if (enteredAmount == null || enteredAmount <= 0) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(
-                    content: Text('Enter an amount greater than 0'),
-                  ),
-                );
-                return;
-              }
-
-              Navigator.of(dialogContext).pop(enteredAmount);
-            },
-            child: const Text('Top up'),
-          ),
-        ],
-      ),
-    );
-
-    if (amount == null || !mounted) {
+      );
       return;
     }
 
-    if (_walletController.topUp(amount)) {
-      setState(() {});
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Added ฿$amount to wallet')));
-    }
+    _amountController.clear();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Wallet topped up')),
+    );
   }
 
   @override
@@ -86,7 +80,9 @@ class _WalletScreenState extends State<WalletScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '฿${_walletController.balance}',
+                    _controller.loading
+                        ? '...'
+                        : '${_controller.balance} Baht',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 36,
@@ -97,13 +93,33 @@ class _WalletScreenState extends State<WalletScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: _topUp,
-                child: const Text('Top up'),
+            TextField(
+              controller: _amountController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              decoration: const InputDecoration(
+                labelText: 'Top-up amount (Baht)',
+                hintText: 'e.g. 1000',
+                border: OutlineInputBorder(),
               ),
             ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _controller.submitting ? null : _topUp,
+                child: Text(
+                  _controller.submitting ? 'Processing...' : 'Top up',
+                ),
+              ),
+            ),
+            if (_controller.error != null && !_controller.submitting) ...[
+              const SizedBox(height: 12),
+              Text(
+                _controller.error!,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ],
           ],
         ),
       ),

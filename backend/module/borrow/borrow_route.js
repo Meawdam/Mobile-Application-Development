@@ -7,6 +7,8 @@ const authorizeRoles = require("../../middlewares/roleMiddleware");
 router.use(authenticateToken);
 router.get("/all", authorizeRoles("admin"), borrowsController.getAllBorrows);
 router.get("/my", borrowsController.getMyBorrows);
+router.get("/lending", borrowsController.getMyLendingBorrows);
+router.get("/:id", borrowsController.getBorrowById);
 router.post("/", borrowsController.requestBorrow);
 router.patch("/:id/cancel", borrowsController.cancelRequest);
 router.post("/:id/pay", borrowsController.processPayment);
