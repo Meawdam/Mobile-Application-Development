@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/modules/auth/login/view/login_view.dart';
 
 import 'modules/admin/admin_home.dart';
-import 'modules/auth/login/view/login.dart';
-import 'modules/auth/register/view/register.dart';
+import 'modules/auth/register/view/register_view.dart';
 import 'modules/user/add_item/view/add_item.dart';
 import 'modules/user/borrow_details/view/borrow_details.dart';
 import 'modules/user/borrow_request/view/borrow_request.dart';
