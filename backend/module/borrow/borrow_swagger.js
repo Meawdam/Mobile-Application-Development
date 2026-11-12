@@ -29,15 +29,29 @@
  *         owner_name:
  *           type: string
  *           example: alex
+ *         pickup_date:
+ *           type: string
+ *           format: date
+ *           description: Borrower-selected pickup date (must be within lending_end_date)
+ *           example: '2026-11-02'
+ *         planned_return_date:
+ *           type: string
+ *           format: date
+ *           description: Borrower-selected return date (must be within lending_end_date)
+ *           example: '2026-11-05'
+ *         rental_days:
+ *           type: integer
+ *           description: Inclusive day count between pickup_date and planned_return_date
+ *           example: 4
  *         borrow_date:
  *           type: string
  *           format: date
- *           description: Set automatically when the borrow request is paid and the asset is borrowed
- *           example: '2026-11-01'
- *         return_before:
+ *           description: Set from pickup_date when the borrow request is paid
+ *           example: '2026-11-02'
+ *         lending_end_date:
  *           type: string
  *           format: date
- *           description: The asset's return-by date set by its owner
+ *           description: The asset's lending end date set by its owner (return_before)
  *           example: '2026-11-08'
  *         return_date:
  *           type: string
@@ -66,11 +80,19 @@
  *             $ref: '#/components/schemas/Borrow'
  *     BorrowRequest:
  *       type: object
- *       required: [asset_id]
+ *       required: [asset_id, pickup_date, return_date]
  *       properties:
  *         asset_id:
  *           type: integer
  *           example: 4
+ *         pickup_date:
+ *           type: string
+ *           format: date
+ *           example: '2026-11-02'
+ *         return_date:
+ *           type: string
+ *           format: date
+ *           example: '2026-11-05'
  */
 
 /**

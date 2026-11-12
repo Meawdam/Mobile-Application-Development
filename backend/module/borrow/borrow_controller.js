@@ -19,16 +19,49 @@ class BorrowController {
     }
   }
 
+  async getMyLendingBorrows(req, res, next) {
+    try {
+      const list = await borrowsService.getMyLendingBorrows(req.user.id);
+      return res.status(200).json({ data: list });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getBorrowById(req, res, next) {
+    try {
+      const borrow = await borrowsService.getBorrowById(
+        req.params.id,
+        req.user,
+      );
+      return res.status(200).json({ data: borrow });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async requestBorrow(req, res, next) {
     try {
-      const { asset_id } = req.body;
+      const { asset_id, pickup_date, return_date } = req.body;
 
-      if (!asset_id) {
-        return res.status(400).json({ message: "Missing required parameters" });
+      if (
+        asset_id === undefined ||
+        asset_id === null ||
+        asset_id === "" ||
+        typeof pickup_date !== "string" ||
+        !pickup_date.trim() ||
+        typeof return_date !== "string" ||
+        !return_date.trim()
+      ) {
+        return res.status(400).json({
+          message: "asset_id, pickup_date, and return_date are required",
+        });
       }
 
       const result = await borrowsService.requestBorrow(req.user.id, {
         asset_id,
+        pickup_date: pickup_date.trim(),
+        return_date: return_date.trim(),
       });
 
       return res.status(201).json({

@@ -1,5 +1,10 @@
 const borrowsRepository = require("./borrow_repository");
 const assetsRepository = require("../asset/asset_repository");
+const {
+  toDateOnlyString,
+  todayDateString,
+  rentalDaysInclusive,
+} = require("../../utils/date_utils");
 
 class BorrowService {
   async getAllBorrows() {
@@ -10,7 +15,11 @@ class BorrowService {
     return await borrowsRepository.findByBorrowerId(borrowerId);
   }
 
-  async requestBorrow(borrowerId, { asset_id }) {
+  async getMyLendingBorrows(ownerId) {
+    return await borrowsRepository.findByOwnerId(ownerId);
+  }
+
+  async requestBorrow(borrowerId, { asset_id, pickup_date, return_date }) {
     const asset = await assetsRepository.findById(asset_id);
     if (!asset) {
       const err = new Error("Asset not found");
@@ -18,32 +27,44 @@ class BorrowService {
       throw err;
     }
 
-    const returnBefore =
-      asset.return_before instanceof Date
-        ? [
-            asset.return_before.getFullYear(),
-            String(asset.return_before.getMonth() + 1).padStart(2, "0"),
-            String(asset.return_before.getDate()).padStart(2, "0"),
-          ].join("-")
-        : asset.return_before;
-    const parsedReturnBefore =
-      typeof returnBefore === "string" &&
-      /^\d{4}-\d{2}-\d{2}$/.test(returnBefore)
-        ? new Date(`${returnBefore}T00:00:00.000Z`)
-        : null;
-
-    if (
-      !parsedReturnBefore ||
-      Number.isNaN(parsedReturnBefore.getTime()) ||
-      parsedReturnBefore.toISOString().slice(0, 10) !== returnBefore
-    ) {
-      const err = new Error("The asset does not have a valid return date");
+    const lendingEndDate = toDateOnlyString(asset.return_before);
+    if (!lendingEndDate) {
+      const err = new Error("The asset does not have a valid lending end date");
       err.status = 400;
       throw err;
     }
 
-    if (returnBefore < new Date().toISOString().slice(0, 10)) {
-      const err = new Error("The asset return date has passed");
+    const today = todayDateString();
+    if (lendingEndDate < today) {
+      const err = new Error("The asset lending end date has passed");
+      err.status = 400;
+      throw err;
+    }
+
+    const pickupDate = toDateOnlyString(pickup_date);
+    const plannedReturnDate = toDateOnlyString(return_date);
+    if (!pickupDate || !plannedReturnDate) {
+      const err = new Error("pickup_date and return_date must be YYYY-MM-DD");
+      err.status = 400;
+      throw err;
+    }
+
+    if (pickupDate < today) {
+      const err = new Error("pickup_date cannot be in the past");
+      err.status = 400;
+      throw err;
+    }
+
+    if (plannedReturnDate < pickupDate) {
+      const err = new Error("return_date cannot be before pickup_date");
+      err.status = 400;
+      throw err;
+    }
+
+    if (pickupDate > lendingEndDate || plannedReturnDate > lendingEndDate) {
+      const err = new Error(
+        "Selected dates must stay within the lender's lending end date",
+      );
       err.status = 400;
       throw err;
     }
@@ -60,14 +81,58 @@ class BorrowService {
       throw err;
     }
 
-    const borrowId = await borrowsRepository.createBorrow({ asset_id, borrower_id: borrowerId });
+    const rentalDays = rentalDaysInclusive(pickupDate, plannedReturnDate);
+    const rentalAmount = Number(asset.price) * rentalDays;
+    const depositAmount = Math.round(Number(asset.down_payment));
+    const totalAmount = rentalAmount + depositAmount;
+
+    const borrowId = await borrowsRepository.createBorrow({
+      asset_id,
+      borrower_id: borrowerId,
+      pickup_date: pickupDate,
+      planned_return_date: plannedReturnDate,
+      rental_days: rentalDays,
+      rental_amount: rentalAmount,
+      deposit_amount: depositAmount,
+      total_amount: totalAmount,
+    });
 
     return {
       id: borrowId,
       asset_id,
+      pickup_date: pickupDate,
+      planned_return_date: plannedReturnDate,
+      rental_days: rentalDays,
+      price_per_day: Number(asset.price),
+      rental_amount: rentalAmount,
+      rental_subtotal: rentalAmount,
+      deposit: depositAmount,
+      deposit_amount: depositAmount,
+      total_amount: totalAmount,
+      lending_end_date: lendingEndDate,
       status: "requested",
       payment_status: "unpaid",
     };
+  }
+
+  async getBorrowById(borrowId, user) {
+    const borrow = await borrowsRepository.findById(borrowId);
+    if (!borrow) {
+      const err = new Error("Borrow record not found");
+      err.status = 404;
+      throw err;
+    }
+
+    const isBorrower = borrow.borrower_id === user.id;
+    const isOwner = borrow.owner_id === user.id;
+    const isAdmin = user.role === "admin";
+    if (!isBorrower && !isOwner && !isAdmin) {
+      const err = new Error("Forbidden");
+      err.status = 403;
+      throw err;
+    }
+
+    return borrow;
   }
 
   async processPayment(borrowId, borrowerId) {
@@ -101,7 +166,16 @@ class BorrowService {
       throw err;
     }
 
-    return { message: "Payment completed and asset borrowed successfully" };
+    return {
+      message: "Payment completed and asset borrowed successfully",
+      data: {
+        borrow_id: borrowId,
+        total_amount: updated.total_amount,
+        wallet_balance: updated.wallet_balance,
+        payment_status: "paid",
+        status: "borrowed",
+      },
+    };
   }
 
   async cancelRequest(borrowId, borrowerId) {
@@ -158,7 +232,9 @@ class BorrowService {
     }
 
     if (borrow.status === "returned_pending") {
-      const err = new Error("Return request is already waiting for owner confirmation");
+      const err = new Error(
+        "Return request is already waiting for owner confirmation",
+      );
       err.status = 400;
       throw err;
     }
@@ -207,7 +283,9 @@ class BorrowService {
     }
 
     if (borrow.status !== "returned_pending") {
-      const err = new Error("The borrower has not requested to return this item");
+      const err = new Error(
+        "The borrower has not requested to return this item",
+      );
       err.status = 400;
       throw err;
     }
@@ -215,9 +293,12 @@ class BorrowService {
     const result = await borrowsRepository.confirmReturn(
       borrowId,
       borrow.asset_id,
+      borrow.borrower_id,
     );
     if (!result) {
-      const err = new Error("Return request is no longer awaiting confirmation");
+      const err = new Error(
+        "Return request is no longer awaiting confirmation",
+      );
       err.status = 409;
       throw err;
     }
@@ -225,6 +306,7 @@ class BorrowService {
     return {
       message: "Return confirmed and asset is now ready for borrowing again",
       fine_amount: result.fine_amount,
+      deposit_refunded: result.deposit_refunded,
     };
   }
 }

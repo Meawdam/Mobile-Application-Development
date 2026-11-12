@@ -53,6 +53,12 @@ CREATE TABLE `borrow` (
   `id` int(11) NOT NULL,
   `asset_id` int(11) NOT NULL,
   `borrower_id` int(11) NOT NULL,
+  `pickup_date` date DEFAULT NULL,
+  `planned_return_date` date DEFAULT NULL,
+  `rental_days` int(11) NOT NULL DEFAULT 0,
+  `rental_amount` int(11) NOT NULL DEFAULT 0,
+  `deposit_amount` int(11) NOT NULL DEFAULT 0,
+  `total_amount` int(11) NOT NULL DEFAULT 0,
   `borrow_date` datetime DEFAULT NULL,
   `return_date` datetime DEFAULT NULL,
   `status` enum('requested','approved','borrowed','returned_pending','returned_confirmed','rejected') DEFAULT 'requested',
@@ -74,6 +80,7 @@ CREATE TABLE `users` (
   `password` varchar(255) NOT NULL,
   `phone_num` varchar(10) NOT NULL,
   `role` enum('admin','user') DEFAULT 'user',
+  `wallet_balance` int(11) NOT NULL DEFAULT 0,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
