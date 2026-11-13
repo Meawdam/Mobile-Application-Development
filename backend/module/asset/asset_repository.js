@@ -63,6 +63,18 @@ class AssetRepository {
     return rows[0];
   }
 
+  async findByIdForViewer(id, viewerId, viewerRole) {
+    const [rows] = await db.query(
+      `SELECT a.*, u.username AS owner_username
+       FROM asset a
+       LEFT JOIN users u ON u.id = a.owner_id
+       WHERE a.id = ?
+         AND (a.approval = 'approved' OR a.owner_id = ? OR ? = 'admin')`,
+      [id, viewerId ?? null, viewerRole ?? null],
+    );
+    return rows[0];
+  }
+
   async createAsset({
     owner_id,
     image,
@@ -210,6 +222,15 @@ class AssetRepository {
       }
       if (assets[0].status === "borrowed") {
         const err = new Error("Cannot delete an asset while it is borrowed");
+        err.status = 409;
+        throw err;
+      }
+      const [borrowHistory] = await connection.query(
+        "SELECT id FROM borrow WHERE asset_id = ? LIMIT 1",
+        [id],
+      );
+      if (borrowHistory.length > 0) {
+        const err = new Error("Cannot delete an asset with borrow history");
         err.status = 409;
         throw err;
       }

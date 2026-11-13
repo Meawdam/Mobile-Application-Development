@@ -49,8 +49,12 @@ class AssetService {
         return (await assetRepository.findByOwnerId(ownerId)).map(normalizeAsset);
     }
 
-    async getAssetById(id) {
-        const asset = await assetRepository.findById(id);
+    async getAssetById(id, viewer) {
+        const asset = await assetRepository.findByIdForViewer(
+            id,
+            viewer?.id,
+            viewer?.role,
+        );
         if(!asset) {
             const err = new Error("Asset not found");
             err.status = 404;

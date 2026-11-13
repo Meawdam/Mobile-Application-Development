@@ -18,7 +18,9 @@ class BorrowRepository {
         b.rental_amount, b.deposit_amount, b.total_amount,
         b.borrow_date, b.return_date, b.status, b.payment_status,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
-        a.down_payment, a.price AS price_per_day, a.return_before AS lending_end_date,
+        b.deposit_amount AS down_payment,
+        b.rental_amount / NULLIF(b.rental_days, 0) AS price_per_day,
+        a.return_before AS lending_end_date,
         a.pickup_point,
         u.id AS borrower_id, u.username AS borrower_name, u.email AS borrower_email,
         owner.username AS owner_name
@@ -39,7 +41,8 @@ class BorrowRepository {
         b.rental_amount, b.deposit_amount, b.total_amount,
         b.borrow_date, b.return_date, b.status, b.payment_status,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
-        a.description, a.down_payment, a.price AS price_per_day,
+        a.description, b.deposit_amount AS down_payment,
+        b.rental_amount / NULLIF(b.rental_days, 0) AS price_per_day,
         a.return_before AS lending_end_date, a.pickup_point,
         owner.username AS owner_name,
         borrower.username AS borrower_name
@@ -63,7 +66,8 @@ class BorrowRepository {
         b.rental_amount, b.deposit_amount, b.total_amount,
         b.borrow_date, b.return_date, b.status, b.payment_status,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
-        a.description, a.down_payment, a.price AS price_per_day,
+        a.description, b.deposit_amount AS down_payment,
+        b.rental_amount / NULLIF(b.rental_days, 0) AS price_per_day,
         a.return_before AS lending_end_date, a.pickup_point,
         owner.username AS owner_name,
         borrower.username AS borrower_name
@@ -83,7 +87,9 @@ class BorrowRepository {
     const [rows] = await db.query(
       `
       SELECT b.*, a.owner_id, a.return_before, a.name AS asset_name,
-        a.image AS asset_image, a.pickup_point, a.price AS price_per_day,
+        a.image AS asset_image, a.pickup_point,
+        b.deposit_amount AS down_payment,
+        b.rental_amount / NULLIF(b.rental_days, 0) AS price_per_day,
         a.return_before AS lending_end_date,
         b.planned_return_date < CURRENT_DATE() AS return_deadline_passed,
         owner.username AS owner_name,
