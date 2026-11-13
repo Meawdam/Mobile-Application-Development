@@ -149,11 +149,14 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
                         '${asset.price} Baht / day',
                       ),
                       isThreeLine: true,
-                      onTap: () => Navigator.pushNamed(
-                        context,
-                        '/edit-item',
-                        arguments: asset.id,
-                      ),
+                      onTap: () async {
+                        await Navigator.pushNamed(
+                          context,
+                          '/edit-item',
+                          arguments: asset.id,
+                        );
+                        await _controller.load();
+                      },
                       trailing: IconButton(
                         tooltip: 'Delete',
                         onPressed: () => _showDeleteSheet(asset),

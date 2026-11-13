@@ -1,16 +1,12 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:frontend/model/borrow/borrow_model.dart';
-import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/borrow_api.dart';
 
 class RequestsReturnsController extends ChangeNotifier {
-  RequestsReturnsController({BorrowApi? borrowApi})
-      : _borrowApi = borrowApi ?? BorrowApi();
+  RequestsReturnsController({List<BorrowModel>? initialItems})
+      : items = List.of(initialItems ?? const []);
 
-  final BorrowApi _borrowApi;
-
-  List<BorrowModel> items = const [];
+  List<BorrowModel> items;
   bool loading = false;
   String? error;
 
@@ -30,29 +26,19 @@ class RequestsReturnsController extends ChangeNotifier {
     loading = true;
     error = null;
     notifyListeners();
-    try {
-      items = await _borrowApi.getMyLendingBorrows();
-    } on ApiException catch (e) {
-      error = e.message;
-      items = const [];
-    } catch (_) {
-      error = 'Unable to load requests and returns';
-      items = const [];
-    } finally {
-      loading = false;
-      notifyListeners();
-    }
+    loading = false;
+    notifyListeners();
   }
 
   Future<String?> confirmReturn(int borrowId) async {
-    try {
-      await _borrowApi.confirmReturn(borrowId);
-      await load();
-      return null;
-    } on ApiException catch (e) {
-      return e.message;
-    } catch (_) {
-      return 'Unable to confirm return';
+    final index = items.indexWhere((item) => item.id == borrowId);
+    if (index == -1) return 'Borrow not found';
+    final borrow = items[index];
+    if (borrow.status != 'returned_pending') {
+      return 'Return has not been requested';
     }
+    items[index] = borrow.copyWith(status: 'returned_confirmed');
+    await load();
+    return null;
   }
 }

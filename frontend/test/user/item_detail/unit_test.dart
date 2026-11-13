@@ -1,12 +1,24 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/modules/user/item_detail/controller/item_detail_controller.dart';
 
-import '../../helpers/test_fakes.dart';
-
 void main() {
-  test('1. load fetches asset details by id', () async {
+  test('load reads item details from the provided list', () async {
     final controller = ItemDetailController(
-      assetApi: FakeAssetApi(byId: sampleAsset(id: 9, name: 'Lens')),
+      items: [
+        const AssetModel(
+            id: 9,
+            ownerId: 1,
+            name: 'Lens',
+            description: 'Camera lens',
+            status: 'available',
+            approval: 'approved',
+            downPayment: 0,
+            returnBefore: '2030-01-01',
+            price: 100,
+            pickupPoint: 'Canteen',
+          ),
+      ],
     );
 
     await controller.load(9);
@@ -17,14 +29,12 @@ void main() {
     expect(controller.error, isNull);
   });
 
-  test('2. load stores API errors and clears asset', () async {
-    final controller = ItemDetailController(
-      assetApi: FakeAssetApi(throwOnGet: true),
-    );
+  test('load reports a missing item and clears the asset', () async {
+    final controller = ItemDetailController();
 
     await controller.load(1);
 
     expect(controller.asset, isNull);
-    expect(controller.error, 'asset not found');
+    expect(controller.error, 'Item not found');
   });
 }
