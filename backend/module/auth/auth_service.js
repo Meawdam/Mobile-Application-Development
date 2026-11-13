@@ -49,6 +49,13 @@ class AuthService {
       throw err;
     }
 
+    if (user.is_suspended) {
+      const err = new Error("Account suspended");
+      err.status = 403;
+      err.reason = user.suspension_reason;
+      throw err;
+    }
+
     const payload = {
       id: user.id,
       username: user.username,

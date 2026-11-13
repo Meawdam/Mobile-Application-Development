@@ -9,8 +9,9 @@
  *       type: object
  *       properties:
  *         balance:
- *           type: integer
- *           example: 5000
+ *           type: number
+ *           format: double
+ *           example: 5000.50
  *     WalletResponse:
  *       type: object
  *       properties:
@@ -21,9 +22,11 @@
  *       required: [amount]
  *       properties:
  *         amount:
- *           type: integer
- *           minimum: 1
- *           example: 1000
+ *           type: number
+ *           format: double
+ *           minimum: 0.01
+ *           maximum: 1000000
+ *           example: 1000.50
  */
 
 /**

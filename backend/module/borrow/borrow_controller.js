@@ -97,6 +97,31 @@ class BorrowController {
     }
   }
 
+  async approveRequest(req, res, next) {
+    try {
+      const result = await borrowsService.approveRequest(
+        req.params.id,
+        req.user.id,
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async rejectRequest(req, res, next) {
+    try {
+      const result = await borrowsService.rejectRequest(
+        req.params.id,
+        req.user.id,
+        req.body.reason,
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async returnAsset(req, res, next) {
     try {
       const result = await borrowsService.returnAsset(

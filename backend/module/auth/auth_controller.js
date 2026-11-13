@@ -59,6 +59,12 @@ class AuthController {
         user: result.user
       })
     } catch (error) {
+      if (error.status === 403 && error.reason) {
+        return res.status(403).json({
+          message: error.message,
+          reason: error.reason,
+        });
+      }
       next(error);
     }
   }

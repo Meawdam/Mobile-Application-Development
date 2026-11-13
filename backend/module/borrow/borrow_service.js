@@ -5,18 +5,49 @@ const {
   todayDateString,
   rentalDaysInclusive,
 } = require("../../utils/date_utils");
+const {
+  MAX_STORED_AMOUNT_CENTS,
+  amountCentsToNumber,
+  formatAmountCents,
+  parseAmountCents,
+} = require("../../utils/money_utils");
+
+const BORROW_AMOUNT_FIELDS = [
+  "deposit",
+  "deposit_amount",
+  "down_payment",
+  "price_per_day",
+  "rental_amount",
+  "rental_subtotal",
+  "total_amount",
+];
+
+function normalizeBorrow(borrow) {
+  if (!borrow) return borrow;
+  const normalized = { ...borrow };
+  for (const field of BORROW_AMOUNT_FIELDS) {
+    if (normalized[field] !== null && normalized[field] !== undefined) {
+      normalized[field] = Number(normalized[field]);
+    }
+  }
+  return normalized;
+}
 
 class BorrowService {
   async getAllBorrows() {
-    return await borrowsRepository.findAll();
+    return (await borrowsRepository.findAll()).map(normalizeBorrow);
   }
 
   async getMyBorrows(borrowerId) {
-    return await borrowsRepository.findByBorrowerId(borrowerId);
+    return (await borrowsRepository.findByBorrowerId(borrowerId)).map(
+      normalizeBorrow,
+    );
   }
 
   async getMyLendingBorrows(ownerId) {
-    return await borrowsRepository.findByOwnerId(ownerId);
+    return (await borrowsRepository.findByOwnerId(ownerId)).map(
+      normalizeBorrow,
+    );
   }
 
   async requestBorrow(borrowerId, { asset_id, pickup_date, return_date }) {
@@ -82,13 +113,33 @@ class BorrowService {
     }
 
     const rentalDays = rentalDaysInclusive(pickupDate, plannedReturnDate);
-    const rentalAmount = Number(asset.price) * rentalDays;
-    const depositAmount = Math.round(Number(asset.down_payment));
-    const totalAmount = rentalAmount + depositAmount;
+    const priceCents = parseAmountCents(asset.price);
+    const depositCents = parseAmountCents(asset.down_payment);
+    if (priceCents === null || depositCents === null) {
+      const err = new Error("Asset pricing is invalid");
+      err.status = 500;
+      throw err;
+    }
+    const rentalAmountCents = priceCents * rentalDays;
+    const totalAmountCents = rentalAmountCents + depositCents;
+    if (
+      !Number.isSafeInteger(rentalAmountCents) ||
+      !Number.isSafeInteger(totalAmountCents) ||
+      totalAmountCents > MAX_STORED_AMOUNT_CENTS
+    ) {
+      const err = new Error("Calculated borrow amount exceeds the supported range");
+      err.status = 400;
+      throw err;
+    }
+
+    const rentalAmount = formatAmountCents(rentalAmountCents);
+    const depositAmount = formatAmountCents(depositCents);
+    const totalAmount = formatAmountCents(totalAmountCents);
 
     const borrowId = await borrowsRepository.createBorrow({
       asset_id,
       borrower_id: borrowerId,
+      owner_id: asset.owner_id,
       pickup_date: pickupDate,
       planned_return_date: plannedReturnDate,
       rental_days: rentalDays,
@@ -104,11 +155,11 @@ class BorrowService {
       planned_return_date: plannedReturnDate,
       rental_days: rentalDays,
       price_per_day: Number(asset.price),
-      rental_amount: rentalAmount,
-      rental_subtotal: rentalAmount,
-      deposit: depositAmount,
-      deposit_amount: depositAmount,
-      total_amount: totalAmount,
+      rental_amount: amountCentsToNumber(rentalAmountCents),
+      rental_subtotal: amountCentsToNumber(rentalAmountCents),
+      deposit: amountCentsToNumber(depositCents),
+      deposit_amount: amountCentsToNumber(depositCents),
+      total_amount: amountCentsToNumber(totalAmountCents),
       lending_end_date: lendingEndDate,
       status: "requested",
       payment_status: "unpaid",
@@ -132,7 +183,7 @@ class BorrowService {
       throw err;
     }
 
-    return borrow;
+    return normalizeBorrow(borrow);
   }
 
   async processPayment(borrowId, borrowerId) {
@@ -149,7 +200,10 @@ class BorrowService {
       throw err;
     }
 
-    if (borrow.status !== "requested" || borrow.payment_status !== "unpaid") {
+    if (
+      !["requested", "approved"].includes(borrow.status) ||
+      borrow.payment_status !== "unpaid"
+    ) {
       const err = new Error("Borrow request is no longer awaiting payment");
       err.status = 400;
       throw err;
@@ -192,7 +246,10 @@ class BorrowService {
       throw err;
     }
 
-    if (borrow.status !== "requested" || borrow.payment_status !== "unpaid") {
+    if (
+      !["requested", "approved"].includes(borrow.status) ||
+      borrow.payment_status !== "unpaid"
+    ) {
       const err = new Error("Only unpaid borrow requests can be cancelled");
       err.status = 400;
       throw err;
@@ -209,6 +266,64 @@ class BorrowService {
     }
 
     return { message: "Borrow request cancelled" };
+  }
+
+  async approveRequest(borrowId, ownerId) {
+    return this._decideRequest(borrowId, ownerId, "approve");
+  }
+
+  async rejectRequest(borrowId, ownerId, reason) {
+    if (typeof reason !== "string" || !reason.trim()) {
+      const err = new Error("A reason is required to reject a borrow request");
+      err.status = 400;
+      throw err;
+    }
+    if (reason.trim().length > 500) {
+      const err = new Error("Rejection reason must not exceed 500 characters");
+      err.status = 400;
+      throw err;
+    }
+    return this._decideRequest(borrowId, ownerId, "reject", reason.trim());
+  }
+
+  async _decideRequest(borrowId, ownerId, decision, reason) {
+    const borrow = await borrowsRepository.findById(borrowId);
+    if (!borrow) {
+      const err = new Error("Borrow record not found");
+      err.status = 404;
+      throw err;
+    }
+    if (borrow.owner_id !== ownerId) {
+      const err = new Error("Forbidden: You are not the owner of this asset");
+      err.status = 403;
+      throw err;
+    }
+    const isEligible = decision === "approve"
+      ? borrow.status === "requested"
+      : ["requested", "approved"].includes(borrow.status);
+    if (!isEligible || borrow.payment_status !== "unpaid") {
+      const err = new Error("Borrow request is no longer awaiting a decision");
+      err.status = 400;
+      throw err;
+    }
+
+    const result = await borrowsRepository.decideRequest(
+      borrowId,
+      ownerId,
+      decision,
+      reason,
+    );
+    if (!result) {
+      const err = new Error("Borrow request is no longer awaiting a decision");
+      err.status = 409;
+      throw err;
+    }
+    return {
+      message: decision === "approve"
+        ? "Borrow request approved"
+        : "Borrow request rejected",
+      data: result,
+    };
   }
 
   async returnAsset(borrowId, borrowerId) {
@@ -256,8 +371,8 @@ class BorrowService {
     }
 
     return {
-      message: borrow.return_before_passed
-        ? "Return request submitted after the return-by date; waiting for owner confirmation"
+      message: updated.payment_status === "forfeited"
+        ? "Return request submitted after the deadline; the deposit was forfeited"
         : "Return request submitted, waiting for owner confirmation",
     };
   }
@@ -294,6 +409,7 @@ class BorrowService {
       borrowId,
       borrow.asset_id,
       borrow.borrower_id,
+      borrow.owner_id,
     );
     if (!result) {
       const err = new Error(
@@ -304,9 +420,14 @@ class BorrowService {
     }
 
     return {
-      message: "Return confirmed and asset is now ready for borrowing again",
-      fine_amount: result.fine_amount,
-      deposit_refunded: result.deposit_refunded,
+      message: result.deposit_forfeited > 0
+        ? "Return confirmed; the deposit was forfeited"
+        : result.refund_pending > 0
+          ? "Return confirmed; deposit refund is awaiting admin processing"
+          : "Return confirmed and asset is now ready for borrowing again",
+      deposit_forfeited: result.deposit_forfeited,
+      refund_pending: result.refund_pending,
+      refund_transaction_id: result.refund_transaction_id,
     };
   }
 }
