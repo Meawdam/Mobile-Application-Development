@@ -10,6 +10,8 @@ router.get("/my", borrowsController.getMyBorrows);
 router.get("/lending", borrowsController.getMyLendingBorrows);
 router.get("/:id", borrowsController.getBorrowById);
 router.post("/", borrowsController.requestBorrow);
+router.patch("/:id/approve", borrowsController.approveRequest);
+router.patch("/:id/reject", borrowsController.rejectRequest);
 router.patch("/:id/cancel", borrowsController.cancelRequest);
 router.post("/:id/pay", borrowsController.processPayment);
 router.patch("/:id/return", borrowsController.returnAsset);

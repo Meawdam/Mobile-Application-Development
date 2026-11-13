@@ -1,4 +1,25 @@
 const assetRepository = require("./asset_repository");
+const {
+    MAX_ASSET_AMOUNT_CENTS,
+    amountCentsToNumber,
+    formatAmountCents,
+    parseAmountCents,
+} = require("../../utils/money_utils");
+
+function normalizeAsset(asset) {
+    if (!asset) return asset;
+    return {
+        ...asset,
+        down_payment:
+            asset.down_payment === null || asset.down_payment === undefined
+                ? asset.down_payment
+                : Number(asset.down_payment),
+        price:
+            asset.price === null || asset.price === undefined
+                ? asset.price
+                : Number(asset.price),
+    };
+}
 
 class AssetService {
     async getAvailableAsset(excludedOwnerId, searchTerm) {
@@ -13,28 +34,33 @@ class AssetService {
             err.status = 400;
             throw err;
         }
-        return await assetRepository.findAllApproved(
+        const assets = await assetRepository.findAllApproved(
             excludedOwnerId,
             normalizedSearchTerm,
         );
+        return assets.map(normalizeAsset);
     }
 
     async getAllAsset() {
-        return await assetRepository.findAll();
+        return (await assetRepository.findAll()).map(normalizeAsset);
     }
 
     async getMyAssets(ownerId) {
-        return await assetRepository.findByOwnerId(ownerId);
+        return (await assetRepository.findByOwnerId(ownerId)).map(normalizeAsset);
     }
 
-    async getAssetById(id) {
-        const asset = await assetRepository.findById(id);
+    async getAssetById(id, viewer) {
+        const asset = await assetRepository.findByIdForViewer(
+            id,
+            viewer?.id,
+            viewer?.role,
+        );
         if(!asset) {
             const err = new Error("Asset not found");
             err.status = 404;
             throw err;
         }
-        return asset;
+        return normalizeAsset(asset);
     }
 
     _validateReturnBefore(returnBeforeRaw) {
@@ -67,26 +93,32 @@ class AssetService {
         return normalizedReturnBefore;
     }
 
-    _validatePrice(priceRaw) {
-        const price = Number(priceRaw);
+    _validateAssetAmount(value, fieldName) {
+        const amountCents = parseAmountCents(value);
         if (
-            priceRaw === undefined ||
-            priceRaw === null ||
-            priceRaw === "" ||
-            !Number.isSafeInteger(price) ||
-            price < 0 ||
-            price > 2147483647 ||
-            !/^\d+$/.test(String(priceRaw))
+            amountCents === null ||
+            amountCents > MAX_ASSET_AMOUNT_CENTS
         ) {
-            const err = new Error("price must be a non-negative whole number within the database range");
+            const err = new Error(
+                `${fieldName} must be a non-negative amount with at most 2 decimal places and within the database range`,
+            );
             err.status = 400;
             throw err;
         }
-        return price;
+        return formatAmountCents(amountCents);
+    }
+
+    _validatePrice(priceRaw) {
+        return this._validateAssetAmount(priceRaw, "price");
+    }
+
+    _validateDownPayment(downPaymentRaw) {
+        return this._validateAssetAmount(downPaymentRaw, "down_payment");
     }
 
     async createAsset(ownerId, data) {
         const price = this._validatePrice(data.price);
+        const downPayment = this._validateDownPayment(data.down_payment);
         if (
             typeof data.pickup_point !== "string" ||
             !data.pickup_point.trim() ||
@@ -103,13 +135,15 @@ class AssetService {
             owner_id: ownerId,
             ...data,
             price,
+            down_payment: downPayment,
             pickup_point: data.pickup_point.trim(),
             return_before: normalizedReturnBefore,
         });
         return {
             id: assetId,
             ...data,
-            price,
+            price: amountCentsToNumber(parseAmountCents(price)),
+            down_payment: amountCentsToNumber(parseAmountCents(downPayment)),
             pickup_point: data.pickup_point.trim(),
             return_before: normalizedReturnBefore,
             approval: "pending",
@@ -153,28 +187,48 @@ class AssetService {
         }
 
         const price = this._validatePrice(data.price);
+        const downPayment = this._validateDownPayment(data.down_payment);
         const normalizedReturnBefore = this._validateReturnBefore(data.return_before);
         const payload = {
             name: data.name.trim(),
             description: data.description.trim(),
-            down_payment: data.down_payment,
+            down_payment: downPayment,
             price,
             pickup_point: data.pickup_point.trim(),
             return_before: normalizedReturnBefore,
         };
 
-        await assetRepository.updateAsset(id, ownerId, payload);
+        const updated = await assetRepository.updateAsset(id, ownerId, payload);
+        if (!updated) {
+            const err = new Error("Asset is no longer available for editing");
+            err.status = 409;
+            throw err;
+        }
         return {
             id: Number(id),
             ...payload,
+            down_payment: amountCentsToNumber(parseAmountCents(downPayment)),
+            price: amountCentsToNumber(parseAmountCents(price)),
             status: asset.status,
             approval: asset.approval,
         };
     }
 
-    async approveAsset(id, {approval, approval_message}) {
+    async approveAsset(id, adminId, {approval, approval_message}) {
         if (!["approved", "not approve"].includes(approval)) {
             const err = new Error("Approval status must be approved or not approve");
+            err.status = 400;
+            throw err;
+        }
+        const approvalMessage =
+            typeof approval_message === "string" ? approval_message.trim() : "";
+        if (approval === "not approve" && !approvalMessage) {
+            const err = new Error("A rejection reason is required");
+            err.status = 400;
+            throw err;
+        }
+        if (approvalMessage.length > 500) {
+            const err = new Error("Approval message must not exceed 500 characters");
             err.status = 400;
             throw err;
         }
@@ -186,8 +240,19 @@ class AssetService {
             throw err;
         }
 
-        await assetRepository.updateApproval(id, approval, approval_message);
-        return { id, approval, approval_message}
+        const updated = await assetRepository.updateApproval(
+            id,
+            asset.owner_id,
+            adminId,
+            approval,
+            approvalMessage || null,
+        );
+        if (!updated) {
+            const err = new Error("Asset approval status could not be updated");
+            err.status = 409;
+            throw err;
+        }
+        return { id: Number(id), approval, approval_message: approvalMessage || null }
     }
 
     async deleteAsset(id, owner_id) {
@@ -203,8 +268,18 @@ class AssetService {
             err.status = 403;
             throw err;
         }
+        if (asset.status === "borrowed") {
+            const err = new Error("Cannot delete an asset while it is borrowed");
+            err.status = 409;
+            throw err;
+        }
 
-        await assetRepository.deleteAsset(id, owner_id);
+        const deleted = await assetRepository.deleteAsset(id, owner_id);
+        if (!deleted) {
+            const err = new Error("Asset could not be deleted");
+            err.status = 409;
+            throw err;
+        }
         return { id };
     }
 }
