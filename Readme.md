@@ -79,9 +79,13 @@ After starting the backend, open [http://localhost:3000/api-docs](http://localho
 
 ## Database update and features
 
-For an existing database, apply migrations in `backend/migrations/` using a
-database account with `ALTER TABLE` privileges. New databases should use the
-schema in `backend/borrow.sql`.
+`backend/borrow.sql` is the canonical full schema for a new database. It stores
+asset price and deposit with two decimal places, and keeps the calculated borrow
+amounts, wallet balance, and transaction ledger at two decimal places as well.
+The SQL file creates tables and is not an incremental update for an existing
+database; existing databases must be brought in line with this schema before
+running the current backend. The historical scripts in `backend/migrations/`
+do not include all current schema changes.
 
 Borrow day-system fields (`pickup_date`, `planned_return_date`, `rental_days`)
 are added by `backend/migrations/20261112_add_borrow_day_fields.sql`. Borrower
@@ -108,4 +112,6 @@ description, and pickup point. `return_before` is the asset owner's lending
 window; the borrower's `planned_return_date` is the return deadline used for
 deposit forfeiture.
 
-Run backend tests from the `backend` directory with `npm test`.
+From `backend`, `npm test` runs both the unit tests and the API smoke script.
+The smoke script requires a running API, a compatible database, and a seeded
+admin account, and creates test data.

@@ -43,6 +43,22 @@
  *           type: integer
  *           description: Inclusive day count between pickup_date and planned_return_date
  *           example: 4
+ *         price_per_day:
+ *           type: number
+ *           format: double
+ *           example: 100.50
+ *         rental_amount:
+ *           type: number
+ *           format: double
+ *           example: 402.00
+ *         deposit_amount:
+ *           type: number
+ *           format: double
+ *           example: 250.50
+ *         total_amount:
+ *           type: number
+ *           format: double
+ *           example: 652.50
  *         borrow_date:
  *           type: string
  *           format: date

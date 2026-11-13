@@ -26,11 +26,13 @@
  *           example: /uploads/08ab835d-f75d-4c19-89f2-808a210f18c6.jpg
  *         down_payment:
  *           type: number
- *           example: 250
+ *           format: double
+ *           example: 250.50
  *         price:
- *           type: integer
+ *           type: number
+ *           format: double
  *           description: Daily rental price in the same currency
- *           example: 100
+ *           example: 100.50
  *         pickup_point:
  *           type: string
  *           example: Library front desk
@@ -125,12 +127,17 @@
  *                 description: JPEG, PNG, GIF, or WebP image up to 5 MB
  *               down_payment:
  *                 type: number
- *                 example: 250
- *               price:
- *                 type: integer
+ *                 format: double
  *                 minimum: 0
+ *                 maximum: 99999999.99
+ *                 example: 250.50
+ *               price:
+ *                 type: number
+ *                 format: double
+ *                 minimum: 0
+ *                 maximum: 99999999.99
  *                 description: Daily rental price
- *                 example: 100
+ *                 example: 100.50
  *               pickup_point:
  *                 type: string
  *                 example: Library front desk

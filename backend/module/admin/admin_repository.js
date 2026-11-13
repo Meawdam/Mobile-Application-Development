@@ -1,5 +1,11 @@
 const db = require("../../db_config");
 const { logActivities } = require("../../utils/activity_logger");
+const {
+  MAX_STORED_AMOUNT_CENTS,
+  amountCentsToNumber,
+  formatAmountCents,
+  parseAmountCents,
+} = require("../../utils/money_utils");
 
 class AdminRepository {
   async getDashboard() {
@@ -106,7 +112,10 @@ class AdminRepository {
        ${where}`,
       params,
     );
-    return { rows, total: Number(counts[0].total) };
+    return {
+      rows: rows.map((row) => ({ ...row, amount: Number(row.amount) })),
+      total: Number(counts[0].total),
+    };
   }
 
   async processRefund(transactionId, adminId) {
@@ -148,7 +157,18 @@ class AdminRepository {
         err.status = 409;
         throw err;
       }
-      const amount = Number(transaction.amount);
+      const amountCents = parseAmountCents(transaction.amount);
+      const walletBalanceCents = parseAmountCents(users[0].wallet_balance);
+      if (
+        amountCents === null ||
+        walletBalanceCents === null ||
+        walletBalanceCents + amountCents > MAX_STORED_AMOUNT_CENTS
+      ) {
+        const err = new Error("Refund recipient wallet balance exceeds the supported range");
+        err.status = 409;
+        throw err;
+      }
+      const amount = formatAmountCents(amountCents);
       await connection.query(
         "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?",
         [amount, transaction.user_id],
@@ -192,7 +212,10 @@ class AdminRepository {
             entityType: "borrow",
             entityId: Number(transaction.borrow_id),
             message: "Deposit refund processed",
-            details: { amount, transaction_id: Number(transactionId) },
+            details: {
+              amount: amountCentsToNumber(amountCents),
+              transaction_id: Number(transactionId),
+            },
           },
           {
             userId: Number(transaction.owner_id),
@@ -202,18 +225,23 @@ class AdminRepository {
             entityType: "borrow",
             entityId: Number(transaction.borrow_id),
             message: "Borrower deposit refund processed",
-            details: { amount, transaction_id: Number(transactionId) },
+            details: {
+              amount: amountCentsToNumber(amountCents),
+              transaction_id: Number(transactionId),
+            },
           },
         ],
         connection,
       );
-      const walletBalance = Number(users[0].wallet_balance) + amount;
+      const walletBalance = amountCentsToNumber(
+        walletBalanceCents + amountCents,
+      );
       await connection.commit();
       return {
         id: Number(transactionId),
         borrow_id: Number(transaction.borrow_id),
         user_id: Number(transaction.user_id),
-        amount,
+        amount: amountCentsToNumber(amountCents),
         status: "completed",
         wallet_balance: walletBalance,
       };

@@ -3,6 +3,12 @@ const {
   logActivities,
   borrowActivityEntries,
 } = require("../../utils/activity_logger");
+const {
+  MAX_STORED_AMOUNT_CENTS,
+  amountCentsToNumber,
+  formatAmountCents,
+  parseAmountCents,
+} = require("../../utils/money_utils");
 
 class BorrowRepository {
   async findAll() {
@@ -202,7 +208,21 @@ class BorrowRepository {
         return false;
       }
 
-      const totalAmount = Number(borrow.total_amount);
+      const totalAmountCents = parseAmountCents(borrow.total_amount);
+      const rentalAmountCents = parseAmountCents(borrow.rental_amount);
+      const depositAmountCents = parseAmountCents(borrow.deposit_amount);
+      if (
+        totalAmountCents === null ||
+        rentalAmountCents === null ||
+        depositAmountCents === null ||
+        totalAmountCents > MAX_STORED_AMOUNT_CENTS ||
+        !Number.isSafeInteger(rentalAmountCents + depositAmountCents) ||
+        totalAmountCents !== rentalAmountCents + depositAmountCents
+      ) {
+        throw new Error(`Invalid monetary data for borrow ${id}`);
+      }
+
+      const totalAmount = formatAmountCents(totalAmountCents);
       const [users] = await connection.query(
         `SELECT wallet_balance FROM users WHERE id = ? FOR UPDATE`,
         [borrowerId],
@@ -213,8 +233,11 @@ class BorrowRepository {
         throw err;
       }
 
-      const balance = Number(users[0].wallet_balance);
-      if (balance < totalAmount) {
+      const balanceCents = parseAmountCents(users[0].wallet_balance);
+      if (balanceCents === null) {
+        throw new Error(`Invalid wallet balance for user ${borrowerId}`);
+      }
+      if (balanceCents < totalAmountCents) {
         const err = new Error("Insufficient wallet balance");
         err.status = 400;
         throw err;
@@ -274,13 +297,23 @@ class BorrowRepository {
         `INSERT INTO financial_transactions
           (user_id, actor_id, borrow_id, transaction_type, amount, status, description)
          VALUES (?, ?, ?, 'rental_payment', ?, 'completed', 'Rental payment')`,
-        [borrowerId, borrowerId, id, Number(borrow.rental_amount)],
+        [
+          borrowerId,
+          borrowerId,
+          id,
+          formatAmountCents(rentalAmountCents),
+        ],
       );
       await connection.query(
         `INSERT INTO financial_transactions
           (user_id, actor_id, borrow_id, transaction_type, amount, status, description)
          VALUES (?, ?, ?, 'deposit_hold', ?, 'pending', 'Deposit held')`,
-        [borrowerId, borrowerId, id, Number(borrow.deposit_amount)],
+        [
+          borrowerId,
+          borrowerId,
+          id,
+          formatAmountCents(depositAmountCents),
+        ],
       );
       await logActivities(
         borrowActivityEntries({
@@ -290,7 +323,7 @@ class BorrowRepository {
           action: "payment_completed",
           message: "Borrow payment completed",
           borrowId: id,
-          details: { total_amount: totalAmount },
+          details: { total_amount: amountCentsToNumber(totalAmountCents) },
         }),
         connection,
       );
@@ -298,7 +331,7 @@ class BorrowRepository {
       await connection.commit();
       return {
         paid: true,
-        total_amount: totalAmount,
+        total_amount: amountCentsToNumber(totalAmountCents),
         wallet_balance: Number(updatedWallet[0].wallet_balance),
       };
     } catch (error) {
@@ -432,8 +465,9 @@ class BorrowRepository {
       throw new Error(`Pending deposit hold missing for borrow ${borrow.id}`);
     }
 
-    const amount = Number(holds[0].amount);
-    if (amount !== Number(borrow.deposit_amount)) {
+    const amountCents = parseAmountCents(holds[0].amount);
+    const depositCents = parseAmountCents(borrow.deposit_amount);
+    if (amountCents === null || amountCents !== depositCents) {
       throw new Error(`Deposit amount mismatch for borrow ${borrow.id}`);
     }
 
@@ -449,16 +483,25 @@ class BorrowRepository {
 
     const ownerId = Number(borrow.owner_id);
     const [owners] = await connection.query(
-      "SELECT id FROM users WHERE id = ? FOR UPDATE",
+      "SELECT id, wallet_balance FROM users WHERE id = ? FOR UPDATE",
       [ownerId],
     );
     if (owners.length === 0) {
       throw new Error(`Asset owner missing for borrow ${borrow.id}`);
     }
+    const ownerBalanceCents = parseAmountCents(owners[0].wallet_balance);
+    if (
+      ownerBalanceCents === null ||
+      ownerBalanceCents + amountCents > MAX_STORED_AMOUNT_CENTS
+    ) {
+      const err = new Error("Asset owner's wallet balance exceeds the supported range");
+      err.status = 409;
+      throw err;
+    }
 
     await connection.query(
       "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?",
-      [amount, ownerId],
+      [formatAmountCents(amountCents), ownerId],
     );
     const [releasedHold] = await connection.query(
       `UPDATE financial_transactions
@@ -476,7 +519,7 @@ class BorrowRepository {
          description, processed_at)
        VALUES (?, ?, 'deposit_forfeiture', ?, 'completed',
          'Deposit forfeited and credited to asset owner', NOW())`,
-      [ownerId, borrow.id, amount],
+      [ownerId, borrow.id, formatAmountCents(amountCents)],
     );
     await logActivities(
       [
@@ -487,7 +530,7 @@ class BorrowRepository {
           entityType: "borrow",
           entityId: Number(borrow.id),
           message: "Deposit forfeited after the return deadline",
-          details: { amount, owner_id: ownerId },
+          details: { amount: amountCentsToNumber(amountCents), owner_id: ownerId },
         },
         {
           userId: ownerId,
@@ -496,7 +539,10 @@ class BorrowRepository {
           entityType: "borrow",
           entityId: Number(borrow.id),
           message: "Overdue deposit credited to asset owner",
-          details: { amount, borrower_id: Number(borrow.borrower_id) },
+          details: {
+            amount: amountCentsToNumber(amountCents),
+            borrower_id: Number(borrow.borrower_id),
+          },
         },
       ],
       connection,
@@ -641,13 +687,16 @@ class BorrowRepository {
         borrow.payment_status = "forfeited";
       }
 
-      const depositAmount = Number(borrow.deposit_amount);
-      const depositForfeited =
-        borrow.payment_status === "forfeited" ? depositAmount : 0;
-      const refundAmount =
-        borrow.payment_status === "paid" ? depositAmount : 0;
+      const depositAmountCents = parseAmountCents(borrow.deposit_amount);
+      if (depositAmountCents === null) {
+        throw new Error(`Invalid deposit amount for borrow ${id}`);
+      }
+      const depositForfeitedCents =
+        borrow.payment_status === "forfeited" ? depositAmountCents : 0;
+      const refundAmountCents =
+        borrow.payment_status === "paid" ? depositAmountCents : 0;
       const nextPaymentStatus =
-        refundAmount === 0 && borrow.payment_status === "paid"
+        refundAmountCents === 0 && borrow.payment_status === "paid"
           ? "refunded"
           : borrow.payment_status;
 
@@ -673,7 +722,7 @@ class BorrowRepository {
         throw err;
       }
 
-      if (refundAmount === 0 && depositForfeited === 0) {
+      if (refundAmountCents === 0 && depositForfeitedCents === 0) {
         await connection.query(
           `UPDATE financial_transactions
            SET status = 'released', processed_at = NOW()
@@ -684,14 +733,19 @@ class BorrowRepository {
       }
 
       let refundTransactionId = null;
-      if (refundAmount > 0) {
+      if (refundAmountCents > 0) {
         const [refund] = await connection.query(
           `INSERT INTO financial_transactions
             (user_id, actor_id, borrow_id, transaction_type, amount, status,
              description)
            VALUES (?, ?, ?, 'deposit_refund', ?, 'pending',
              'Deposit refund awaiting admin processing')`,
-          [borrowerId, ownerId, id, refundAmount],
+          [
+            borrowerId,
+            ownerId,
+            id,
+            formatAmountCents(refundAmountCents),
+          ],
         );
         refundTransactionId = refund.insertId;
       }
@@ -702,15 +756,15 @@ class BorrowRepository {
           ownerId,
           actorId: ownerId,
           action: "return_confirmed",
-          message: refundAmount > 0
+          message: refundAmountCents > 0
             ? "Return confirmed; deposit refund awaiting admin processing"
-            : depositForfeited > 0
+            : depositForfeitedCents > 0
               ? "Return confirmed; deposit was forfeited"
               : "Return confirmed; no deposit refund due",
           borrowId: id,
           details: {
-            deposit_forfeited: depositForfeited,
-            deposit_refund_pending: refundAmount,
+            deposit_forfeited: amountCentsToNumber(depositForfeitedCents),
+            deposit_refund_pending: amountCentsToNumber(refundAmountCents),
           },
         }),
         connection,
@@ -718,8 +772,8 @@ class BorrowRepository {
 
       await connection.commit();
       return {
-        deposit_forfeited: depositForfeited,
-        refund_pending: refundAmount,
+        deposit_forfeited: amountCentsToNumber(depositForfeitedCents),
+        refund_pending: amountCentsToNumber(refundAmountCents),
         refund_transaction_id: refundTransactionId,
       };
     } catch (error) {

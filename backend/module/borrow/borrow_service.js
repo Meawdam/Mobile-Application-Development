@@ -5,18 +5,49 @@ const {
   todayDateString,
   rentalDaysInclusive,
 } = require("../../utils/date_utils");
+const {
+  MAX_STORED_AMOUNT_CENTS,
+  amountCentsToNumber,
+  formatAmountCents,
+  parseAmountCents,
+} = require("../../utils/money_utils");
+
+const BORROW_AMOUNT_FIELDS = [
+  "deposit",
+  "deposit_amount",
+  "down_payment",
+  "price_per_day",
+  "rental_amount",
+  "rental_subtotal",
+  "total_amount",
+];
+
+function normalizeBorrow(borrow) {
+  if (!borrow) return borrow;
+  const normalized = { ...borrow };
+  for (const field of BORROW_AMOUNT_FIELDS) {
+    if (normalized[field] !== null && normalized[field] !== undefined) {
+      normalized[field] = Number(normalized[field]);
+    }
+  }
+  return normalized;
+}
 
 class BorrowService {
   async getAllBorrows() {
-    return await borrowsRepository.findAll();
+    return (await borrowsRepository.findAll()).map(normalizeBorrow);
   }
 
   async getMyBorrows(borrowerId) {
-    return await borrowsRepository.findByBorrowerId(borrowerId);
+    return (await borrowsRepository.findByBorrowerId(borrowerId)).map(
+      normalizeBorrow,
+    );
   }
 
   async getMyLendingBorrows(ownerId) {
-    return await borrowsRepository.findByOwnerId(ownerId);
+    return (await borrowsRepository.findByOwnerId(ownerId)).map(
+      normalizeBorrow,
+    );
   }
 
   async requestBorrow(borrowerId, { asset_id, pickup_date, return_date }) {
@@ -82,9 +113,28 @@ class BorrowService {
     }
 
     const rentalDays = rentalDaysInclusive(pickupDate, plannedReturnDate);
-    const rentalAmount = Number(asset.price) * rentalDays;
-    const depositAmount = Math.round(Number(asset.down_payment));
-    const totalAmount = rentalAmount + depositAmount;
+    const priceCents = parseAmountCents(asset.price);
+    const depositCents = parseAmountCents(asset.down_payment);
+    if (priceCents === null || depositCents === null) {
+      const err = new Error("Asset pricing is invalid");
+      err.status = 500;
+      throw err;
+    }
+    const rentalAmountCents = priceCents * rentalDays;
+    const totalAmountCents = rentalAmountCents + depositCents;
+    if (
+      !Number.isSafeInteger(rentalAmountCents) ||
+      !Number.isSafeInteger(totalAmountCents) ||
+      totalAmountCents > MAX_STORED_AMOUNT_CENTS
+    ) {
+      const err = new Error("Calculated borrow amount exceeds the supported range");
+      err.status = 400;
+      throw err;
+    }
+
+    const rentalAmount = formatAmountCents(rentalAmountCents);
+    const depositAmount = formatAmountCents(depositCents);
+    const totalAmount = formatAmountCents(totalAmountCents);
 
     const borrowId = await borrowsRepository.createBorrow({
       asset_id,
@@ -105,11 +155,11 @@ class BorrowService {
       planned_return_date: plannedReturnDate,
       rental_days: rentalDays,
       price_per_day: Number(asset.price),
-      rental_amount: rentalAmount,
-      rental_subtotal: rentalAmount,
-      deposit: depositAmount,
-      deposit_amount: depositAmount,
-      total_amount: totalAmount,
+      rental_amount: amountCentsToNumber(rentalAmountCents),
+      rental_subtotal: amountCentsToNumber(rentalAmountCents),
+      deposit: amountCentsToNumber(depositCents),
+      deposit_amount: amountCentsToNumber(depositCents),
+      total_amount: amountCentsToNumber(totalAmountCents),
       lending_end_date: lendingEndDate,
       status: "requested",
       payment_status: "unpaid",
@@ -133,7 +183,7 @@ class BorrowService {
       throw err;
     }
 
-    return borrow;
+    return normalizeBorrow(borrow);
   }
 
   async processPayment(borrowId, borrowerId) {

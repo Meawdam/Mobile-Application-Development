@@ -75,7 +75,7 @@ class AdminService {
       throw err;
     }
     const result = await adminRepository.processRefund(transactionId, adminId);
-    if (!result) {
+    if (result === null) {
       const err = new Error("Refund transaction not found");
       err.status = 404;
       throw err;
