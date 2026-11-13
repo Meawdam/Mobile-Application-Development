@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/asset_api.dart';
+import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/utils/date_utils.dart';
 
 enum AddItemResult {
@@ -16,11 +15,11 @@ enum AddItemResult {
 }
 
 class AddItemController extends ChangeNotifier {
-  AddItemController({AssetApi? assetApi, ImagePicker? picker})
-      : _assetApi = assetApi ?? AssetApi(),
+  AddItemController({List<AssetModel>? items, ImagePicker? picker})
+      : _items = items ?? <AssetModel>[],
         _picker = picker ?? ImagePicker();
 
-  final AssetApi _assetApi;
+  final List<AssetModel> _items;
   final ImagePicker _picker;
 
   Uint8List? _imageBytes;
@@ -30,6 +29,7 @@ class AddItemController extends ChangeNotifier {
   String? _error;
 
   Uint8List? get imageBytes => _imageBytes;
+  List<AssetModel> get items => List.unmodifiable(_items);
   DateTime? get lendingEndDate => _lendingEndDate;
   bool get submitting => _submitting;
   String? get error => _error;
@@ -83,12 +83,17 @@ class AddItemController extends ChangeNotifier {
       return AddItemResult.missingLendingEndDate;
     }
 
-    if (int.tryParse(trimmedPrice) == null || int.parse(trimmedPrice) < 0) {
+    final parsedPrice = int.tryParse(trimmedPrice);
+    if (parsedPrice == null ||
+        parsedPrice < 0 ||
+        parsedPrice > 2147483647) {
       return AddItemResult.invalidPrice;
     }
 
-    if (num.tryParse(trimmedDeposit) == null ||
-        num.parse(trimmedDeposit) < 0) {
+    final parsedDeposit = num.tryParse(trimmedDeposit);
+    if (parsedDeposit == null ||
+        !parsedDeposit.isFinite ||
+        parsedDeposit < 0) {
       return AddItemResult.invalidDeposit;
     }
 
@@ -96,27 +101,29 @@ class AddItemController extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    try {
-      await _assetApi.createAsset(
+    final nextId = _items.fold<int>(
+          0,
+          (maxId, item) => item.id > maxId ? item.id : maxId,
+        ) +
+        1;
+    _items.add(
+      AssetModel(
+        id: nextId,
+        ownerId: 1,
+        ownerUsername: 'Guest',
+        image: _imageName,
         name: trimmedName,
         description: trimmedDescription,
-        downPayment: trimmedDeposit,
-        price: trimmedPrice,
-        pickupPoint: trimmedPickup,
+        status: 'ready',
+        approval: 'pending',
+        downPayment: parsedDeposit,
         returnBefore: AppDateUtils.formatYmd(_lendingEndDate!),
-        imageBytes: _imageBytes!,
-        imageFilename: _imageName!,
-      );
-      return AddItemResult.success;
-    } on ApiException catch (error) {
-      _error = error.message;
-      return AddItemResult.failed;
-    } catch (_) {
-      _error = 'Unable to submit item';
-      return AddItemResult.failed;
-    } finally {
-      _submitting = false;
-      notifyListeners();
-    }
+        price: parsedPrice,
+        pickupPoint: trimmedPickup,
+      ),
+    );
+    _submitting = false;
+    notifyListeners();
+    return AddItemResult.success;
   }
 }

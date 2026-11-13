@@ -2,21 +2,17 @@ import 'package:flutter/foundation.dart';
 
 import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/model/borrow/borrow_model.dart';
-import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/asset_api.dart';
-import 'package:frontend/services/borrow_api.dart';
 import 'package:frontend/utils/date_utils.dart';
 
 class BorrowRequestController extends ChangeNotifier {
   BorrowRequestController({
-    AssetApi? assetApi,
-    BorrowApi? borrowApi,
-  })  : _assetApi = assetApi ?? AssetApi(),
-        _borrowApi = borrowApi ?? BorrowApi();
+    List<AssetModel>? assets,
+    List<BorrowModel>? borrows,
+  })  : _assets = assets ?? <AssetModel>[],
+        _borrows = borrows ?? <BorrowModel>[];
 
-  final AssetApi _assetApi;
-  final BorrowApi _borrowApi;
-
+  final List<AssetModel> _assets;
+  final List<BorrowModel> _borrows;
   AssetModel? _asset;
   bool _loading = false;
   bool _submitting = false;
@@ -30,6 +26,7 @@ class BorrowRequestController extends ChangeNotifier {
   String? get error => _error;
   DateTime? get pickupDate => _pickupDate;
   DateTime? get returnDate => _returnDate;
+  List<BorrowModel> get borrows => List.unmodifiable(_borrows);
 
   DateTime? get lendingEndDate =>
       AppDateUtils.tryParseYmd(_asset?.returnBefore);
@@ -38,7 +35,14 @@ class BorrowRequestController extends ChangeNotifier {
 
   bool get datesValid {
     final end = lendingEndDate;
-    if (_pickupDate == null || _returnDate == null || end == null) {
+    final currentAsset = _asset;
+    if (currentAsset == null ||
+        (currentAsset.status != 'available' &&
+            currentAsset.status != 'ready') ||
+        currentAsset.approval != 'approved' ||
+        _pickupDate == null ||
+        _returnDate == null ||
+        end == null) {
       return false;
     }
     if (_returnDate!.isBefore(_pickupDate!)) return false;
@@ -66,25 +70,28 @@ class BorrowRequestController extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    try {
-      _asset = await _assetApi.getAssetById(assetId);
-      _pickupDate = null;
-      _returnDate = null;
-
+    _asset = null;
+    for (final item in _assets) {
+      if (item.id == assetId) {
+        _asset = item;
+        break;
+      }
+    }
+    _pickupDate = null;
+    _returnDate = null;
+    if (_asset == null) {
+      _error = 'Item not found';
+    } else if ((_asset!.status != 'available' && _asset!.status != 'ready') ||
+        _asset!.approval != 'approved') {
+      _error = 'Item is not available for borrowing';
+    } else {
       final end = lendingEndDate;
       if (end == null || end.isBefore(earliestPickup)) {
         _error = 'This item has no valid lending end date';
       }
-    } on ApiException catch (error) {
-      _asset = null;
-      _error = error.message;
-    } catch (_) {
-      _asset = null;
-      _error = 'Unable to load item for borrow request';
-    } finally {
-      _loading = false;
-      notifyListeners();
     }
+    _loading = false;
+    notifyListeners();
   }
 
   void setPickupDate(DateTime date) {
@@ -138,22 +145,33 @@ class BorrowRequestController extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    try {
-      final borrow = await _borrowApi.requestBorrow(
-        assetId: _asset!.id,
-        pickupDate: AppDateUtils.formatYmd(_pickupDate!),
-        returnDate: AppDateUtils.formatYmd(_returnDate!),
-      );
-      return borrow;
-    } on ApiException catch (error) {
-      _error = error.message;
-      return null;
-    } catch (_) {
-      _error = 'Unable to submit borrow request';
-      return null;
-    } finally {
-      _submitting = false;
-      notifyListeners();
-    }
+    final asset = _asset!;
+    final nextId = _borrows.fold<int>(
+          0,
+          (maxId, item) => item.id > maxId ? item.id : maxId,
+        ) +
+        1;
+    final borrow = BorrowModel(
+      id: nextId,
+      assetId: asset.id,
+      assetName: asset.name,
+      ownerName: asset.ownerUsername,
+      borrowerName: 'Guest',
+      pickupPoint: asset.pickupPoint,
+      pickupDate: AppDateUtils.formatYmd(_pickupDate!),
+      plannedReturnDate: AppDateUtils.formatYmd(_returnDate!),
+      rentalDays: rentalDayCount,
+      lendingEndDate: asset.returnBefore,
+      pricePerDay: asset.price,
+      rentalSubtotal: rentalSubtotal,
+      deposit: deposit,
+      totalAmount: total,
+      status: 'requested',
+      paymentStatus: 'unpaid',
+    );
+    _borrows.add(borrow);
+    _submitting = false;
+    notifyListeners();
+    return borrow;
   }
 }

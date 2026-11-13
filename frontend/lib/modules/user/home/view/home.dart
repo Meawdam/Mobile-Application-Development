@@ -41,6 +41,11 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
   }
 
+  Future<void> _addItem() async {
+    await Navigator.pushNamed(context, '/add-item');
+    await _controller.loadItems();
+  }
+
   void _openItem(AssetModel asset) {
     Navigator.pushNamed(
       context,
@@ -126,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 4),
                   IconButton.filled(
                     tooltip: 'Add item',
-                    onPressed: () => Navigator.pushNamed(context, '/add-item'),
+                    onPressed: _addItem,
                     icon: const Icon(Icons.add),
                   ),
                 ],
