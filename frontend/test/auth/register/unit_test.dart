@@ -1,102 +1,57 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frontend/model/user/user_model.dart';
 import 'package:frontend/modules/auth/register/controller/register_controller.dart';
-import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/auth_api.dart';
-
-class _FakeAuthApi extends AuthApi {
-  final Set<String> existingEmails = {'user@example.com'};
-  final Set<String> existingUsernames = {'test_user'};
-
-  @override
-  Future<UserModel> register({
-    required String username,
-    required String email,
-    required String password,
-    required String phoneNum,
-  }) async {
-    if (existingEmails.contains(email.toLowerCase())) {
-      throw const ApiException(400, 'Email is already taken');
-    }
-    if (existingUsernames.contains(username)) {
-      throw const ApiException(400, 'Username is already taken');
-    }
-
-    existingEmails.add(email.toLowerCase());
-    existingUsernames.add(username);
-    return UserModel(
-      id: 99,
-      username: username,
-      phoneNumber: phoneNum,
-      email: email,
-      role: 'user',
-    );
-  }
-}
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 void main() {
-  test('1. creates a user account successfully', () async {
-    final controller = RegisterController(authApi: _FakeAuthApi());
-    final result = await controller.register(
-      username: ' Test User ',
-      phoneNumber: ' 0800000003 ',
-      email: ' REGISTER-CONTROLLER-TEST@example.com ',
-      password: 'newuser123',
-      confirmPassword: 'newuser123',
+  test('sends registration fields to the backend', () async {
+    final success = await http.runWithClient(
+      () => RegisterController().register(
+        ' Test User ',
+        ' 0800000003 ',
+        ' NEW@EXAMPLE.COM ',
+        'newuser123',
+      ),
+      () => MockClient((request) async {
+        expect(request.url.path, '/api/auth/register');
+        expect(request.method, 'POST');
+        expect(jsonDecode(request.body), {
+          'username': 'Test User',
+          'phone_num': '0800000003',
+          'email': 'new@example.com',
+          'password': 'newuser123',
+        });
+        return http.Response('', 201);
+      }),
     );
 
-    expect(result, RegisterResult.success);
+    expect(success, isTrue);
   });
 
-  test('2. rejects a registered email regardless of case', () async {
-    final controller = RegisterController(authApi: _FakeAuthApi());
-    final result = await controller.register(
-      username: 'Another User',
-      phoneNumber: '0800000004',
-      email: ' USER@EXAMPLE.COM ',
-      password: 'newuser123',
-      confirmPassword: 'newuser123',
+  test('does not send a request when a required field is empty', () async {
+    final controller = RegisterController();
+    final results = await http.runWithClient(
+      () async => [
+        await controller.register(
+          '',
+          '0800000003',
+          'user@example.com',
+          'password123',
+        ),
+        await controller.register(
+          'User',
+          '',
+          'user@example.com',
+          'password123',
+        ),
+        await controller.register('User', '0800000003', ' ', 'password123'),
+        await controller.register('User', '0800000003', 'user@example.com', ''),
+      ],
+      () => MockClient((_) async => throw StateError('unexpected request')),
     );
 
-    expect(result, RegisterResult.emailAlreadyExists);
-  });
-
-  test('3. rejects missing fields', () async {
-    final controller = RegisterController(authApi: _FakeAuthApi());
-    final result = await controller.register(
-      username: 'New User',
-      phoneNumber: '0800000005',
-      email: 'register-controller-test@example.com',
-      password: '',
-      confirmPassword: '',
-    );
-
-    expect(result, RegisterResult.missingFields);
-  });
-
-  test('4. rejects passwords shorter than eight characters', () async {
-    final controller = RegisterController(authApi: _FakeAuthApi());
-    final result = await controller.register(
-      username: 'New User',
-      phoneNumber: '0800000005',
-      email: 'register-controller-test@example.com',
-      password: 'short',
-      confirmPassword: 'short',
-    );
-
-    expect(result, RegisterResult.passwordTooShort);
-  });
-
-  test('5. rejects passwords that do not match', () async {
-    final controller = RegisterController(authApi: _FakeAuthApi());
-    final result = await controller.register(
-      username: 'New User',
-      phoneNumber: '0800000005',
-      email: 'register-controller-test@example.com',
-      password: 'newuser123',
-      confirmPassword: 'different123',
-    );
-
-    expect(result, RegisterResult.passwordMismatch);
+    expect(results, [false, false, false, false]);
   });
 }
