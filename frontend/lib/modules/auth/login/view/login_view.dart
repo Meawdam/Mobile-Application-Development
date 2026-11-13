@@ -19,21 +19,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _submitting = true);
     try {
-      final user = await _loginController.login(
+      final role = await _loginController.login(
         _emailController.text,
         _passwordController.text,
       );
 
       if (!mounted) return;
 
-      if (user == null) {
+      if (role == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid email or password')),
         );
         return;
       }
 
-      final route = switch (user.role) {
+      final route = switch (role) {
         'admin' => '/admin',
         'user' => '/home',
         _ => null,
@@ -41,26 +41,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (route == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('This account has an unsupported role'),
-          ),
+          const SnackBar(content: Text('This account has an unsupported role')),
         );
         return;
       }
 
       Navigator.of(context).pushNamedAndRemoveUntil(route, (_) => false);
+    } on Exception catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 
   @override

@@ -20,59 +20,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _register() async {
     if (_submitting) return;
 
+    final username = _usernameController.text.trim();
+    final phoneNumber = _phoneNumberController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    String? validationMessage;
+    if (username.isEmpty ||
+        phoneNumber.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
+      validationMessage = 'Please complete all fields';
+    } else if (phoneNumber.length > 10) {
+      validationMessage = 'Phone number must be 10 characters or fewer';
+    } else if (password.length < 8) {
+      validationMessage = 'Password must be at least 8 characters';
+    } else if (password != confirmPassword) {
+      validationMessage = 'Passwords do not match';
+    }
+
+    if (validationMessage != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(validationMessage)));
+      return;
+    }
+
     setState(() => _submitting = true);
     try {
-      final result = await _registerController.register(
-        username: _usernameController.text,
-        phoneNumber: _phoneNumberController.text,
-        email: _emailController.text,
-        password: _passwordController.text,
-        confirmPassword: _confirmPasswordController.text,
+      final success = await _registerController.register(
+        username,
+        phoneNumber,
+        email,
+        password,
       );
 
       if (!mounted) return;
 
-      if (result == RegisterResult.success) {
+      if (success) {
+        final messenger = ScaffoldMessenger.of(context);
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created. You can now log in.'),
-          ),
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Account created. You can now log in.')),
         );
         return;
       }
 
-      final message = switch (result) {
-        RegisterResult.success => '',
-        RegisterResult.missingFields => 'Please complete all fields',
-        RegisterResult.passwordTooShort =>
-          'Password must be at least 8 characters',
-        RegisterResult.passwordMismatch => 'Passwords do not match',
-        RegisterResult.emailAlreadyExists =>
-          'This email is already registered',
-        RegisterResult.usernameAlreadyExists =>
-          'This username is already taken',
-        RegisterResult.failed =>
-          'Unable to create account. Please try again.',
-      };
-
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to create account. Email or username may already be in use.',
+          ),
+        ),
+      );
+    } on Exception catch (error) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _phoneNumberController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    super.dispose();
   }
 
   @override
