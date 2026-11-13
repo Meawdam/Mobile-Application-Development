@@ -65,12 +65,8 @@
  *           example: requested
  *         payment_status:
  *           type: string
- *           enum: [unpaid, paid, refunded]
+ *           enum: [unpaid, paid, refunded, forfeited]
  *           example: unpaid
- *         fine_amount:
- *           type: integer
- *           description: Stored late-return fine, calculated as asset price per overdue day
- *           example: 100
  *     BorrowListResponse:
  *       type: object
  *       properties:
@@ -345,7 +341,7 @@
  *           type: integer
  *     responses:
  *       200:
- *         description: Return confirmed, refund queued for admin processing, fine calculated, and asset made available
+ *         description: Return confirmed; the deposit is refunded after admin processing or forfeited to the owner if the return deadline passed
  *         content:
  *           application/json:
  *             schema:
@@ -353,7 +349,7 @@
  *               properties:
  *                 message:
  *                   type: string
- *                 fine_amount:
+ *                 deposit_forfeited:
  *                   type: integer
  *                 refund_pending:
  *                   type: integer

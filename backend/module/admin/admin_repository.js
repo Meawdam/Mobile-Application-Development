@@ -32,18 +32,11 @@ class AdminRepository {
           THEN amount ELSE 0 END), 0) AS processed_refunds,
         COALESCE(SUM(CASE
           WHEN transaction_type = 'deposit_refund' AND status = 'pending'
-          THEN 1 ELSE 0 END), 0) AS pending_refunds
+          THEN 1 ELSE 0 END), 0) AS pending_refunds,
+        COALESCE(SUM(CASE
+          WHEN transaction_type = 'deposit_forfeiture' AND status = 'completed'
+          THEN amount ELSE 0 END), 0) AS forfeited_deposits
        FROM financial_transactions`,
-    );
-    const [fines] = await db.query(
-      `SELECT COALESCE(SUM(
-          GREATEST(DATEDIFF(CURRENT_DATE(), a.return_before), 0) * a.price
-        ), 0) AS pending_fines
-       FROM borrow b
-       JOIN asset a ON a.id = b.asset_id
-       WHERE b.status IN ('borrowed', 'returned_pending')
-         AND b.payment_status = 'paid'
-         AND a.return_before < CURRENT_DATE()`,
     );
 
     return {
@@ -60,9 +53,9 @@ class AdminRepository {
       finance: {
         collected_revenue: Number(finance[0].collected_revenue),
         held_deposits: Number(finance[0].held_deposits),
-        pending_fines: Number(fines[0].pending_fines),
         processed_refunds: Number(finance[0].processed_refunds),
         pending_refunds: Number(finance[0].pending_refunds),
+        forfeited_deposits: Number(finance[0].forfeited_deposits),
       },
     };
   }

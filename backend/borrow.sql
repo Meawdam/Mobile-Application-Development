@@ -62,8 +62,7 @@ CREATE TABLE `borrow` (
   `borrow_date` datetime DEFAULT NULL,
   `return_date` datetime DEFAULT NULL,
   `status` enum('requested','approved','borrowed','returned_pending','returned_confirmed','rejected') DEFAULT 'requested',
-  `payment_status` enum('unpaid','paid','refunded') DEFAULT 'unpaid',
-  `fine_amount` int(11) NOT NULL,
+  `payment_status` enum('unpaid','paid','refunded','forfeited') DEFAULT 'unpaid',
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -176,7 +175,7 @@ CREATE TABLE `financial_transactions` (
     'wallet_top_up',
     'rental_payment',
     'deposit_hold',
-    'fine_collected',
+    'deposit_forfeiture',
     'deposit_refund'
   ) NOT NULL,
   `amount` int(11) NOT NULL,
@@ -228,39 +227,45 @@ SELECT b.borrower_id, b.borrower_id, b.id, 'rental_payment',
   b.rental_amount, 'completed', 'Rental payment (schema import)',
   b.created_at, b.created_at
 FROM `borrow` b
-WHERE b.payment_status IN ('paid', 'refunded');
+WHERE b.payment_status IN ('paid', 'refunded', 'forfeited');
 
 INSERT INTO `financial_transactions`
   (`user_id`, `actor_id`, `borrow_id`, `transaction_type`, `amount`, `status`,
    `description`, `created_at`, `processed_at`)
 SELECT b.borrower_id, b.borrower_id, b.id, 'deposit_hold',
   b.deposit_amount,
-  IF(b.status = 'returned_confirmed' AND b.payment_status = 'refunded',
+  IF(b.payment_status IN ('refunded', 'forfeited'),
     'released', 'pending'),
   'Deposit held (schema import)', b.created_at,
-  IF(b.status = 'returned_confirmed' AND b.payment_status = 'refunded',
-    b.return_date, NULL)
+  IF(b.payment_status = 'refunded',
+    b.return_date,
+    IF(b.payment_status = 'forfeited',
+      COALESCE(b.return_date, DATE_ADD(b.planned_return_date, INTERVAL 1 DAY)),
+      NULL))
 FROM `borrow` b
-WHERE b.payment_status IN ('paid', 'refunded');
+WHERE b.payment_status IN ('paid', 'refunded', 'forfeited');
 
 INSERT INTO `financial_transactions`
   (`user_id`, `borrow_id`, `transaction_type`, `amount`, `status`,
    `description`, `created_at`, `processed_at`)
-SELECT b.borrower_id, b.id, 'fine_collected', b.fine_amount, 'completed',
-  'Late return fine (schema import)', b.return_date, b.return_date
+SELECT a.owner_id, b.id, 'deposit_forfeiture', b.deposit_amount, 'completed',
+  'Deposit forfeited and credited to asset owner (schema import)',
+  COALESCE(b.return_date, DATE_ADD(b.planned_return_date, INTERVAL 1 DAY)),
+  COALESCE(b.return_date, DATE_ADD(b.planned_return_date, INTERVAL 1 DAY))
 FROM `borrow` b
-WHERE b.payment_status = 'refunded' AND b.fine_amount > 0;
+JOIN `asset` a ON a.id = b.asset_id
+WHERE b.payment_status = 'forfeited';
 
 INSERT INTO `financial_transactions`
   (`user_id`, `borrow_id`, `transaction_type`, `amount`, `status`,
    `description`, `created_at`, `processed_at`)
 SELECT b.borrower_id, b.id, 'deposit_refund',
-  GREATEST(b.deposit_amount - b.fine_amount, 0), 'completed',
+  b.deposit_amount, 'completed',
   'Deposit refund (schema import)', b.return_date, b.return_date
 FROM `borrow` b
 WHERE b.status = 'returned_confirmed'
   AND b.payment_status = 'refunded'
-  AND b.deposit_amount > b.fine_amount;
+  AND b.deposit_amount > 0;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

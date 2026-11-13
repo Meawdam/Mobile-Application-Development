@@ -4,6 +4,7 @@ const path = require("node:path");
 const swaggerUi = require("swagger-ui-express");
 const openApiSpecification = require("./swagger");
 const db = require("./db_config");
+const startDepositForfeitureScheduler = require("./module/borrow/deposit_forfeiture_scheduler");
 
 const app = express();
 
@@ -46,6 +47,7 @@ async function startServer() {
   }
 
   app.listen(PORT, () => {
+    startDepositForfeitureScheduler();
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`Swagger UI running on http://localhost:${PORT}/api-docs`);
   });

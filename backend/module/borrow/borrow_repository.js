@@ -11,7 +11,6 @@ class BorrowRepository {
         b.id, b.pickup_date, b.planned_return_date, b.rental_days,
         b.rental_amount, b.deposit_amount, b.total_amount,
         b.borrow_date, b.return_date, b.status, b.payment_status,
-        b.fine_amount,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
         a.down_payment, a.price AS price_per_day, a.return_before AS lending_end_date,
         a.pickup_point,
@@ -33,7 +32,6 @@ class BorrowRepository {
         b.id, b.pickup_date, b.planned_return_date, b.rental_days,
         b.rental_amount, b.deposit_amount, b.total_amount,
         b.borrow_date, b.return_date, b.status, b.payment_status,
-        b.fine_amount,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
         a.description, a.down_payment, a.price AS price_per_day,
         a.return_before AS lending_end_date, a.pickup_point,
@@ -58,7 +56,6 @@ class BorrowRepository {
         b.id, b.pickup_date, b.planned_return_date, b.rental_days,
         b.rental_amount, b.deposit_amount, b.total_amount,
         b.borrow_date, b.return_date, b.status, b.payment_status,
-        b.fine_amount,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
         a.description, a.down_payment, a.price AS price_per_day,
         a.return_before AS lending_end_date, a.pickup_point,
@@ -82,7 +79,7 @@ class BorrowRepository {
       SELECT b.*, a.owner_id, a.return_before, a.name AS asset_name,
         a.image AS asset_image, a.pickup_point, a.price AS price_per_day,
         a.return_before AS lending_end_date,
-        a.return_before < CURRENT_DATE() AS return_before_passed,
+        b.planned_return_date < CURRENT_DATE() AS return_deadline_passed,
         owner.username AS owner_name,
         borrower.username AS borrower_name
       FROM borrow b
@@ -141,8 +138,8 @@ class BorrowRepository {
         `INSERT INTO borrow (
           asset_id, borrower_id, pickup_date, planned_return_date, rental_days,
           rental_amount, deposit_amount, total_amount,
-          borrow_date, status, payment_status, fine_amount
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'requested', 'unpaid', 0)`,
+          borrow_date, status, payment_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 'requested', 'unpaid')`,
         [
           asset_id,
           borrower_id,
@@ -416,10 +413,168 @@ class BorrowRepository {
     }
   }
 
-  async markReturnPending(id, borrowerId, ownerId) {
+  async _forfeitDeposit(connection, borrow) {
+    if (
+      borrow.payment_status !== "paid" ||
+      !["borrowed", "returned_pending"].includes(borrow.status)
+    ) {
+      return false;
+    }
+
+    const [holds] = await connection.query(
+      `SELECT id, amount FROM financial_transactions
+       WHERE borrow_id = ? AND transaction_type = 'deposit_hold'
+         AND status = 'pending'
+       FOR UPDATE`,
+      [borrow.id],
+    );
+    if (holds.length === 0) {
+      throw new Error(`Pending deposit hold missing for borrow ${borrow.id}`);
+    }
+
+    const amount = Number(holds[0].amount);
+    if (amount !== Number(borrow.deposit_amount)) {
+      throw new Error(`Deposit amount mismatch for borrow ${borrow.id}`);
+    }
+
+    const [updatedBorrow] = await connection.query(
+      `UPDATE borrow SET payment_status = 'forfeited'
+       WHERE id = ? AND payment_status = 'paid'
+         AND status IN ('borrowed', 'returned_pending')`,
+      [borrow.id],
+    );
+    if (updatedBorrow.affectedRows === 0) {
+      return false;
+    }
+
+    const ownerId = Number(borrow.owner_id);
+    const [owners] = await connection.query(
+      "SELECT id FROM users WHERE id = ? FOR UPDATE",
+      [ownerId],
+    );
+    if (owners.length === 0) {
+      throw new Error(`Asset owner missing for borrow ${borrow.id}`);
+    }
+
+    await connection.query(
+      "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?",
+      [amount, ownerId],
+    );
+    const [releasedHold] = await connection.query(
+      `UPDATE financial_transactions
+       SET status = 'released', processed_at = NOW()
+       WHERE id = ? AND status = 'pending'`,
+      [holds[0].id],
+    );
+    if (releasedHold.affectedRows === 0) {
+      throw new Error(`Deposit hold changed for borrow ${borrow.id}`);
+    }
+
+    await connection.query(
+      `INSERT INTO financial_transactions
+        (user_id, borrow_id, transaction_type, amount, status,
+         description, processed_at)
+       VALUES (?, ?, 'deposit_forfeiture', ?, 'completed',
+         'Deposit forfeited and credited to asset owner', NOW())`,
+      [ownerId, borrow.id, amount],
+    );
+    await logActivities(
+      [
+        {
+          userId: Number(borrow.borrower_id),
+          category: "finance",
+          action: "deposit_forfeited",
+          entityType: "borrow",
+          entityId: Number(borrow.id),
+          message: "Deposit forfeited after the return deadline",
+          details: { amount, owner_id: ownerId },
+        },
+        {
+          userId: ownerId,
+          category: "finance",
+          action: "deposit_forfeited",
+          entityType: "borrow",
+          entityId: Number(borrow.id),
+          message: "Overdue deposit credited to asset owner",
+          details: { amount, borrower_id: Number(borrow.borrower_id) },
+        },
+      ],
+      connection,
+    );
+    return true;
+  }
+
+  async forfeitOverdueDeposits() {
+    let totalForfeited = 0;
+    const batchSize = 100;
+
+    while (true) {
+      const connection = await db.getConnection();
+      try {
+        await connection.beginTransaction();
+        const [borrows] = await connection.query(
+          `SELECT b.id, b.borrower_id, b.deposit_amount, b.status,
+             b.payment_status, a.owner_id
+           FROM borrow b
+           JOIN asset a ON a.id = b.asset_id
+           WHERE b.payment_status = 'paid'
+             AND b.status IN ('borrowed', 'returned_pending')
+             AND b.planned_return_date < CURRENT_DATE()
+           ORDER BY b.id
+           LIMIT ?
+           FOR UPDATE`,
+          [batchSize],
+        );
+
+        for (const borrow of borrows) {
+          if (await this._forfeitDeposit(connection, borrow)) {
+            totalForfeited += 1;
+          }
+        }
+        await connection.commit();
+        if (borrows.length < batchSize) {
+          return totalForfeited;
+        }
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
+    }
+  }
+
+  async markReturnPending(id, borrowerId) {
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
+      const [borrows] = await connection.query(
+        `SELECT b.id, b.borrower_id, b.deposit_amount, b.status,
+          b.payment_status, b.planned_return_date,
+          b.planned_return_date < CURRENT_DATE() AS return_deadline_passed,
+          a.owner_id
+         FROM borrow b
+         JOIN asset a ON a.id = b.asset_id
+         WHERE b.id = ? AND b.borrower_id = ?
+         FOR UPDATE`,
+        [id, borrowerId],
+      );
+      if (borrows.length === 0 || borrows[0].status !== "borrowed") {
+        await connection.rollback();
+        return false;
+      }
+
+      const borrow = borrows[0];
+      let paymentStatus = borrow.payment_status;
+      if (borrow.return_deadline_passed && borrow.payment_status === "paid") {
+        const forfeited = await this._forfeitDeposit(connection, borrow);
+        if (!forfeited) {
+          await connection.rollback();
+          return false;
+        }
+        paymentStatus = "forfeited";
+      }
+
       const [result] = await connection.query(
         `UPDATE borrow SET status = 'returned_pending'
          WHERE id = ? AND borrower_id = ? AND status = 'borrowed'`,
@@ -432,7 +587,7 @@ class BorrowRepository {
       await logActivities(
         borrowActivityEntries({
           borrowerId,
-          ownerId,
+          ownerId: Number(borrow.owner_id),
           actorId: borrowerId,
           action: "return_requested",
           message: "Return requested",
@@ -441,7 +596,7 @@ class BorrowRepository {
         connection,
       );
       await connection.commit();
-      return true;
+      return { payment_status: paymentStatus };
     } catch (error) {
       await connection.rollback();
       throw error;
@@ -454,39 +609,54 @@ class BorrowRepository {
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
-      const [assets] = await connection.query(
-        `SELECT id, GREATEST(DATEDIFF(CURRENT_DATE(), return_before), 0) * price
-           AS fine_amount
-         FROM asset WHERE id = ? AND status = 'borrowed' FOR UPDATE`,
-        [assetId],
+      const [borrows] = await connection.query(
+        `SELECT b.id, b.borrower_id, b.deposit_amount, b.status,
+          b.payment_status, b.planned_return_date,
+          b.planned_return_date < CURRENT_DATE() AS return_deadline_passed,
+          a.owner_id, a.status AS asset_status
+         FROM borrow b
+         JOIN asset a ON a.id = b.asset_id
+         WHERE b.id = ? AND b.asset_id = ?
+         FOR UPDATE`,
+        [id, assetId],
       );
-      if (assets.length === 0) {
+      if (borrows.length === 0 || borrows[0].asset_status !== "borrowed") {
         const err = new Error("Borrowed asset is no longer available");
         err.status = 409;
         throw err;
       }
 
-      const [borrows] = await connection.query(
-        `SELECT id, borrower_id, deposit_amount, status
-         FROM borrow WHERE id = ? FOR UPDATE`,
-        [id],
-      );
-      if (borrows.length === 0 || borrows[0].status !== "returned_pending") {
+      const borrow = borrows[0];
+      if (borrow.status !== "returned_pending") {
         await connection.rollback();
         return false;
       }
 
-      const fineAmount = Number(assets[0].fine_amount);
-      const depositAmount = Number(borrows[0].deposit_amount);
-      const refundAmount = Math.max(depositAmount - fineAmount, 0);
+      if (borrow.return_deadline_passed && borrow.payment_status === "paid") {
+        const forfeited = await this._forfeitDeposit(connection, borrow);
+        if (!forfeited) {
+          await connection.rollback();
+          return false;
+        }
+        borrow.payment_status = "forfeited";
+      }
+
+      const depositAmount = Number(borrow.deposit_amount);
+      const depositForfeited =
+        borrow.payment_status === "forfeited" ? depositAmount : 0;
+      const refundAmount =
+        borrow.payment_status === "paid" ? depositAmount : 0;
+      const nextPaymentStatus =
+        refundAmount === 0 && borrow.payment_status === "paid"
+          ? "refunded"
+          : borrow.payment_status;
 
       const [borrowResult] = await connection.query(
         `UPDATE borrow
-         SET status = 'returned_confirmed',
-             payment_status = IF(? = 0, 'refunded', payment_status),
-             return_date = NOW(), fine_amount = ?
+         SET status = 'returned_confirmed', payment_status = ?,
+             return_date = NOW()
          WHERE id = ? AND status = 'returned_pending'`,
-        [refundAmount, fineAmount, id],
+        [nextPaymentStatus, id],
       );
       if (borrowResult.affectedRows === 0) {
         await connection.rollback();
@@ -503,23 +673,13 @@ class BorrowRepository {
         throw err;
       }
 
-      if (refundAmount === 0) {
+      if (refundAmount === 0 && depositForfeited === 0) {
         await connection.query(
           `UPDATE financial_transactions
            SET status = 'released', processed_at = NOW()
            WHERE borrow_id = ? AND transaction_type = 'deposit_hold'
              AND status = 'pending'`,
           [id],
-        );
-      }
-      if (fineAmount > 0) {
-        await connection.query(
-          `INSERT INTO financial_transactions
-            (user_id, actor_id, borrow_id, transaction_type, amount, status,
-             description, processed_at)
-           VALUES (?, ?, ?, 'fine_collected', ?, 'completed',
-             'Late return fine', NOW())`,
-          [borrowerId, ownerId, id, fineAmount],
         );
       }
 
@@ -543,11 +703,13 @@ class BorrowRepository {
           actorId: ownerId,
           action: "return_confirmed",
           message: refundAmount > 0
-            ? "Return confirmed; refund awaiting admin processing"
-            : "Return confirmed; no deposit refund due",
+            ? "Return confirmed; deposit refund awaiting admin processing"
+            : depositForfeited > 0
+              ? "Return confirmed; deposit was forfeited"
+              : "Return confirmed; no deposit refund due",
           borrowId: id,
           details: {
-            fine_amount: fineAmount,
+            deposit_forfeited: depositForfeited,
             deposit_refund_pending: refundAmount,
           },
         }),
@@ -556,8 +718,7 @@ class BorrowRepository {
 
       await connection.commit();
       return {
-        fine_amount: fineAmount,
-        deposit_refunded: 0,
+        deposit_forfeited: depositForfeited,
         refund_pending: refundAmount,
         refund_transaction_id: refundTransactionId,
       };

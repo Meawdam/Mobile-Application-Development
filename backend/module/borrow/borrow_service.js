@@ -313,7 +313,6 @@ class BorrowService {
     const updated = await borrowsRepository.markReturnPending(
       borrowId,
       borrowerId,
-      borrow.owner_id,
     );
     if (!updated) {
       const err = new Error("Borrow is no longer eligible for return");
@@ -322,8 +321,8 @@ class BorrowService {
     }
 
     return {
-      message: borrow.return_before_passed
-        ? "Return request submitted after the return-by date; waiting for owner confirmation"
+      message: updated.payment_status === "forfeited"
+        ? "Return request submitted after the deadline; the deposit was forfeited"
         : "Return request submitted, waiting for owner confirmation",
     };
   }
@@ -371,11 +370,12 @@ class BorrowService {
     }
 
     return {
-      message: result.refund_pending > 0
-        ? "Return confirmed; refund is awaiting admin processing"
-        : "Return confirmed and asset is now ready for borrowing again",
-      fine_amount: result.fine_amount,
-      deposit_refunded: result.deposit_refunded,
+      message: result.deposit_forfeited > 0
+        ? "Return confirmed; the deposit was forfeited"
+        : result.refund_pending > 0
+          ? "Return confirmed; deposit refund is awaiting admin processing"
+          : "Return confirmed and asset is now ready for borrowing again",
+      deposit_forfeited: result.deposit_forfeited,
       refund_pending: result.refund_pending,
       refund_transaction_id: result.refund_transaction_id,
     };

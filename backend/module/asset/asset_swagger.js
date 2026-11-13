@@ -29,7 +29,7 @@
  *           example: 250
  *         price:
  *           type: integer
- *           description: Daily late-return fine in the same currency
+ *           description: Daily rental price in the same currency
  *           example: 100
  *         pickup_point:
  *           type: string
@@ -129,7 +129,7 @@
  *               price:
  *                 type: integer
  *                 minimum: 0
- *                 description: Daily late-return fine
+ *                 description: Daily rental price
  *                 example: 100
  *               pickup_point:
  *                 type: string

@@ -16,7 +16,7 @@ class userRepository {
                JOIN asset a ON a.id = b.asset_id
                WHERE (b.borrower_id = u.id OR a.owner_id = u.id)
                  AND b.status IN ('borrowed', 'returned_pending')
-                 AND a.return_before < CURRENT_DATE()) AS overdue
+                 AND b.planned_return_date < CURRENT_DATE()) AS overdue
              FROM users u
              ORDER BY u.id`
         );
@@ -37,7 +37,7 @@ class userRepository {
                JOIN asset a ON a.id = b.asset_id
                WHERE (b.borrower_id = u.id OR a.owner_id = u.id)
                  AND b.status IN ('borrowed', 'returned_pending')
-                 AND a.return_before < CURRENT_DATE()) AS overdue
+                 AND b.planned_return_date < CURRENT_DATE()) AS overdue
              FROM users u WHERE u.id = ?`,
             [id]
         );

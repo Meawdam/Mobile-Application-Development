@@ -4,7 +4,7 @@ const transactionTypes = new Set([
   "wallet_top_up",
   "rental_payment",
   "deposit_hold",
-  "fine_collected",
+  "deposit_forfeiture",
   "deposit_refund",
 ]);
 const transactionStatuses = new Set(["pending", "completed", "released"]);

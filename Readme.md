@@ -92,7 +92,11 @@ Wallet payments use `users.wallet_balance` and borrow amount snapshots
 (`rental_amount`, `deposit_amount`, `total_amount`) from
 `backend/migrations/20261112_add_wallet_and_payment_amounts.sql`.
 `POST /api/borrows/:id/pay` deducts `total_amount` from the wallet.
-`PATCH /api/borrows/:id/confirm-return` refunds `deposit_amount - fine_amount`.
+After the day in `planned_return_date` passes, any borrow that is not confirmed
+returned has its full deposit automatically transferred to the asset owner's
+wallet. This also applies while a return request is waiting for owner
+confirmation. On-time returns remain eligible for the existing admin-processed
+deposit refund.
 
 The configured database account does not have permission to alter tables, so
 schema migrations must be applied using a database account with `ALTER TABLE`
@@ -100,8 +104,8 @@ privileges.
 
 Login uses an email address (`POST /api/auth/login` with `email` and `password`).
 Asset listings support `GET /api/assets?q=search-term`, matching the asset name,
-description, and pickup point. A return confirmed after the asset's
-`return_before` date stores a fine equal to `price` for each overdue calendar
-day and returns the amount as `fine_amount`.
+description, and pickup point. `return_before` is the asset owner's lending
+window; the borrower's `planned_return_date` is the return deadline used for
+deposit forfeiture.
 
 Run backend tests from the `backend` directory with `npm test`.
