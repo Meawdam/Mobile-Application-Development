@@ -1,16 +1,12 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:frontend/model/borrow/borrow_model.dart';
-import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/borrow_api.dart';
 
 class MyBorrowedController extends ChangeNotifier {
-  MyBorrowedController({BorrowApi? borrowApi})
-      : _borrowApi = borrowApi ?? BorrowApi();
+  MyBorrowedController({List<BorrowModel>? initialItems})
+      : items = List.of(initialItems ?? const []);
 
-  final BorrowApi _borrowApi;
-
-  List<BorrowModel> items = const [];
+  List<BorrowModel> items;
   bool loading = false;
   String? error;
 
@@ -41,41 +37,31 @@ class MyBorrowedController extends ChangeNotifier {
     loading = true;
     error = null;
     notifyListeners();
-    try {
-      items = await _borrowApi.getMyBorrows();
-    } on ApiException catch (e) {
-      error = e.message;
-      items = const [];
-    } catch (_) {
-      error = 'Unable to load borrowed items';
-      items = const [];
-    } finally {
-      loading = false;
-      notifyListeners();
-    }
+    loading = false;
+    notifyListeners();
   }
 
   Future<String?> cancel(int borrowId) async {
-    try {
-      await _borrowApi.cancel(borrowId);
-      await load();
-      return null;
-    } on ApiException catch (e) {
-      return e.message;
-    } catch (_) {
-      return 'Unable to cancel request';
+    final index = items.indexWhere((item) => item.id == borrowId);
+    if (index == -1) return 'Borrow not found';
+    final borrow = items[index];
+    final canCancel = borrow.status == 'requested' ||
+        (borrow.status == 'approved' && borrow.paymentStatus == 'unpaid');
+    if (!canCancel) {
+      return 'Only pending requests can be cancelled';
     }
+    items.removeAt(index);
+    await load();
+    return null;
   }
 
   Future<String?> requestReturn(int borrowId) async {
-    try {
-      await _borrowApi.requestReturn(borrowId);
-      await load();
-      return null;
-    } on ApiException catch (e) {
-      return e.message;
-    } catch (_) {
-      return 'Unable to request return';
-    }
+    final index = items.indexWhere((item) => item.id == borrowId);
+    if (index == -1) return 'Borrow not found';
+    final borrow = items[index];
+    if (borrow.status != 'borrowed') return 'Borrow is not active';
+    items[index] = borrow.copyWith(status: 'returned_pending');
+    await load();
+    return null;
   }
 }

@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:frontend/model/asset/asset_model.dart';
-import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/asset_api.dart';
 import 'package:frontend/utils/date_utils.dart';
 
 enum EditItemResult {
@@ -15,11 +13,10 @@ enum EditItemResult {
 }
 
 class EditItemController extends ChangeNotifier {
-  EditItemController({AssetApi? assetApi})
-      : _assetApi = assetApi ?? AssetApi();
+  EditItemController({List<AssetModel>? items})
+      : _items = items ?? <AssetModel>[];
 
-  final AssetApi _assetApi;
-
+  final List<AssetModel> _items;
   AssetModel? asset;
   DateTime? lendingEndDate;
   bool loading = false;
@@ -30,19 +27,17 @@ class EditItemController extends ChangeNotifier {
     loading = true;
     error = null;
     notifyListeners();
-    try {
-      asset = await _assetApi.getAssetById(assetId);
-      lendingEndDate = AppDateUtils.tryParseYmd(asset?.returnBefore);
-    } on ApiException catch (e) {
-      asset = null;
-      error = e.message;
-    } catch (_) {
-      asset = null;
-      error = 'Unable to load item';
-    } finally {
-      loading = false;
-      notifyListeners();
+    asset = null;
+    for (final item in _items) {
+      if (item.id == assetId) {
+        asset = item;
+        break;
+      }
     }
+    lendingEndDate = AppDateUtils.tryParseYmd(asset?.returnBefore);
+    if (asset == null) error = 'Item not found';
+    loading = false;
+    notifyListeners();
   }
 
   void setLendingEndDate(DateTime date) {
@@ -76,37 +71,50 @@ class EditItemController extends ChangeNotifier {
     if (lendingEndDate == null) {
       return EditItemResult.missingLendingEndDate;
     }
-    if (int.tryParse(trimmedPrice) == null || int.parse(trimmedPrice) < 0) {
+    final parsedPrice = int.tryParse(trimmedPrice);
+    if (parsedPrice == null ||
+        parsedPrice < 0 ||
+        parsedPrice > 2147483647) {
       return EditItemResult.invalidPrice;
     }
-    if (num.tryParse(trimmedDeposit) == null ||
-        num.parse(trimmedDeposit) < 0) {
+    final parsedDeposit = num.tryParse(trimmedDeposit);
+    if (parsedDeposit == null ||
+        !parsedDeposit.isFinite ||
+        parsedDeposit < 0) {
       return EditItemResult.invalidDeposit;
     }
 
     submitting = true;
     error = null;
     notifyListeners();
-    try {
-      asset = await _assetApi.updateAsset(
-        id: id,
-        name: trimmedName,
-        description: trimmedDescription,
-        downPayment: trimmedDeposit,
-        price: trimmedPrice,
-        pickupPoint: trimmedPickup,
-        returnBefore: AppDateUtils.formatYmd(lendingEndDate!),
-      );
-      return EditItemResult.success;
-    } on ApiException catch (e) {
-      error = e.message;
-      return EditItemResult.failed;
-    } catch (_) {
-      error = 'Unable to save changes';
-      return EditItemResult.failed;
-    } finally {
+    final current = asset!;
+    final updated = AssetModel(
+      id: current.id,
+      ownerId: current.ownerId,
+      ownerUsername: current.ownerUsername,
+      image: current.image,
+      name: trimmedName,
+      description: trimmedDescription,
+      status: current.status,
+      approval: current.approval,
+      approvalMessage: current.approvalMessage,
+      downPayment: parsedDeposit,
+      returnBefore: AppDateUtils.formatYmd(lendingEndDate!),
+      price: parsedPrice,
+      pickupPoint: trimmedPickup,
+    );
+    final index = _items.indexWhere((item) => item.id == id);
+    if (index == -1) {
+      error = 'Item not found';
       submitting = false;
       notifyListeners();
+      return EditItemResult.failed;
     }
+
+    _items[index] = updated;
+    asset = updated;
+    submitting = false;
+    notifyListeners();
+    return EditItemResult.success;
   }
 }

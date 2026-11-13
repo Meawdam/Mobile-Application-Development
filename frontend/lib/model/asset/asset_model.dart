@@ -1,5 +1,3 @@
-import 'package:frontend/services/api_config.dart';
-
 class AssetModel {
   final int id;
   final int ownerId;
@@ -31,7 +29,7 @@ class AssetModel {
     required this.pickupPoint,
   });
 
-  String get imageUrl => resolveMediaUrl(image);
+  String get imageUrl => image ?? '';
 
   factory AssetModel.fromJson(Map<String, dynamic> json) {
     return AssetModel(

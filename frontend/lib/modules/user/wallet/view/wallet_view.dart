@@ -18,7 +18,6 @@ class _WalletScreenState extends State<WalletScreen> {
   void initState() {
     super.initState();
     _controller.addListener(_onUpdate);
-    _controller.load();
   }
 
   void _onUpdate() {
@@ -33,19 +32,14 @@ class _WalletScreenState extends State<WalletScreen> {
     super.dispose();
   }
 
-  Future<void> _topUp() async {
+  void _topUp() {
     final amount = int.tryParse(_amountController.text.trim()) ?? 0;
-    final ok = await _controller.topUp(amount);
-    if (!mounted) return;
+    final ok = _controller.topUp(amount);
 
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            amount <= 0
-                ? 'Enter a positive amount'
-                : (_controller.error ?? 'Top up failed'),
-          ),
+          content: Text(_controller.error ?? 'Top up failed'),
         ),
       );
       return;
@@ -80,9 +74,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _controller.loading
-                        ? '...'
-                        : '${_controller.balance} Baht',
+                    '${_controller.balance} Baht',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 36,
@@ -107,13 +99,11 @@ class _WalletScreenState extends State<WalletScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _controller.submitting ? null : _topUp,
-                child: Text(
-                  _controller.submitting ? 'Processing...' : 'Top up',
-                ),
+                onPressed: _topUp,
+                child: const Text('Top up'),
               ),
             ),
-            if (_controller.error != null && !_controller.submitting) ...[
+            if (_controller.error != null) ...[
               const SizedBox(height: 12),
               Text(
                 _controller.error!,
