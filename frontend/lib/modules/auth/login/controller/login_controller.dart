@@ -6,6 +6,16 @@ import 'package:http/http.dart' as http;
 class LoginController {
   Authservice authService = Authservice();
 
+  LoginController({Authservice? service}) {
+    if(service == null) {
+      // real
+      authService = Authservice();
+    } else {
+      // mocked: unit test
+      authService = service;
+    }
+  }
+
   Future<String?> login(String email, String password) async {
     final normalizedEmail = email.trim().toLowerCase();
     if (normalizedEmail.isEmpty || password.isEmpty) {
