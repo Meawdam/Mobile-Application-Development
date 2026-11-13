@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:frontend/modules/auth/login/controller/login_controller.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final LoginController? controller;
+
+  const LoginScreen({super.key, this.controller});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -11,7 +13,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _loginController = LoginController();
+  late final _loginController = widget.controller ?? LoginController();
   bool _submitting = false;
 
   Future<void> _login() async {
