@@ -163,7 +163,12 @@ class AssetService {
             return_before: normalizedReturnBefore,
         };
 
-        await assetRepository.updateAsset(id, ownerId, payload);
+        const updated = await assetRepository.updateAsset(id, ownerId, payload);
+        if (!updated) {
+            const err = new Error("Asset is no longer available for editing");
+            err.status = 409;
+            throw err;
+        }
         return {
             id: Number(id),
             ...payload,
@@ -172,9 +177,21 @@ class AssetService {
         };
     }
 
-    async approveAsset(id, {approval, approval_message}) {
+    async approveAsset(id, adminId, {approval, approval_message}) {
         if (!["approved", "not approve"].includes(approval)) {
             const err = new Error("Approval status must be approved or not approve");
+            err.status = 400;
+            throw err;
+        }
+        const approvalMessage =
+            typeof approval_message === "string" ? approval_message.trim() : "";
+        if (approval === "not approve" && !approvalMessage) {
+            const err = new Error("A rejection reason is required");
+            err.status = 400;
+            throw err;
+        }
+        if (approvalMessage.length > 500) {
+            const err = new Error("Approval message must not exceed 500 characters");
             err.status = 400;
             throw err;
         }
@@ -186,8 +203,19 @@ class AssetService {
             throw err;
         }
 
-        await assetRepository.updateApproval(id, approval, approval_message);
-        return { id, approval, approval_message}
+        const updated = await assetRepository.updateApproval(
+            id,
+            asset.owner_id,
+            adminId,
+            approval,
+            approvalMessage || null,
+        );
+        if (!updated) {
+            const err = new Error("Asset approval status could not be updated");
+            err.status = 409;
+            throw err;
+        }
+        return { id: Number(id), approval, approval_message: approvalMessage || null }
     }
 
     async deleteAsset(id, owner_id) {
@@ -203,8 +231,18 @@ class AssetService {
             err.status = 403;
             throw err;
         }
+        if (asset.status === "borrowed") {
+            const err = new Error("Cannot delete an asset while it is borrowed");
+            err.status = 409;
+            throw err;
+        }
 
-        await assetRepository.deleteAsset(id, owner_id);
+        const deleted = await assetRepository.deleteAsset(id, owner_id);
+        if (!deleted) {
+            const err = new Error("Asset could not be deleted");
+            err.status = 409;
+            throw err;
+        }
         return { id };
     }
 }

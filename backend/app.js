@@ -21,6 +21,7 @@ app.use("/api/users", require("./module/user/user_routes"));
 app.use("/api/assets", require("./module/asset/asset_routes"));
 app.use("/api/borrows", require("./module/borrow/borrow_route"));
 app.use("/api/wallet", require("./module/wallet/wallet_routes"));
+app.use("/api/admin", require("./module/admin/admin_routes"));
 
 app.use((err, req, res, next) => {
   console.error("Unhandled Error:", err);

@@ -1,4 +1,5 @@
 const db = require("../../db_config");
+const { logActivities } = require("../../utils/activity_logger");
 
 class AssetRepository {
   async findAllApproved(excludedOwnerId, searchTerm) {
@@ -72,60 +73,172 @@ class AssetRepository {
     pickup_point,
     return_before,
   }) {
-    const [result] = await db.query(
-      `INSERT INTO asset (
-        owner_id, image, name, description, down_payment, price, pickup_point,
-        return_before, status, approval
-      )
-        VALUES(?, ?, ?, ?, ?, ?, ?, ?, 'ready', 'pending')`,
-      [
-        owner_id,
-        image,
-        name,
-        description,
-        down_payment,
-        price,
-        pickup_point,
-        return_before,
-      ],
-    );
-    return result.insertId;
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [result] = await connection.query(
+        `INSERT INTO asset (
+          owner_id, image, name, description, down_payment, price, pickup_point,
+          return_before, status, approval
+        )
+         VALUES(?, ?, ?, ?, ?, ?, ?, ?, 'ready', 'pending')`,
+        [
+          owner_id,
+          image,
+          name,
+          description,
+          down_payment,
+          price,
+          pickup_point,
+          return_before,
+        ],
+      );
+      await logActivities(
+        [{
+          userId: owner_id,
+          actorId: owner_id,
+          category: "rental",
+          action: "asset_submitted",
+          entityType: "asset",
+          entityId: result.insertId,
+          message: "Asset submitted for admin approval",
+          details: { name },
+        }],
+        connection,
+      );
+      await connection.commit();
+      return result.insertId;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 
   async updateAsset(id, ownerId, data) {
-    const [result] = await db.query(
-      `UPDATE asset
-       SET name = ?, description = ?, down_payment = ?, price = ?,
-           pickup_point = ?, return_before = ?
-       WHERE id = ? AND owner_id = ?`,
-      [
-        data.name,
-        data.description,
-        data.down_payment,
-        data.price,
-        data.pickup_point,
-        data.return_before,
-        id,
-        ownerId,
-      ],
-    );
-    return result.affectedRows > 0;
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [result] = await connection.query(
+        `UPDATE asset
+         SET name = ?, description = ?, down_payment = ?, price = ?,
+             pickup_point = ?, return_before = ?
+         WHERE id = ? AND owner_id = ? AND status <> 'borrowed'`,
+        [
+          data.name,
+          data.description,
+          data.down_payment,
+          data.price,
+          data.pickup_point,
+          data.return_before,
+          id,
+          ownerId,
+        ],
+      );
+      if (result.affectedRows > 0) {
+        await logActivities(
+          [{
+            userId: ownerId,
+            actorId: ownerId,
+            category: "rental",
+            action: "asset_updated",
+            entityType: "asset",
+            entityId: Number(id),
+            message: "Asset details updated",
+            details: { name: data.name },
+          }],
+          connection,
+        );
+      }
+      await connection.commit();
+      return result.affectedRows > 0;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 
-  async updateApproval(id, approval, approvalMessage) {
-    const [result] = await db.query(
-      "UPDATE asset SET approval = ?, approval_message = ? WHERE id = ?",
-      [approval, approvalMessage, id],
-    );
-    return result.affectedRows > 0;
+  async updateApproval(id, ownerId, adminId, approval, approvalMessage) {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [result] = await connection.query(
+        "UPDATE asset SET approval = ?, approval_message = ? WHERE id = ?",
+        [approval, approvalMessage, id],
+      );
+      if (result.affectedRows > 0) {
+        await logActivities(
+          [{
+            userId: ownerId,
+            actorId: adminId,
+            category: "admin",
+            action: approval === "approved" ? "asset_approved" : "asset_rejected",
+            entityType: "asset",
+            entityId: Number(id),
+            message: approval === "approved"
+              ? "Asset approved by admin"
+              : "Asset rejected by admin",
+            details: approvalMessage ? { reason: approvalMessage } : undefined,
+          }],
+          connection,
+        );
+      }
+      await connection.commit();
+      return result.affectedRows > 0;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 
   async deleteAsset(id, ownerID) {
-    const [result] = await db.query(
-      "DELETE FROM asset WHERE id = ? AND owner_id = ?",
-      [id, ownerID],
-    );
-    return result.affectedRows > 0;
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [assets] = await connection.query(
+        "SELECT id, status FROM asset WHERE id = ? AND owner_id = ? FOR UPDATE",
+        [id, ownerID],
+      );
+      if (assets.length === 0) {
+        await connection.rollback();
+        return false;
+      }
+      if (assets[0].status === "borrowed") {
+        const err = new Error("Cannot delete an asset while it is borrowed");
+        err.status = 409;
+        throw err;
+      }
+      const [result] = await connection.query(
+        "DELETE FROM asset WHERE id = ? AND owner_id = ?",
+        [id, ownerID],
+      );
+      if (result.affectedRows > 0) {
+        await logActivities(
+          [{
+            userId: ownerID,
+            actorId: ownerID,
+            category: "rental",
+            action: "asset_deleted",
+            entityType: "asset",
+            entityId: Number(id),
+            message: "Asset deleted",
+          }],
+          connection,
+        );
+      }
+      await connection.commit();
+      return result.affectedRows > 0;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
 }
 

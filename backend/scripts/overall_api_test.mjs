@@ -312,6 +312,47 @@ async function main() {
     record("GET /api/users/:id (admin)", false, e.message);
   }
 
+  try {
+    const activities = await req("GET", `/api/users/${userId}/activities`, {
+      token: adminToken,
+      expectStatus: 200,
+    });
+    record(
+      "GET /api/users/:id/activities (admin)",
+      Array.isArray(activities.json?.data),
+    );
+  } catch (e) {
+    record("GET /api/users/:id/activities (admin)", false, e.message);
+  }
+
+  try {
+    const dashboard = await req("GET", "/api/admin/dashboard", {
+      token: adminToken,
+      expectStatus: 200,
+    });
+    record(
+      "GET /api/admin/dashboard",
+      typeof dashboard.json?.data?.assets?.total === "number" &&
+        typeof dashboard.json?.data?.finance?.pending_refunds === "number",
+    );
+  } catch (e) {
+    record("GET /api/admin/dashboard", false, e.message);
+  }
+
+  try {
+    const transactions = await req("GET", "/api/admin/transactions?limit=5", {
+      token: adminToken,
+      expectStatus: 200,
+    });
+    record(
+      "GET /api/admin/transactions",
+      Array.isArray(transactions.json?.data) &&
+        typeof transactions.json?.pagination?.total === "number",
+    );
+  } catch (e) {
+    record("GET /api/admin/transactions", false, e.message);
+  }
+
   // Borrow flow
   let borrowId = null;
   try {
@@ -333,6 +374,14 @@ async function main() {
       "POST /api/borrows",
       borrowId != null && borrow.json?.data?.rental_days >= 1,
       `id=${borrowId} days=${borrow.json?.data?.rental_days}`,
+    );
+    const approved = await req("PATCH", `/api/borrows/${borrowId}/approve`, {
+      token: ownerToken,
+      expectStatus: 200,
+    });
+    record(
+      "PATCH /api/borrows/:id/approve",
+      approved.json?.data?.status === "approved",
     );
   } catch (e) {
     record("POST /api/borrows", false, e.message);
@@ -464,6 +513,101 @@ async function main() {
     );
   } catch (e) {
     record("PATCH /api/borrows/:id/confirm-return", false, e.message);
+  }
+
+  let refundTransactionId = null;
+  try {
+    const transactions = await req(
+      "GET",
+      `/api/admin/transactions?type=deposit_refund&status=pending&search=${borrowId}`,
+      { token: adminToken, expectStatus: 200 },
+    );
+    const refund = (transactions.json?.data || []).find(
+      (transaction) => transaction.borrow_id === borrowId,
+    );
+    refundTransactionId = refund?.id;
+    if (refundTransactionId == null) {
+      throw new Error("pending deposit refund was not listed");
+    }
+
+    const processed = await req(
+      "POST",
+      `/api/admin/transactions/${refundTransactionId}/refund`,
+      { token: adminToken, expectStatus: 200 },
+    );
+    record(
+      "POST /api/admin/transactions/:id/refund",
+      processed.json?.data?.status === "completed",
+    );
+
+    await req(
+      "POST",
+      `/api/admin/transactions/${refundTransactionId}/refund`,
+      { token: adminToken, expectStatus: 409 },
+    );
+    record("POST refund is idempotent", true);
+  } catch (e) {
+    record("POST /api/admin/transactions/:id/refund", false, e.message);
+  }
+
+  try {
+    const today = new Date();
+    const pickup = today.toISOString().slice(0, 10);
+    const ret = new Date(today);
+    ret.setUTCDate(ret.getUTCDate() + 1);
+    const borrow = await req("POST", "/api/borrows", {
+      token: userToken,
+      body: {
+        asset_id: pendingAssetId,
+        pickup_date: pickup,
+        return_date: ret.toISOString().slice(0, 10),
+      },
+      expectStatus: 201,
+    });
+    const rejected = await req(
+      "PATCH",
+      `/api/borrows/${borrow.json?.data?.id}/reject`,
+      {
+        token: ownerToken,
+        body: { reason: "Unavailable for this period" },
+        expectStatus: 200,
+      },
+    );
+    record(
+      "PATCH /api/borrows/:id/reject",
+      rejected.json?.data?.status === "rejected",
+    );
+  } catch (e) {
+    record("PATCH /api/borrows/:id/reject", false, e.message);
+  }
+
+  try {
+    const suspended = await req("PATCH", `/api/users/${userId}/suspension`, {
+      token: adminToken,
+      body: { is_suspended: true, reason: "API smoke test" },
+      expectStatus: 200,
+    });
+    record(
+      "PATCH /api/users/:id/suspension",
+      suspended.json?.data?.is_suspended === true &&
+        suspended.json?.data?.suspension_reason === "API smoke test",
+    );
+    await req("GET", "/api/wallet", { token: userToken, expectStatus: 403 });
+    record("Suspended account token is blocked", true);
+    await req("POST", "/api/auth/login", {
+      body: { email: userEmail, password },
+      expectStatus: 403,
+    });
+    record("Suspended account login is blocked", true);
+
+    await req("PATCH", `/api/users/${userId}/suspension`, {
+      token: adminToken,
+      body: { is_suspended: false },
+      expectStatus: 200,
+    });
+    record("PATCH /api/users/:id/suspension reactivates user", true);
+  } catch (e) {
+    record("User suspension flow", false, e.message);
   }
 
   // Delete asset (owner) — create a disposable pending asset then delete

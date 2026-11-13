@@ -89,6 +89,7 @@ class BorrowService {
     const borrowId = await borrowsRepository.createBorrow({
       asset_id,
       borrower_id: borrowerId,
+      owner_id: asset.owner_id,
       pickup_date: pickupDate,
       planned_return_date: plannedReturnDate,
       rental_days: rentalDays,
@@ -149,7 +150,10 @@ class BorrowService {
       throw err;
     }
 
-    if (borrow.status !== "requested" || borrow.payment_status !== "unpaid") {
+    if (
+      !["requested", "approved"].includes(borrow.status) ||
+      borrow.payment_status !== "unpaid"
+    ) {
       const err = new Error("Borrow request is no longer awaiting payment");
       err.status = 400;
       throw err;
@@ -192,7 +196,10 @@ class BorrowService {
       throw err;
     }
 
-    if (borrow.status !== "requested" || borrow.payment_status !== "unpaid") {
+    if (
+      !["requested", "approved"].includes(borrow.status) ||
+      borrow.payment_status !== "unpaid"
+    ) {
       const err = new Error("Only unpaid borrow requests can be cancelled");
       err.status = 400;
       throw err;
@@ -209,6 +216,64 @@ class BorrowService {
     }
 
     return { message: "Borrow request cancelled" };
+  }
+
+  async approveRequest(borrowId, ownerId) {
+    return this._decideRequest(borrowId, ownerId, "approve");
+  }
+
+  async rejectRequest(borrowId, ownerId, reason) {
+    if (typeof reason !== "string" || !reason.trim()) {
+      const err = new Error("A reason is required to reject a borrow request");
+      err.status = 400;
+      throw err;
+    }
+    if (reason.trim().length > 500) {
+      const err = new Error("Rejection reason must not exceed 500 characters");
+      err.status = 400;
+      throw err;
+    }
+    return this._decideRequest(borrowId, ownerId, "reject", reason.trim());
+  }
+
+  async _decideRequest(borrowId, ownerId, decision, reason) {
+    const borrow = await borrowsRepository.findById(borrowId);
+    if (!borrow) {
+      const err = new Error("Borrow record not found");
+      err.status = 404;
+      throw err;
+    }
+    if (borrow.owner_id !== ownerId) {
+      const err = new Error("Forbidden: You are not the owner of this asset");
+      err.status = 403;
+      throw err;
+    }
+    const isEligible = decision === "approve"
+      ? borrow.status === "requested"
+      : ["requested", "approved"].includes(borrow.status);
+    if (!isEligible || borrow.payment_status !== "unpaid") {
+      const err = new Error("Borrow request is no longer awaiting a decision");
+      err.status = 400;
+      throw err;
+    }
+
+    const result = await borrowsRepository.decideRequest(
+      borrowId,
+      ownerId,
+      decision,
+      reason,
+    );
+    if (!result) {
+      const err = new Error("Borrow request is no longer awaiting a decision");
+      err.status = 409;
+      throw err;
+    }
+    return {
+      message: decision === "approve"
+        ? "Borrow request approved"
+        : "Borrow request rejected",
+      data: result,
+    };
   }
 
   async returnAsset(borrowId, borrowerId) {
@@ -248,6 +313,7 @@ class BorrowService {
     const updated = await borrowsRepository.markReturnPending(
       borrowId,
       borrowerId,
+      borrow.owner_id,
     );
     if (!updated) {
       const err = new Error("Borrow is no longer eligible for return");
@@ -294,6 +360,7 @@ class BorrowService {
       borrowId,
       borrow.asset_id,
       borrow.borrower_id,
+      borrow.owner_id,
     );
     if (!result) {
       const err = new Error(
@@ -304,9 +371,13 @@ class BorrowService {
     }
 
     return {
-      message: "Return confirmed and asset is now ready for borrowing again",
+      message: result.refund_pending > 0
+        ? "Return confirmed; refund is awaiting admin processing"
+        : "Return confirmed and asset is now ready for borrowing again",
       fine_amount: result.fine_amount,
       deposit_refunded: result.deposit_refunded,
+      refund_pending: result.refund_pending,
+      refund_transaction_id: result.refund_transaction_id,
     };
   }
 }

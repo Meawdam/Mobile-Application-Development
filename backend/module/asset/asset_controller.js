@@ -109,7 +109,7 @@ class AssetsController {
         });
       }
 
-      const result = await assetService.approveAsset(req.params.id, {
+      const result = await assetService.approveAsset(req.params.id, req.user.id, {
         approval,
         approval_message,
       });

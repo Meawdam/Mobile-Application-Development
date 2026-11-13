@@ -60,7 +60,7 @@
  *           nullable: true
  *         status:
  *           type: string
- *           enum: [requested, borrowed, returned_pending, returned_confirmed, rejected]
+ *           enum: [requested, approved, borrowed, returned_pending, returned_confirmed, rejected]
  *           description: rejected includes borrow requests cancelled by the borrower
  *           example: requested
  *         payment_status:
@@ -229,6 +229,77 @@
 
 /**
  * @swagger
+ * /api/borrows/{id}/approve:
+ *   patch:
+ *     tags: [Borrows]
+ *     summary: Approve an unpaid borrow request
+ *     description: The authenticated user must own the asset. Borrowers may still pay immediately before this action.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Borrow request approved
+ *       400:
+ *         description: Request is no longer awaiting a decision
+ *       401:
+ *         description: Access token is required
+ *       403:
+ *         description: Token is invalid or the user is not the asset owner
+ *       404:
+ *         description: Borrow record not found
+ *       409:
+ *         description: Request changed before the decision was saved
+ */
+
+/**
+ * @swagger
+ * /api/borrows/{id}/reject:
+ *   patch:
+ *     tags: [Borrows]
+ *     summary: Reject an unpaid borrow request
+ *     description: The authenticated user must own the asset; a rejection reason is required.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [reason]
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 maxLength: 500
+ *     responses:
+ *       200:
+ *         description: Borrow request rejected
+ *       400:
+ *         description: Invalid or missing rejection reason
+ *       401:
+ *         description: Access token is required
+ *       403:
+ *         description: Token is invalid or the user is not the asset owner
+ *       404:
+ *         description: Borrow record not found
+ *       409:
+ *         description: Request changed before the decision was saved
+ */
+
+/**
+ * @swagger
  * /api/borrows/{id}/return:
  *   patch:
  *     tags: [Borrows]
@@ -274,7 +345,7 @@
  *           type: integer
  *     responses:
  *       200:
- *         description: Return confirmed, payment refunded, fine calculated, and asset made available
+ *         description: Return confirmed, refund queued for admin processing, fine calculated, and asset made available
  *         content:
  *           application/json:
  *             schema:
@@ -283,6 +354,8 @@
  *                 message:
  *                   type: string
  *                 fine_amount:
+ *                   type: integer
+ *                 refund_pending:
  *                   type: integer
  *       400:
  *         description: The item has already been returned or no return request is pending

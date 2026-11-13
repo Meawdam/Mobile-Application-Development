@@ -81,6 +81,9 @@ CREATE TABLE `users` (
   `phone_num` varchar(10) NOT NULL,
   `role` enum('admin','user') DEFAULT 'user',
   `wallet_balance` int(11) NOT NULL DEFAULT 0,
+  `is_suspended` tinyint(1) NOT NULL DEFAULT 0,
+  `suspension_reason` varchar(500) DEFAULT NULL,
+  `suspended_at` datetime DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -159,6 +162,105 @@ ALTER TABLE `asset`
 ALTER TABLE `borrow`
   ADD CONSTRAINT `fk_borrow_asset` FOREIGN KEY (`asset_id`) REFERENCES `asset` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_borrow_borrower` FOREIGN KEY (`borrower_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- --------------------------------------------------------
+-- Table structure for table `financial_transactions`
+--
+
+CREATE TABLE `financial_transactions` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `actor_id` int(11) DEFAULT NULL,
+  `borrow_id` int(11) DEFAULT NULL,
+  `transaction_type` enum(
+    'wallet_top_up',
+    'rental_payment',
+    'deposit_hold',
+    'fine_collected',
+    'deposit_refund'
+  ) NOT NULL,
+  `amount` int(11) NOT NULL,
+  `status` enum('pending','completed','released') NOT NULL DEFAULT 'completed',
+  `description` varchar(255) NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `processed_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_financial_borrow_type` (`borrow_id`,`transaction_type`),
+  KEY `idx_financial_user_created` (`user_id`,`created_at`),
+  KEY `idx_financial_status_type` (`status`,`transaction_type`),
+  CONSTRAINT `fk_financial_user` FOREIGN KEY (`user_id`)
+    REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_financial_actor` FOREIGN KEY (`actor_id`)
+    REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_financial_borrow` FOREIGN KEY (`borrow_id`)
+    REFERENCES `borrow` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+-- Table structure for table `user_activity_logs`
+--
+
+CREATE TABLE `user_activity_logs` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `actor_id` int(11) DEFAULT NULL,
+  `category` enum('rental','finance','admin') NOT NULL,
+  `action` varchar(80) NOT NULL,
+  `entity_type` varchar(40) DEFAULT NULL,
+  `entity_id` int(11) DEFAULT NULL,
+  `message` varchar(255) NOT NULL,
+  `details` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_activity_user_created` (`user_id`,`created_at`),
+  KEY `idx_activity_category` (`user_id`,`category`,`created_at`),
+  CONSTRAINT `fk_activity_user` FOREIGN KEY (`user_id`)
+    REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_activity_actor` FOREIGN KEY (`actor_id`)
+    REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Backfill available financial history for existing borrow records.
+INSERT INTO `financial_transactions`
+  (`user_id`, `actor_id`, `borrow_id`, `transaction_type`, `amount`, `status`,
+   `description`, `created_at`, `processed_at`)
+SELECT b.borrower_id, b.borrower_id, b.id, 'rental_payment',
+  b.rental_amount, 'completed', 'Rental payment (schema import)',
+  b.created_at, b.created_at
+FROM `borrow` b
+WHERE b.payment_status IN ('paid', 'refunded');
+
+INSERT INTO `financial_transactions`
+  (`user_id`, `actor_id`, `borrow_id`, `transaction_type`, `amount`, `status`,
+   `description`, `created_at`, `processed_at`)
+SELECT b.borrower_id, b.borrower_id, b.id, 'deposit_hold',
+  b.deposit_amount,
+  IF(b.status = 'returned_confirmed' AND b.payment_status = 'refunded',
+    'released', 'pending'),
+  'Deposit held (schema import)', b.created_at,
+  IF(b.status = 'returned_confirmed' AND b.payment_status = 'refunded',
+    b.return_date, NULL)
+FROM `borrow` b
+WHERE b.payment_status IN ('paid', 'refunded');
+
+INSERT INTO `financial_transactions`
+  (`user_id`, `borrow_id`, `transaction_type`, `amount`, `status`,
+   `description`, `created_at`, `processed_at`)
+SELECT b.borrower_id, b.id, 'fine_collected', b.fine_amount, 'completed',
+  'Late return fine (schema import)', b.return_date, b.return_date
+FROM `borrow` b
+WHERE b.payment_status = 'refunded' AND b.fine_amount > 0;
+
+INSERT INTO `financial_transactions`
+  (`user_id`, `borrow_id`, `transaction_type`, `amount`, `status`,
+   `description`, `created_at`, `processed_at`)
+SELECT b.borrower_id, b.id, 'deposit_refund',
+  GREATEST(b.deposit_amount - b.fine_amount, 0), 'completed',
+  'Deposit refund (schema import)', b.return_date, b.return_date
+FROM `borrow` b
+WHERE b.status = 'returned_confirmed'
+  AND b.payment_status = 'refunded'
+  AND b.deposit_amount > b.fine_amount;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
