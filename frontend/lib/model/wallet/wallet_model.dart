@@ -5,8 +5,13 @@ class WalletModel {
 
   factory WalletModel.fromJson(Map<String, dynamic> json) {
     final balance = json['balance'];
-
-    return WalletModel(balance: balance.toInt());
+    if (balance is int) {
+      return WalletModel(balance: balance);
+    }
+    if (balance is num) {
+      return WalletModel(balance: balance.toInt());
+    }
+    return WalletModel(balance: int.tryParse(balance?.toString() ?? '') ?? 0);
   }
 
   Map<String, dynamic> toJson() => {'balance': balance};

@@ -198,8 +198,7 @@
  *   get:
  *     tags: [Assets]
  *     summary: Get an asset by ID
- *     security:
- *       - bearerAuth: []
+ *     security: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -210,15 +209,11 @@
  *           example: 1
  *     responses:
  *       200:
- *         description: Asset details
+ *         description: Asset details (includes owner_username when available)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AssetResponse'
- *       401:
- *         description: Access token is required
- *       403:
- *         description: Token is invalid
  *       404:
  *         description: Asset not found
  */

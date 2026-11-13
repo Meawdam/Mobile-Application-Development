@@ -15,35 +15,64 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _registerController = RegisterController();
+  bool _submitting = false;
 
-  void _register() {
-    final result = _registerController.register(
-      username: _usernameController.text,
-      phoneNumber: _phoneNumberController.text,
-      email: _emailController.text,
-      password: _passwordController.text,
-      confirmPassword: _confirmPasswordController.text,
-    );
+  Future<void> _register() async {
+    if (_submitting) return;
 
-    if (result == RegisterResult.success) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Account created. You can now log in.')),
+    setState(() => _submitting = true);
+    try {
+      final result = await _registerController.register(
+        username: _usernameController.text,
+        phoneNumber: _phoneNumberController.text,
+        email: _emailController.text,
+        password: _passwordController.text,
+        confirmPassword: _confirmPasswordController.text,
       );
-      return;
+
+      if (!mounted) return;
+
+      if (result == RegisterResult.success) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created. You can now log in.'),
+          ),
+        );
+        return;
+      }
+
+      final message = switch (result) {
+        RegisterResult.success => '',
+        RegisterResult.missingFields => 'Please complete all fields',
+        RegisterResult.passwordTooShort =>
+          'Password must be at least 8 characters',
+        RegisterResult.passwordMismatch => 'Passwords do not match',
+        RegisterResult.emailAlreadyExists =>
+          'This email is already registered',
+        RegisterResult.usernameAlreadyExists =>
+          'This username is already taken',
+        RegisterResult.failed =>
+          'Unable to create account. Please try again.',
+      };
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
     }
+  }
 
-    final message = switch (result) {
-      RegisterResult.success => '',
-      RegisterResult.missingFields => 'Please complete all fields',
-      RegisterResult.passwordTooShort =>
-        'Password must be at least 8 characters',
-      RegisterResult.passwordMismatch => 'Passwords do not match',
-      RegisterResult.emailAlreadyExists => 'This email is already registered',
-    };
-
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _phoneNumberController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -107,9 +136,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
           const SizedBox(height: 28),
-          ElevatedButton(onPressed: _register, child: const Text('Register')),
+          ElevatedButton(
+            onPressed: _submitting ? null : _register,
+            child: Text(_submitting ? 'Registering...' : 'Register'),
+          ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _submitting ? null : () => Navigator.of(context).pop(),
             child: const Text('Already have an account? Log in'),
           ),
         ],

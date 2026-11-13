@@ -79,13 +79,20 @@ After starting the backend, open [http://localhost:3000/api-docs](http://localho
 
 ## Database update and features
 
-For an existing database, apply
-`backend/migrations/20261106_change_return_before_to_date.sql` using a database
-account with `ALTER TABLE` privileges. `return_before` is a date-only value;
-using `DATE` instead of `TIMESTAMP` also supports dates beyond 2038. New
-databases should use the schema in `backend/borrow.sql`. If an asset already
-has a zero date, update it to its intended date; the original date cannot be
-recovered from that stored value.
+For an existing database, apply migrations in `backend/migrations/` using a
+database account with `ALTER TABLE` privileges. New databases should use the
+schema in `backend/borrow.sql`.
+
+Borrow day-system fields (`pickup_date`, `planned_return_date`, `rental_days`)
+are added by `backend/migrations/20261112_add_borrow_day_fields.sql`. Borrower
+pickup/return dates must stay within the lender's asset `return_before`
+(lending end date).
+
+Wallet payments use `users.wallet_balance` and borrow amount snapshots
+(`rental_amount`, `deposit_amount`, `total_amount`) from
+`backend/migrations/20261112_add_wallet_and_payment_amounts.sql`.
+`POST /api/borrows/:id/pay` deducts `total_amount` from the wallet.
+`PATCH /api/borrows/:id/confirm-return` refunds `deposit_amount - fine_amount`.
 
 The configured database account does not have permission to alter tables, so
 schema migrations must be applied using a database account with `ALTER TABLE`

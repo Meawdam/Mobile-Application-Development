@@ -15,6 +15,17 @@ import 'modules/user/payment/view/payment.dart';
 import 'modules/user/requests_returns/view/requests_returns.dart';
 import 'modules/user/wallet/view/wallet_view.dart';
 
+int? _readIntArg(Object? arguments) {
+  if (arguments is int) return arguments;
+  if (arguments is String) return int.tryParse(arguments);
+  if (arguments is Map) {
+    final value = arguments['id'] ?? arguments['assetId'];
+    if (value is int) return value;
+    if (value != null) return int.tryParse(value.toString());
+  }
+  return null;
+}
+
 Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
   final Widget page;
   switch (settings.name) {
@@ -29,19 +40,25 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
     case '/my-lending':
       page = const _UserNavigationShell(initialIndex: 2);
     case '/item-detail':
-      page = const ItemDetailScreen();
+      page = ItemDetailScreen(assetId: _readIntArg(settings.arguments));
     case '/borrow-request':
-      page = const BorrowRequestScreen();
+      page = BorrowRequestScreen(assetId: _readIntArg(settings.arguments));
     case '/payment':
-      page = const PaymentScreen();
+      page = PaymentScreen(
+        args: settings.arguments is Map<String, dynamic>
+            ? settings.arguments as Map<String, dynamic>
+            : null,
+      );
     case '/borrow-details':
-      page = const BorrowDetailsScreen();
+      page = BorrowDetailsScreen(
+        borrowId: _readIntArg(settings.arguments),
+      );
     case '/add-item':
       page = const AddItemScreen();
     case '/wallet':
       page = const WalletScreen();
     case '/edit-item':
-      page = const EditItemScreen();
+      page = EditItemScreen(assetId: _readIntArg(settings.arguments));
     case '/requests-returns':
       page = const RequestsReturnsScreen();
     case '/admin':

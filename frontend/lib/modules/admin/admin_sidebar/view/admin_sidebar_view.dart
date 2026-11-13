@@ -116,7 +116,9 @@ class AdminSidebar extends StatelessWidget {
                 selected: selected,
                 selectedTileColor: Colors.blue.shade50,
                 onTap: () {
-                  Navigator.pop(context);
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
                   onSelect(menu);
                 },
               );
@@ -127,7 +129,9 @@ class AdminSidebar extends StatelessWidget {
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Logout', style: TextStyle(color: Colors.red)),
               onTap: () {
-                Navigator.pop(context);
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
                 _confirmLogout(context);
               },
             ),
@@ -162,18 +166,24 @@ class AdminSidebar extends StatelessWidget {
         content: const Text('Are you sure you want to logout?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () {
+              if (Navigator.canPop(dialogContext)) {
+                Navigator.pop(dialogContext);
+              }
+            },
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(dialogContext);
+              if (Navigator.canPop(dialogContext)) {
+                Navigator.pop(dialogContext);
+              }
               if (onLogout != null) {
                 onLogout!();
                 return;
               }
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(const SnackBar(content: Text('Logout')));
+              ScaffoldMessenger.maybeOf(context)
+                  ?.showSnackBar(const SnackBar(content: Text('Logout')));
             },
             child: const Text('Confirm', style: TextStyle(color: Colors.red)),
           ),

@@ -23,6 +23,15 @@ class AssetsController {
     }
   }
 
+  async getMyAssets(req, res, next) {
+    try {
+      const assets = await assetService.getMyAssets(req.user.id);
+      return res.status(200).json({ data: assets });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getAssetById(req, res, next) {
     try {
       const asset = await assetService.getAssetById(req.params.id);
@@ -107,6 +116,35 @@ class AssetsController {
 
       return res.status(200).json({
         message: "Asset approval status updated",
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateAsset(req, res, next) {
+    try {
+      const {
+        name,
+        description,
+        down_payment,
+        price,
+        pickup_point,
+        return_before,
+      } = req.body;
+
+      const result = await assetService.updateAsset(req.params.id, req.user.id, {
+        name,
+        description,
+        down_payment,
+        price,
+        pickup_point,
+        return_before,
+      });
+
+      return res.status(200).json({
+        message: "Asset updated successfully",
         data: result,
       });
     } catch (error) {
