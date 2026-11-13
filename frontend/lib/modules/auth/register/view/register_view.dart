@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:frontend/modules/auth/register/controller/register_controller.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final RegisterController? controller;
+
+  const RegisterScreen({super.key, this.controller});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -14,7 +16,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _registerController = RegisterController();
+  late final _registerController = widget.controller ?? RegisterController();
   bool _submitting = false;
 
   Future<void> _register() async {
