@@ -217,11 +217,8 @@ pickup/return dates must stay within the lender's asset `return_before`
 Wallet payments use `users.wallet_balance` and borrow amount snapshots
 (`rental_amount`, `deposit_amount`, `total_amount`) from
 `backend/migrations/20261112_add_wallet_and_payment_amounts.sql`.
-`backend/migrations/20261115_add_borrow_cancel_status.sql` adds the borrower
-cancellation status. Apply `backend/migrations/20261115_add_received_at_and_cancelled_borrow_status.sql`
-to rename legacy `cancel` records to `cancelled` and add `received_at` on existing
-databases. Apply migrations with a database account that has `ALTER TABLE`
-privileges.
+The canonical `backend/borrow.sql` schema includes the `cancelled` borrow status
+and nullable `received_at` timestamp.
 `POST /api/borrows/:id/pay` deducts `total_amount` from the wallet; the borrower
 must then confirm receipt through `PATCH /api/borrows/:id/confirm-received`
 before the borrow becomes active.
