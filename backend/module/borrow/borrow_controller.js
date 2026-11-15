@@ -85,6 +85,18 @@ class BorrowController {
     }
   }
 
+  async confirmReceived(req, res, next) {
+    try {
+      const result = await borrowsService.confirmReceived(
+        req.params.id,
+        req.user.id,
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async cancelRequest(req, res, next) {
     try {
       const result = await borrowsService.cancelRequest(
