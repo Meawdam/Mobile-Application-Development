@@ -106,7 +106,7 @@ Successful list responses generally use `{ "data": [...] }`; single-record respo
 | `GET /api/assets` | Public, optional token | Query: `q` searches name, description, and pickup point (up to 100 characters) | `200`; available approved assets that are ready and within their lending window. |
 | `GET /api/assets/all` | Admin | — | `200`; all assets, including pending or rejected assets. |
 | `GET /api/assets/mine` | User | — | `200`; assets owned by the caller. |
-| `GET /api/assets/:id` | Public, optional token | Path: asset ID | `200`; approved asset details. Owner/admin can also view unapproved assets; otherwise hidden or missing assets return `404`. |
+| `GET /api/assets/:id` | Public, optional token | Path: asset ID | `200`; approved asset details, including `owner_username`. Owner/admin can also view unapproved assets; otherwise hidden or missing assets return `404`. |
 | `POST /api/assets` | User | `multipart/form-data`: `name`, `description`, `image`, `down_payment`, `price`, `pickup_point`, `return_before` | `201`; submitted asset with `approval: pending`. Images must be JPEG, PNG, GIF, or WebP and no larger than 5 MB. |
 | `PATCH /api/assets/:id` | Owner | JSON: `name`, `description`, `down_payment`, `price`, `pickup_point`, `return_before` | `200`; updates the asset. Currently borrowed assets cannot be edited. |
 | `DELETE /api/assets/:id` | Owner | Path: asset ID | `200`; deletes the asset if it has no borrow history. Borrowed assets or assets with history return `409`. |
@@ -123,16 +123,18 @@ All borrow endpoints require a signed-in user unless marked Admin.
 | `GET /api/borrows/all` | Admin | — | `200`; all borrow records. |
 | `GET /api/borrows/my` | User | — | `200`; records where the caller is the borrower. |
 | `GET /api/borrows/lending` | User | — | `200`; records for assets owned by the caller. |
-| `GET /api/borrows/:id` | Borrower, asset owner, or Admin | Path: borrow ID | `200`; borrow details. Other users receive `403`. |
+| `GET /api/borrows/assets/:id` | User | Path: asset ID | `200`; asset details, including `owner_username`. |
+| `GET /api/borrows/:id` | Borrower, asset owner, or Admin | Path: borrow ID | `200`; borrow details, including `owner_name`. Other users receive `403`. |
 | `POST /api/borrows` | User | JSON: `asset_id`, `pickup_date`, `return_date` | `201`; creates an unpaid `requested` record. Dates use `YYYY-MM-DD`, include both endpoints in `rental_days`, and must fit within `return_before`. |
 | `PATCH /api/borrows/:id/approve` | Asset owner | Path: borrow ID | `200`; changes an unpaid request to `approved`. |
 | `PATCH /api/borrows/:id/reject` | Asset owner | JSON: `reason` (required, up to 500 characters) | `200`; rejects an unpaid request. |
-| `PATCH /api/borrows/:id/cancel` | Borrower | Path: borrow ID | `200`; cancels an unpaid request. |
-| `POST /api/borrows/:id/pay` | Borrower | Path: borrow ID | `200`; deducts the total from the wallet and marks the asset borrowed. Payment is allowed while the request is `requested` or `approved`. |
+| `PATCH /api/borrows/:id/cancel` | Borrower | Path: borrow ID | `200`; changes an unpaid request's status to `cancel`. |
+| `POST /api/borrows/:id/pay` | Borrower | Path: borrow ID | `200`; deducts the total from the wallet and marks payment paid. Payment is allowed while the request is `requested` or `approved`; the borrow is not active yet. |
+| `PATCH /api/borrows/:id/confirm-received` | Borrower | Path: borrow ID | `200`; after confirming receipt of the paid asset, changes status to `borrowed` and marks the asset as borrowed. |
 | `PATCH /api/borrows/:id/return` | Borrower | Path: borrow ID | `200`; requests return and waits for owner confirmation. |
 | `PATCH /api/borrows/:id/confirm-return` | Asset owner | Path: borrow ID | `200`; confirms a pending return. An eligible deposit refund is queued for admin processing. |
 
-Borrow records include the price and deposit snapshots from request time (`price_per_day`, `rental_amount`, `deposit_amount`, and `total_amount`). `status` can be `requested`, `approved`, `borrowed`, `returned_pending`, `returned_confirmed`, or `rejected`; cancellation also uses `rejected`. `payment_status` can be `unpaid`, `paid`, `refunded`, or `forfeited`. After the planned return date passes, the scheduler forfeits the deposit to the asset owner if the return has not been confirmed.
+Borrow records include the price and deposit snapshots from request time (`price_per_day`, `rental_amount`, `deposit_amount`, and `total_amount`). `status` can be `requested`, `approved`, `borrowed`, `returned_pending`, `returned_confirmed`, `rejected`, or `cancel`. `payment_status` can be `unpaid`, `paid`, `refunded`, or `forfeited`. After the planned return date passes, the scheduler forfeits the deposit to the asset owner if the return has not been confirmed.
 
 #### Wallet
 
@@ -214,7 +216,12 @@ pickup/return dates must stay within the lender's asset `return_before`
 Wallet payments use `users.wallet_balance` and borrow amount snapshots
 (`rental_amount`, `deposit_amount`, `total_amount`) from
 `backend/migrations/20261112_add_wallet_and_payment_amounts.sql`.
-`POST /api/borrows/:id/pay` deducts `total_amount` from the wallet.
+`backend/migrations/20261115_add_borrow_cancel_status.sql` adds the `cancel`
+borrow status for existing databases. Apply migrations with a database account
+that has `ALTER TABLE` privileges.
+`POST /api/borrows/:id/pay` deducts `total_amount` from the wallet; the borrower
+must then confirm receipt through `PATCH /api/borrows/:id/confirm-received`
+before the borrow becomes active.
 After the day in `planned_return_date` passes, any borrow that is not confirmed
 returned has its full deposit automatically transferred to the asset owner's
 wallet. This also applies while a return request is waiting for owner

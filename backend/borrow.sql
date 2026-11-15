@@ -61,7 +61,7 @@ CREATE TABLE `borrow` (
   `total_amount` decimal(12,2) NOT NULL DEFAULT 0.00,
   `borrow_date` datetime DEFAULT NULL,
   `return_date` datetime DEFAULT NULL,
-  `status` enum('requested','approved','borrowed','returned_pending','returned_confirmed','rejected') DEFAULT 'requested',
+  `status` enum('requested','approved','borrowed','returned_pending','returned_confirmed','rejected','cancel') DEFAULT 'requested',
   `payment_status` enum('unpaid','paid','refunded','forfeited') DEFAULT 'unpaid',
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

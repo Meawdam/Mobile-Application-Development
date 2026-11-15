@@ -14,6 +14,10 @@
  *         owner_id:
  *           type: integer
  *           example: 7
+ *         owner_username:
+ *           type: string
+ *           description: Username of the asset owner
+ *           example: alex
  *         name:
  *           type: string
  *           example: Camera
@@ -216,7 +220,7 @@
  *           example: 1
  *     responses:
  *       200:
- *         description: Asset details (includes owner_username when available)
+ *         description: Asset details, including owner_username when available
  *         content:
  *           application/json:
  *             schema:

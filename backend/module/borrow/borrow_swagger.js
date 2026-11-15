@@ -76,8 +76,8 @@
  *           nullable: true
  *         status:
  *           type: string
- *           enum: [requested, approved, borrowed, returned_pending, returned_confirmed, rejected]
- *           description: rejected includes borrow requests cancelled by the borrower
+ *           enum: [requested, approved, borrowed, returned_pending, returned_confirmed, rejected, cancel]
+ *           description: cancel means the borrower cancelled the request; rejected means the owner rejected it
  *           example: requested
  *         payment_status:
  *           type: string
@@ -105,6 +105,67 @@
  *           type: string
  *           format: date
  *           example: '2026-11-05'
+ */
+
+/**
+ * @swagger
+ * /api/borrows/assets/{id}:
+ *   get:
+ *     tags: [Assets]
+ *     summary: Get an asset by ID from the borrow API
+ *     description: Includes owner_username for the asset owner.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Asset details, including owner_username when available
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AssetResponse'
+ *       401:
+ *         description: Access token is required
+ *       404:
+ *         description: Asset not found or not visible to the caller
+ */
+
+/**
+ * @swagger
+ * /api/borrows/{id}:
+ *   get:
+ *     tags: [Borrows]
+ *     summary: Get a borrow record by ID
+ *     description: Available to the borrower, asset owner, or an admin. Includes owner_name and borrower_name.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Borrow record details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   $ref: '#/components/schemas/Borrow'
+ *       401:
+ *         description: Access token is required
+ *       403:
+ *         description: User is not authorized to view this borrow record
+ *       404:
+ *         description: Borrow record not found
  */
 
 /**
@@ -196,7 +257,7 @@
  *           type: integer
  *     responses:
  *       200:
- *         description: Payment completed and asset marked as borrowed
+ *         description: Payment completed; the borrow remains pending until receipt is confirmed
  *       400:
  *         description: Borrow request is no longer awaiting payment
  *       409:
@@ -207,6 +268,36 @@
  *         description: Token is invalid or the user is not the borrower
  *       404:
  *         description: Borrow record not found
+ */
+
+/**
+ * @swagger
+ * /api/borrows/{id}/confirm-received:
+ *   patch:
+ *     tags: [Borrows]
+ *     summary: Confirm receipt of a paid asset
+ *     description: The authenticated user must be the borrower. This changes the borrow status to borrowed.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Receipt confirmed and borrow activated
+ *       400:
+ *         description: Borrow is not paid or is not awaiting receipt confirmation
+ *       401:
+ *         description: Access token is required
+ *       403:
+ *         description: User is not the borrower
+ *       404:
+ *         description: Borrow record not found
+ *       409:
+ *         description: Borrow request or asset is no longer available for confirmation
  */
 
 /**
