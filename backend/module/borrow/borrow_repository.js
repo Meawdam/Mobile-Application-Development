@@ -16,7 +16,7 @@ class BorrowRepository {
       SELECT 
         b.id, b.pickup_date, b.planned_return_date, b.rental_days,
         b.rental_amount, b.deposit_amount, b.total_amount,
-        b.borrow_date, b.return_date, b.status, b.payment_status,
+        b.borrow_date, b.received_at, b.return_date, b.status, b.payment_status,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
         b.deposit_amount AS down_payment,
         b.rental_amount / NULLIF(b.rental_days, 0) AS price_per_day,
@@ -39,7 +39,7 @@ class BorrowRepository {
       SELECT 
         b.id, b.pickup_date, b.planned_return_date, b.rental_days,
         b.rental_amount, b.deposit_amount, b.total_amount,
-        b.borrow_date, b.return_date, b.status, b.payment_status,
+        b.borrow_date, b.received_at, b.return_date, b.status, b.payment_status,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
         a.description, b.deposit_amount AS down_payment,
         b.rental_amount / NULLIF(b.rental_days, 0) AS price_per_day,
@@ -64,7 +64,7 @@ class BorrowRepository {
       SELECT 
         b.id, b.pickup_date, b.planned_return_date, b.rental_days,
         b.rental_amount, b.deposit_amount, b.total_amount,
-        b.borrow_date, b.return_date, b.status, b.payment_status,
+        b.borrow_date, b.received_at, b.return_date, b.status, b.payment_status,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
         a.description, b.deposit_amount AS down_payment,
         b.rental_amount / NULLIF(b.rental_days, 0) AS price_per_day,
@@ -366,7 +366,8 @@ class BorrowRepository {
       const [borrowResult] = await connection.query(
         `UPDATE borrow
          SET status = 'borrowed',
-             borrow_date = COALESCE(pickup_date, CURRENT_DATE())
+             borrow_date = COALESCE(pickup_date, CURRENT_DATE()),
+             received_at = NOW()
          WHERE id = ? AND borrower_id = ? AND status IN ('requested', 'approved')
            AND payment_status = 'paid'`,
         [id, borrowerId],
@@ -430,7 +431,7 @@ class BorrowRepository {
       }
 
       await connection.query(
-        `UPDATE borrow SET status = 'cancel'
+        `UPDATE borrow SET status = 'cancelled'
          WHERE id = ? AND borrower_id = ? AND status IN ('requested', 'approved')
            AND payment_status = 'unpaid'`,
         [id, borrowerId],

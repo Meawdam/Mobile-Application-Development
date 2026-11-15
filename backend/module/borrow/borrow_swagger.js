@@ -62,8 +62,13 @@
  *         borrow_date:
  *           type: string
  *           format: date
- *           description: Set from pickup_date when the borrow request is paid
+ *           description: Set from pickup_date when the borrower confirms receipt
  *           example: '2026-11-02'
+ *         received_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *           description: Timestamp when the borrower confirmed receipt of the asset
  *         lending_end_date:
  *           type: string
  *           format: date
@@ -76,8 +81,8 @@
  *           nullable: true
  *         status:
  *           type: string
- *           enum: [requested, approved, borrowed, returned_pending, returned_confirmed, rejected, cancel]
- *           description: cancel means the borrower cancelled the request; rejected means the owner rejected it
+ *           enum: [requested, approved, borrowed, returned_pending, returned_confirmed, rejected, cancelled]
+ *           description: cancelled means the borrower cancelled the request; rejected means the owner rejected it
  *           example: requested
  *         payment_status:
  *           type: string
@@ -209,6 +214,25 @@
  *         description: Access token is required
  *       403:
  *         description: Token is invalid
+ */
+
+/**
+ * @swagger
+ * /api/borrows/owner:
+ *   get:
+ *     tags: [Borrows]
+ *     summary: Get borrow records for assets owned by the authenticated user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Borrow records for assets owned by the authenticated user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BorrowListResponse'
+ *       401:
+ *         description: Access token is required
  */
 
 /**

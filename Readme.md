@@ -122,19 +122,20 @@ All borrow endpoints require a signed-in user unless marked Admin.
 | --- | --- | --- | --- |
 | `GET /api/borrows/all` | Admin | — | `200`; all borrow records. |
 | `GET /api/borrows/my` | User | — | `200`; records where the caller is the borrower. |
+| `GET /api/borrows/owner` | User | — | `200`; records for assets owned by the caller. |
 | `GET /api/borrows/lending` | User | — | `200`; records for assets owned by the caller. |
 | `GET /api/borrows/assets/:id` | User | Path: asset ID | `200`; asset details, including `owner_username`. |
 | `GET /api/borrows/:id` | Borrower, asset owner, or Admin | Path: borrow ID | `200`; borrow details, including `owner_name`. Other users receive `403`. |
 | `POST /api/borrows` | User | JSON: `asset_id`, `pickup_date`, `return_date` | `201`; creates an unpaid `requested` record. Dates use `YYYY-MM-DD`, include both endpoints in `rental_days`, and must fit within `return_before`. |
 | `PATCH /api/borrows/:id/approve` | Asset owner | Path: borrow ID | `200`; changes an unpaid request to `approved`. |
 | `PATCH /api/borrows/:id/reject` | Asset owner | JSON: `reason` (required, up to 500 characters) | `200`; rejects an unpaid request. |
-| `PATCH /api/borrows/:id/cancel` | Borrower | Path: borrow ID | `200`; changes an unpaid request's status to `cancel`. |
+| `PATCH /api/borrows/:id/cancel` | Borrower | Path: borrow ID | `200`; changes an unpaid request's status to `cancelled`. |
 | `POST /api/borrows/:id/pay` | Borrower | Path: borrow ID | `200`; deducts the total from the wallet and marks payment paid. Payment is allowed while the request is `requested` or `approved`; the borrow is not active yet. |
-| `PATCH /api/borrows/:id/confirm-received` | Borrower | Path: borrow ID | `200`; after confirming receipt of the paid asset, changes status to `borrowed` and marks the asset as borrowed. |
+| `PATCH /api/borrows/:id/confirm-received` | Borrower | Path: borrow ID | `200`; after confirming receipt of the paid asset, records `received_at`, changes status to `borrowed`, and marks the asset as borrowed. |
 | `PATCH /api/borrows/:id/return` | Borrower | Path: borrow ID | `200`; requests return and waits for owner confirmation. |
 | `PATCH /api/borrows/:id/confirm-return` | Asset owner | Path: borrow ID | `200`; confirms a pending return. An eligible deposit refund is queued for admin processing. |
 
-Borrow records include the price and deposit snapshots from request time (`price_per_day`, `rental_amount`, `deposit_amount`, and `total_amount`). `status` can be `requested`, `approved`, `borrowed`, `returned_pending`, `returned_confirmed`, `rejected`, or `cancel`. `payment_status` can be `unpaid`, `paid`, `refunded`, or `forfeited`. After the planned return date passes, the scheduler forfeits the deposit to the asset owner if the return has not been confirmed.
+Borrow records include the price and deposit snapshots from request time (`price_per_day`, `rental_amount`, `deposit_amount`, and `total_amount`). `status` can be `requested`, `approved`, `borrowed`, `returned_pending`, `returned_confirmed`, `rejected`, or `cancelled`. `received_at` records when the borrower confirmed receipt. `payment_status` can be `unpaid`, `paid`, `refunded`, or `forfeited`. After the planned return date passes, the scheduler forfeits the deposit to the asset owner if the return has not been confirmed.
 
 #### Wallet
 
@@ -216,9 +217,11 @@ pickup/return dates must stay within the lender's asset `return_before`
 Wallet payments use `users.wallet_balance` and borrow amount snapshots
 (`rental_amount`, `deposit_amount`, `total_amount`) from
 `backend/migrations/20261112_add_wallet_and_payment_amounts.sql`.
-`backend/migrations/20261115_add_borrow_cancel_status.sql` adds the `cancel`
-borrow status for existing databases. Apply migrations with a database account
-that has `ALTER TABLE` privileges.
+`backend/migrations/20261115_add_borrow_cancel_status.sql` adds the borrower
+cancellation status. Apply `backend/migrations/20261115_add_received_at_and_cancelled_borrow_status.sql`
+to rename legacy `cancel` records to `cancelled` and add `received_at` on existing
+databases. Apply migrations with a database account that has `ALTER TABLE`
+privileges.
 `POST /api/borrows/:id/pay` deducts `total_amount` from the wallet; the borrower
 must then confirm receipt through `PATCH /api/borrows/:id/confirm-received`
 before the borrow becomes active.
