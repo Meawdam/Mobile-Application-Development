@@ -1,4 +1,3 @@
-﻿
 import 'package:flutter/material.dart';
 import 'controller/approve_items_controller.dart';
 import 'model/approve_item_model.dart';
@@ -11,6 +10,16 @@ class ApproveItemsPage extends StatefulWidget {
 }
 
 class _ApproveItemsPageState extends State<ApproveItemsPage> {
+  // Team palette (agreed colors only). Do not add new colors without
+  // sending the code to the team first.
+  static const _blue = Color(0xFF2F4BFF);
+  static const _red = Color.fromARGB(255, 223, 42, 42);
+  static const _yellow = Color.fromARGB(255, 252, 252, 75);
+  static const _green = Color.fromARGB(255, 72, 230, 83);
+  // Dark text for light backgrounds (yellow / green).
+  static const _onLight = Color(0xFF172554);
+  static const _blueTint = Color(0xFFE8ECFF);
+
   final TextEditingController noteController = TextEditingController();
 
   late final ApproveItemsController controller;
@@ -109,7 +118,8 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                             sheetContext,
                           ),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
+                            foregroundColor: _red,
+                            side: const BorderSide(color: _red),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: const Text('Reject'),
@@ -125,8 +135,8 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                             sheetContext,
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
+                            backgroundColor: _green,
+                            foregroundColor: _onLight,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: const Text('Approve'),
@@ -152,13 +162,13 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
             width: 110,
             height: 110,
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: _blueTint,
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Icon(
               Icons.inventory_2_outlined,
               size: 55,
-              color: Color(0xFF1260C5),
+              color: _blue,
             ),
           ),
         ),
@@ -249,8 +259,8 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: approve ? Colors.green : Colors.red,
-              foregroundColor: Colors.white,
+              backgroundColor: approve ? _green : _red,
+              foregroundColor: approve ? _onLight : Colors.white,
             ),
             onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Confirm'),
@@ -284,8 +294,9 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
           approve
               ? 'Item approved successfully!'
               : 'Item rejected successfully!',
+          style: TextStyle(color: approve ? _onLight : Colors.white),
         ),
-        backgroundColor: approve ? Colors.green : Colors.red,
+        backgroundColor: approve ? _green : _red,
       ),
     );
   }
@@ -295,7 +306,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
     final items = controller.items;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0EEEE),
+      backgroundColor: const Color(0xFFF4F7FC),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,7 +344,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                   children: [
                     const Icon(
                       Icons.pending_actions,
-                      color: Colors.orange,
+                      color: _onLight,
                     ),
                     const SizedBox(width: 10),
                     const Text(
@@ -343,11 +354,11 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                     const SizedBox(width: 12),
                     CircleAvatar(
                       radius: 13,
-                      backgroundColor: Colors.orange.shade100,
+                      backgroundColor: _yellow,
                       child: Text(
                         '${controller.pendingCount}',
                         style: const TextStyle(
-                          color: Colors.deepOrange,
+                          color: _onLight,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -365,7 +376,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                           Icon(
                             Icons.check_circle_outline,
                             size: 55,
-                            color: Colors.green,
+                            color: Color(0xFF1F9D2B),
                           ),
                           SizedBox(height: 12),
                           Text(
@@ -387,30 +398,50 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
 
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(14),
-                            leading: CircleAvatar(
-                              radius: 25,
-                              backgroundColor: Colors.blue.shade50,
-                              child: const Icon(
-                                Icons.inventory_2_outlined,
-                                color: Color(0xFF1260C5),
-                              ),
-                            ),
-                            title: Text(
-                              item.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Text(
-                                '${item.owner} â€¢ ${item.time}',
-                              ),
-                            ),
-                            trailing: const Icon(Icons.chevron_right),
+                          elevation: 1,
+                          clipBehavior: Clip.antiAlias,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: const BorderSide(color: Color(0xFFE5EAF2)),
+                          ),
+                          child: InkWell(
                             onTap: () => _openDetails(item),
+                            child: Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 24,
+                                    backgroundColor: _blueTint,
+                                    child: const Icon(Icons.inventory_2_outlined, color: _blue),
+                                  ),
+                                  const SizedBox(width: 13),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                                        const SizedBox(height: 5),
+                                        Text('${item.owner} • ${item.time}', maxLines: 2, overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                                        const SizedBox(height: 7),
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                            decoration: BoxDecoration(color: _blueTint, borderRadius: BorderRadius.circular(20)),
+                                            child: Text(item.category, style: const TextStyle(color: _blue, fontSize: 10, fontWeight: FontWeight.w700)),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  const Icon(Icons.chevron_right, color: Color(0xFF64748B)),
+                                ],
+                              ),
+                            ),
                           ),
                         );
                       },
@@ -422,4 +453,3 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
     );
   }
 }
-

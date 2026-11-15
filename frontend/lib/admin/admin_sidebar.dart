@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 
+/// Shared admin shell. Navigation stays horizontal on desktop and mobile.
 class AdminSidebar extends StatelessWidget {
   final String selectedMenu;
   final ValueChanged<String> onSelect;
@@ -13,115 +13,153 @@ class AdminSidebar extends StatelessWidget {
     required this.child,
   });
 
-  static const blue = Color(0xFF1800A8);
-  static const activeBlue = Color(0xFF1260C5);
+  static const navy = Color(0xFF111B3C);
+  static const activeBlue = Color(0xFF2563EB);
+  static const menus = <String>[
+    'Dashboard',
+    'Approve Items',
+    'Users & History',
+    'All borrowing Records',
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 275,
-          color: blue,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 28,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 560;
+        return Column(
+          children: [
+            Container(
+              color: navy,
+              padding: EdgeInsets.fromLTRB(
+                compact ? 14 : 24,
+                compact ? 10 : 14,
+                compact ? 14 : 24,
+                0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 74,
-                    height: 74,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    alignment: Alignment.center,
-                    child: const Text(
-                      'B',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                  Row(
+                    children: [
+                      Container(
+                        width: compact ? 38 : 44,
+                        height: compact ? 38 : 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'B',
+                          style: TextStyle(
+                            color: navy,
+                            fontSize: compact ? 21 : 24,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 11),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Borrow',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w800,
+                                height: 1.1,
+                              ),
+                            ),
+                            Text(
+                              'ADMIN CONSOLE',
+                              style: TextStyle(
+                                color: Color(0xFFB9C6E8),
+                                fontSize: 10,
+                                letterSpacing: 1.4,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Logout')),
+                          );
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: compact ? 8 : 14,
+                            vertical: 9,
+                          ),
+                        ),
+                        icon: const Icon(Icons.logout, size: 17),
+                        label: Text(compact ? 'Exit' : 'Logout'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 48,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: menus.map(_menuItem).toList(),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 15),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Borrow',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 27,
-                              fontWeight: FontWeight.bold)),
-                      Text('Admin',
-                          style: TextStyle(
-                              color: Colors.white, fontSize: 22)),
-                    ],
-                  ),
                 ],
               ),
-              const SizedBox(height: 45),
-              _menu('Dashboard'),
-              _menu('Approve Items'),
-              _menu('Users & History'),
-              _menu('All borrowing Records'),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Logout')),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: activeBlue,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  child: const Text('Logout',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(child: child),
-      ],
+            ),
+            Expanded(child: child),
+          ],
+        );
+      },
     );
   }
 
-  Widget _menu(String title) {
+  Widget _menuItem(String title) {
     final selected = selectedMenu == title;
+    final icon = switch (title) {
+      'Dashboard' => Icons.dashboard_outlined,
+      'Approve Items' => Icons.inventory_2_outlined,
+      'Users & History' => Icons.groups_outlined,
+      _ => Icons.receipt_long_outlined,
+    };
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.only(right: 7),
       child: InkWell(
         onTap: () => onSelect(title),
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(
-              horizontal: 18, vertical: 12),
+        borderRadius: BorderRadius.circular(11),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
           decoration: BoxDecoration(
             color: selected ? activeBlue : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(11),
           ),
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: 17),
+              const SizedBox(width: 7),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
       ),
