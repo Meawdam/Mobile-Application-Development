@@ -16,7 +16,7 @@ class BorrowRepository {
       SELECT 
         b.id, b.pickup_date, b.planned_return_date, b.rental_days,
         b.rental_amount, b.deposit_amount, b.total_amount,
-        b.borrow_date, b.return_date, b.status, b.payment_status,
+        b.borrow_date, b.received_at, b.return_date, b.status, b.payment_status,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
         b.deposit_amount AS down_payment,
         b.rental_amount / NULLIF(b.rental_days, 0) AS price_per_day,
@@ -39,7 +39,7 @@ class BorrowRepository {
       SELECT 
         b.id, b.pickup_date, b.planned_return_date, b.rental_days,
         b.rental_amount, b.deposit_amount, b.total_amount,
-        b.borrow_date, b.return_date, b.status, b.payment_status,
+        b.borrow_date, b.received_at, b.return_date, b.status, b.payment_status,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
         a.description, b.deposit_amount AS down_payment,
         b.rental_amount / NULLIF(b.rental_days, 0) AS price_per_day,
@@ -64,7 +64,7 @@ class BorrowRepository {
       SELECT 
         b.id, b.pickup_date, b.planned_return_date, b.rental_days,
         b.rental_amount, b.deposit_amount, b.total_amount,
-        b.borrow_date, b.return_date, b.status, b.payment_status,
+        b.borrow_date, b.received_at, b.return_date, b.status, b.payment_status,
         a.id AS asset_id, a.name AS asset_name, a.image AS asset_image,
         a.description, b.deposit_amount AS down_payment,
         b.rental_amount / NULLIF(b.rental_days, 0) AS price_per_day,
@@ -186,7 +186,7 @@ class BorrowRepository {
     }
   }
 
-  async markBorrowed(id, borrowerId, assetId) {
+  async markPaid(id, borrowerId, assetId) {
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
@@ -272,8 +272,7 @@ class BorrowRepository {
 
       const [borrowResult] = await connection.query(
         `UPDATE borrow
-         SET status = 'borrowed', payment_status = 'paid',
-             borrow_date = COALESCE(pickup_date, CURRENT_DATE())
+         SET payment_status = 'paid'
          WHERE id = ? AND borrower_id = ? AND status IN ('requested', 'approved')
            AND payment_status = 'unpaid'`,
         [id, borrowerId],
@@ -281,17 +280,6 @@ class BorrowRepository {
       if (borrowResult.affectedRows === 0) {
         await connection.rollback();
         return false;
-      }
-
-      const [assetResult] = await connection.query(
-        `UPDATE asset SET status = 'borrowed'
-         WHERE id = ? AND status = 'ready' AND return_before >= CURRENT_DATE()`,
-        [assetId],
-      );
-      if (assetResult.affectedRows === 0) {
-        const err = new Error("Reserved asset is no longer available");
-        err.status = 409;
-        throw err;
       }
 
       const [updatedWallet] = await connection.query(
@@ -327,7 +315,7 @@ class BorrowRepository {
           ownerId: Number(borrow.owner_id),
           actorId: borrowerId,
           action: "payment_completed",
-          message: "Borrow payment completed",
+          message: "Borrow payment completed; waiting for receipt confirmation",
           borrowId: id,
           details: { total_amount: amountCentsToNumber(totalAmountCents) },
         }),
@@ -340,6 +328,79 @@ class BorrowRepository {
         total_amount: amountCentsToNumber(totalAmountCents),
         wallet_balance: Number(updatedWallet[0].wallet_balance),
       };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
+  async confirmReceived(id, borrowerId, assetId) {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [borrows] = await connection.query(
+        `SELECT b.id, b.status, b.payment_status, a.owner_id, a.status AS asset_status
+         FROM borrow b
+         JOIN asset a ON a.id = b.asset_id
+         WHERE b.id = ? AND b.borrower_id = ? AND b.asset_id = ?
+         FOR UPDATE`,
+        [id, borrowerId, assetId],
+      );
+      if (borrows.length === 0) {
+        await connection.rollback();
+        return false;
+      }
+
+      const borrow = borrows[0];
+      if (
+        !["requested", "approved"].includes(borrow.status) ||
+        borrow.payment_status !== "paid" ||
+        borrow.asset_status !== "ready"
+      ) {
+        await connection.rollback();
+        return false;
+      }
+
+      const [borrowResult] = await connection.query(
+        `UPDATE borrow
+         SET status = 'borrowed',
+             borrow_date = COALESCE(pickup_date, CURRENT_DATE()),
+             received_at = NOW()
+         WHERE id = ? AND borrower_id = ? AND status IN ('requested', 'approved')
+           AND payment_status = 'paid'`,
+        [id, borrowerId],
+      );
+      if (borrowResult.affectedRows === 0) {
+        await connection.rollback();
+        return false;
+      }
+
+      const [assetResult] = await connection.query(
+        `UPDATE asset SET status = 'borrowed'
+         WHERE id = ? AND status = 'ready' AND return_before >= CURRENT_DATE()`,
+        [assetId],
+      );
+      if (assetResult.affectedRows === 0) {
+        const err = new Error("Reserved asset is no longer available");
+        err.status = 409;
+        throw err;
+      }
+
+      await logActivities(
+        borrowActivityEntries({
+          borrowerId,
+          ownerId: Number(borrow.owner_id),
+          actorId: borrowerId,
+          action: "item_received",
+          message: "Borrower confirmed receipt of the asset",
+          borrowId: id,
+        }),
+        connection,
+      );
+      await connection.commit();
+      return true;
     } catch (error) {
       await connection.rollback();
       throw error;
@@ -370,7 +431,7 @@ class BorrowRepository {
       }
 
       await connection.query(
-        `UPDATE borrow SET status = 'rejected'
+        `UPDATE borrow SET status = 'cancelled'
          WHERE id = ? AND borrower_id = ? AND status IN ('requested', 'approved')
            AND payment_status = 'unpaid'`,
         [id, borrowerId],

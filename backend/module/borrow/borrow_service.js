@@ -209,7 +209,7 @@ class BorrowService {
       throw err;
     }
 
-    const updated = await borrowsRepository.markBorrowed(
+    const updated = await borrowsRepository.markPaid(
       borrowId,
       borrowerId,
       borrow.asset_id,
@@ -221,14 +221,54 @@ class BorrowService {
     }
 
     return {
-      message: "Payment completed and asset borrowed successfully",
+      message: "Payment completed; confirm receipt after receiving the asset",
       data: {
         borrow_id: borrowId,
         total_amount: updated.total_amount,
         wallet_balance: updated.wallet_balance,
         payment_status: "paid",
-        status: "borrowed",
+        status: borrow.status,
       },
+    };
+  }
+
+  async confirmReceived(borrowId, borrowerId) {
+    const borrow = await borrowsRepository.findById(borrowId);
+    if (!borrow) {
+      const err = new Error("Borrow record not found");
+      err.status = 404;
+      throw err;
+    }
+
+    if (borrow.borrower_id !== borrowerId) {
+      const err = new Error("Forbidden: You are not the borrower of this item");
+      err.status = 403;
+      throw err;
+    }
+
+    if (
+      !["requested", "approved"].includes(borrow.status) ||
+      borrow.payment_status !== "paid"
+    ) {
+      const err = new Error("Only paid borrow requests awaiting receipt can be confirmed");
+      err.status = 400;
+      throw err;
+    }
+
+    const confirmed = await borrowsRepository.confirmReceived(
+      borrowId,
+      borrowerId,
+      borrow.asset_id,
+    );
+    if (!confirmed) {
+      const err = new Error("Borrow request is no longer awaiting receipt confirmation");
+      err.status = 409;
+      throw err;
+    }
+
+    return {
+      message: "Receipt confirmed; the borrow is now active",
+      data: { borrow_id: Number(borrowId), status: "borrowed" },
     };
   }
 
