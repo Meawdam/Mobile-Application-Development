@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 import '../model/approve_item_model.dart';
 
@@ -30,11 +29,15 @@ class ApproveItemsController extends ChangeNotifier {
     ),
   ];
 
+  final Map<String, String> _rejectionReasons = {};
+
   List<ApproveItem> get items => List.unmodifiable(_items);
 
   int get pendingCount => _items.length;
 
-  // Approve an item
+  Map<String, String> get rejectionReasons =>
+      Map.unmodifiable(_rejectionReasons);
+
   bool approveItem(String id) {
     final index = _items.indexWhere((item) => item.id == id);
 
@@ -45,16 +48,27 @@ class ApproveItemsController extends ChangeNotifier {
     return true;
   }
 
-  // Reject an item with a required reason
   bool rejectItem(String id, String reason) {
-    if (reason.trim().isEmpty) return false;
+    final trimmedReason = reason.trim();
+
+    if (trimmedReason.isEmpty) return false;
 
     final index = _items.indexWhere((item) => item.id == id);
 
     if (index == -1) return false;
 
+    _rejectionReasons[id] = trimmedReason;
     _items.removeAt(index);
+
     notifyListeners();
     return true;
+  }
+
+  ApproveItem? findItem(String id) {
+    for (final item in _items) {
+      if (item.id == id) return item;
+    }
+
+    return null;
   }
 }
