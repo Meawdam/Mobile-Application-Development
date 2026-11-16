@@ -4,6 +4,7 @@ const path = require("node:path");
 const swaggerUi = require("swagger-ui-express");
 const openApiSpecification = require("./swagger");
 const db = require("./db_config");
+const startDepositForfeitureScheduler = require("./module/borrow/deposit_forfeiture_scheduler");
 
 const app = express();
 
@@ -20,6 +21,8 @@ app.use("/api/auth", require("./module/auth/auth_routes"));
 app.use("/api/users", require("./module/user/user_routes"));
 app.use("/api/assets", require("./module/asset/asset_routes"));
 app.use("/api/borrows", require("./module/borrow/borrow_route"));
+app.use("/api/wallet", require("./module/wallet/wallet_routes"));
+app.use("/api/admin", require("./module/admin/admin_routes"));
 
 app.use((err, req, res, next) => {
   console.error("Unhandled Error:", err);
@@ -44,6 +47,7 @@ async function startServer() {
   }
 
   app.listen(PORT, () => {
+    startDepositForfeitureScheduler();
     console.log(`🚀 Server running on http://localhost:${PORT}`);
     console.log(`Swagger UI running on http://localhost:${PORT}/api-docs`);
   });
