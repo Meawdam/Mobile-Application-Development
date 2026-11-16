@@ -29,15 +29,50 @@
  *         owner_name:
  *           type: string
  *           example: alex
+ *         pickup_date:
+ *           type: string
+ *           format: date
+ *           description: Borrower-selected pickup date (must be within lending_end_date)
+ *           example: '2026-11-02'
+ *         planned_return_date:
+ *           type: string
+ *           format: date
+ *           description: Borrower-selected return date (must be within lending_end_date)
+ *           example: '2026-11-05'
+ *         rental_days:
+ *           type: integer
+ *           description: Inclusive day count between pickup_date and planned_return_date
+ *           example: 4
+ *         price_per_day:
+ *           type: number
+ *           format: double
+ *           example: 100.50
+ *         rental_amount:
+ *           type: number
+ *           format: double
+ *           example: 402.00
+ *         deposit_amount:
+ *           type: number
+ *           format: double
+ *           example: 250.50
+ *         total_amount:
+ *           type: number
+ *           format: double
+ *           example: 652.50
  *         borrow_date:
  *           type: string
  *           format: date
- *           description: Set automatically when the borrow request is paid and the asset is borrowed
- *           example: '2026-11-01'
- *         return_before:
+ *           description: Set from pickup_date when the borrower confirms receipt
+ *           example: '2026-11-02'
+ *         received_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *           description: Timestamp when the borrower confirmed receipt of the asset
+ *         lending_end_date:
  *           type: string
  *           format: date
- *           description: The asset's return-by date set by its owner
+ *           description: The asset's lending end date set by its owner (return_before)
  *           example: '2026-11-08'
  *         return_date:
  *           type: string
@@ -46,17 +81,13 @@
  *           nullable: true
  *         status:
  *           type: string
- *           enum: [requested, borrowed, returned_pending, returned_confirmed, rejected]
- *           description: rejected includes borrow requests cancelled by the borrower
+ *           enum: [requested, approved, borrowed, returned_pending, returned_confirmed, rejected, cancelled]
+ *           description: cancelled means the borrower cancelled the request; rejected means the owner rejected it
  *           example: requested
  *         payment_status:
  *           type: string
- *           enum: [unpaid, paid, refunded]
+ *           enum: [unpaid, paid, refunded, forfeited]
  *           example: unpaid
- *         fine_amount:
- *           type: integer
- *           description: Stored late-return fine, calculated as asset price per overdue day
- *           example: 100
  *     BorrowListResponse:
  *       type: object
  *       properties:
@@ -66,11 +97,80 @@
  *             $ref: '#/components/schemas/Borrow'
  *     BorrowRequest:
  *       type: object
- *       required: [asset_id]
+ *       required: [asset_id, pickup_date, return_date]
  *       properties:
  *         asset_id:
  *           type: integer
  *           example: 4
+ *         pickup_date:
+ *           type: string
+ *           format: date
+ *           example: '2026-11-02'
+ *         return_date:
+ *           type: string
+ *           format: date
+ *           example: '2026-11-05'
+ */
+
+/**
+ * @swagger
+ * /api/borrows/assets/{id}:
+ *   get:
+ *     tags: [Assets]
+ *     summary: Get an asset by ID from the borrow API
+ *     description: Includes owner_username for the asset owner.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Asset details, including owner_username when available
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AssetResponse'
+ *       401:
+ *         description: Access token is required
+ *       404:
+ *         description: Asset not found or not visible to the caller
+ */
+
+/**
+ * @swagger
+ * /api/borrows/{id}:
+ *   get:
+ *     tags: [Borrows]
+ *     summary: Get a borrow record by ID
+ *     description: Available to the borrower, asset owner, or an admin. Includes owner_name and borrower_name.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Borrow record details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   $ref: '#/components/schemas/Borrow'
+ *       401:
+ *         description: Access token is required
+ *       403:
+ *         description: User is not authorized to view this borrow record
+ *       404:
+ *         description: Borrow record not found
  */
 
 /**
@@ -114,6 +214,25 @@
  *         description: Access token is required
  *       403:
  *         description: Token is invalid
+ */
+
+/**
+ * @swagger
+ * /api/borrows/owner:
+ *   get:
+ *     tags: [Borrows]
+ *     summary: Get borrow records for assets owned by the authenticated user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Borrow records for assets owned by the authenticated user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BorrowListResponse'
+ *       401:
+ *         description: Access token is required
  */
 
 /**
@@ -162,7 +281,7 @@
  *           type: integer
  *     responses:
  *       200:
- *         description: Payment completed and asset marked as borrowed
+ *         description: Payment completed; the borrow remains pending until receipt is confirmed
  *       400:
  *         description: Borrow request is no longer awaiting payment
  *       409:
@@ -173,6 +292,36 @@
  *         description: Token is invalid or the user is not the borrower
  *       404:
  *         description: Borrow record not found
+ */
+
+/**
+ * @swagger
+ * /api/borrows/{id}/confirm-received:
+ *   patch:
+ *     tags: [Borrows]
+ *     summary: Confirm receipt of a paid asset
+ *     description: The authenticated user must be the borrower. This changes the borrow status to borrowed.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Receipt confirmed and borrow activated
+ *       400:
+ *         description: Borrow is not paid or is not awaiting receipt confirmation
+ *       401:
+ *         description: Access token is required
+ *       403:
+ *         description: User is not the borrower
+ *       404:
+ *         description: Borrow record not found
+ *       409:
+ *         description: Borrow request or asset is no longer available for confirmation
  */
 
 /**
@@ -203,6 +352,77 @@
  *         description: Borrow record not found
  *       409:
  *         description: Borrow request is no longer available to cancel
+ */
+
+/**
+ * @swagger
+ * /api/borrows/{id}/approve:
+ *   patch:
+ *     tags: [Borrows]
+ *     summary: Approve an unpaid borrow request
+ *     description: The authenticated user must own the asset. Borrowers may still pay immediately before this action.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Borrow request approved
+ *       400:
+ *         description: Request is no longer awaiting a decision
+ *       401:
+ *         description: Access token is required
+ *       403:
+ *         description: Token is invalid or the user is not the asset owner
+ *       404:
+ *         description: Borrow record not found
+ *       409:
+ *         description: Request changed before the decision was saved
+ */
+
+/**
+ * @swagger
+ * /api/borrows/{id}/reject:
+ *   patch:
+ *     tags: [Borrows]
+ *     summary: Reject an unpaid borrow request
+ *     description: The authenticated user must own the asset; a rejection reason is required.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [reason]
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 maxLength: 500
+ *     responses:
+ *       200:
+ *         description: Borrow request rejected
+ *       400:
+ *         description: Invalid or missing rejection reason
+ *       401:
+ *         description: Access token is required
+ *       403:
+ *         description: Token is invalid or the user is not the asset owner
+ *       404:
+ *         description: Borrow record not found
+ *       409:
+ *         description: Request changed before the decision was saved
  */
 
 /**
@@ -252,7 +472,7 @@
  *           type: integer
  *     responses:
  *       200:
- *         description: Return confirmed, payment refunded, fine calculated, and asset made available
+ *         description: Return confirmed; the deposit is refunded after admin processing or forfeited to the owner if the return deadline passed
  *         content:
  *           application/json:
  *             schema:
@@ -260,7 +480,9 @@
  *               properties:
  *                 message:
  *                   type: string
- *                 fine_amount:
+ *                 deposit_forfeited:
+ *                   type: integer
+ *                 refund_pending:
  *                   type: integer
  *       400:
  *         description: The item has already been returned or no return request is pending

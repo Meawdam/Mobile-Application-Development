@@ -1,44 +1,22 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 
-import 'modules/borrowed_items/borrowed_items_module.dart';
+import 'app_router.dart';
 
 void main() {
-  runApp(const MainApp());
+  runApp(const BorrowApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class BorrowApp extends StatelessWidget {
+  const BorrowApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Borrow',
       debugShowCheckedModeBanner: false,
-      title: 'Borrow App',
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF3B54F6),
-          surface: const Color(0xFFF5F7FB),
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF5F7FB),
-        // Keep Material touch targets usable on Android.
-        visualDensity: VisualDensity.standard,
-        materialTapTargetSize: MaterialTapTargetSize.padded,
-      ),
-      builder: (context, child) {
-        final mq = MediaQuery.of(context);
-        // Allow accessibility scaling, but clamp so phone layouts stay intact.
-        final clamped = mq.textScaler.clamp(
-          minScaleFactor: 0.9,
-          maxScaleFactor: 1.3,
-        );
-        return MediaQuery(
-          data: mq.copyWith(textScaler: clamped),
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
-      home: const MyBorrowedItemsPage(),
+      initialRoute: '/login',
+      onGenerateRoute: onGenerateAppRoute,
     );
   }
 }

@@ -14,6 +14,10 @@
  *         owner_id:
  *           type: integer
  *           example: 7
+ *         owner_username:
+ *           type: string
+ *           description: Username of the asset owner
+ *           example: alex
  *         name:
  *           type: string
  *           example: Camera
@@ -26,11 +30,13 @@
  *           example: /uploads/08ab835d-f75d-4c19-89f2-808a210f18c6.jpg
  *         down_payment:
  *           type: number
- *           example: 250
+ *           format: double
+ *           example: 250.50
  *         price:
- *           type: integer
- *           description: Daily late-return fine in the same currency
- *           example: 100
+ *           type: number
+ *           format: double
+ *           description: Daily rental price in the same currency
+ *           example: 100.50
  *         pickup_point:
  *           type: string
  *           example: Library front desk
@@ -125,12 +131,17 @@
  *                 description: JPEG, PNG, GIF, or WebP image up to 5 MB
  *               down_payment:
  *                 type: number
- *                 example: 250
- *               price:
- *                 type: integer
+ *                 format: double
  *                 minimum: 0
- *                 description: Daily late-return fine
- *                 example: 100
+ *                 maximum: 99999999.99
+ *                 example: 250.50
+ *               price:
+ *                 type: number
+ *                 format: double
+ *                 minimum: 0
+ *                 maximum: 99999999.99
+ *                 description: Daily rental price
+ *                 example: 100.50
  *               pickup_point:
  *                 type: string
  *                 example: Library front desk
@@ -198,8 +209,7 @@
  *   get:
  *     tags: [Assets]
  *     summary: Get an asset by ID
- *     security:
- *       - bearerAuth: []
+ *     security: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -210,15 +220,11 @@
  *           example: 1
  *     responses:
  *       200:
- *         description: Asset details
+ *         description: Asset details, including owner_username when available
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/AssetResponse'
- *       401:
- *         description: Access token is required
- *       403:
- *         description: Token is invalid
  *       404:
  *         description: Asset not found
  */
