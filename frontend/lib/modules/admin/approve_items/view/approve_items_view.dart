@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'controller/approve_items_controller.dart';
-import 'model/approve_item_model.dart';
+import 'package:frontend/modules/admin/approve_items/controller/approve_items_controller.dart';
+import 'package:frontend/modules/admin/approve_items/model/approve_item_model.dart';
 
 class ApproveItemsPage extends StatefulWidget {
   const ApproveItemsPage({super.key});
