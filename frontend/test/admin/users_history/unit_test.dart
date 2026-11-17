@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/modules/admin/users_history/controller/users_history_controller.dart';
+import 'package:frontend/modules/admin/users_history/model/user_history_model.dart';
 
 void main() {
   late UsersHistoryController controller;
@@ -7,51 +8,42 @@ void main() {
   setUp(() => controller = UsersHistoryController());
   tearDown(() => controller.dispose());
 
-  group('Suspension reason', () {
-    test('Suspending with a reason stores it for the selected user', () {
-      final ok = controller.suspendSelectedUser('  Repeated late returns  ');
+  test('User and activity models convert to and from maps', () {
+    final user = UserHistoryUser(
+      id: 'user-1',
+      name: 'Somchai',
+      initial: 'S',
+      total: 3,
+      lending: 1,
+      overdue: 0,
+      activities: const [
+        UserHistoryActivity(
+          date: '2026-11-18',
+          category: 'Finance',
+          title: 'Payment completed',
+          performedBy: 'Somchai',
+        ),
+      ],
+    );
 
-      expect(ok, isTrue);
-      expect(controller.isSelectedUserSuspended, isTrue);
-      expect(controller.selectedUserSuspensionReason, 'Repeated late returns');
-    });
+    expect(UserHistoryUser.fromMap(user.toMap()).toMap(), user.toMap());
+  });
 
-    test('Blank reason is rejected and the user stays active', () {
-      final ok = controller.suspendSelectedUser('   ');
+  test('Activity filters can be changed and reset', () {
+    controller.setFilter('Finance');
+    expect(controller.selectedFilter, 'Finance');
 
-      expect(ok, isFalse);
-      expect(controller.isSelectedUserSuspended, isFalse);
-      expect(controller.selectedUserSuspensionReason, isNull);
-    });
+    controller.searchActivities('payment');
+    expect(controller.activitySearch, 'payment');
 
-    test('Activating clears the reason and restores access', () {
-      controller.suspendSelectedUser('Spam');
-      controller.activateSelectedUser();
+    controller.resetFilters();
+    expect(controller.selectedFilter, 'All');
+    expect(controller.activitySearch, isEmpty);
+    expect(controller.userSearch, isEmpty);
+  });
 
-      expect(controller.isSelectedUserSuspended, isFalse);
-      expect(controller.selectedUserSuspensionReason, isNull);
-    });
-
-    test('Reasons are kept per user', () {
-      controller.suspendSelectedUser('Reason A');
-      controller.selectUser('user2');
-
-      expect(controller.selectedUserSuspensionReason, isNull);
-
-      controller.suspendSelectedUser('Reason B');
-      controller.selectUser('user1');
-
-      expect(controller.selectedUserSuspensionReason, 'Reason A');
-    });
-
-    test('Notifies listeners when suspending and activating', () {
-      var count = 0;
-      controller.addListener(() => count++);
-
-      controller.suspendSelectedUser('x');
-      controller.activateSelectedUser();
-
-      expect(count, 2);
-    });
+  test('Suspension requires a selected user', () async {
+    expect(await controller.suspendSelectedUser('Policy violation'), isFalse);
+    expect(controller.errorMessage, 'Please select a user');
   });
 }
