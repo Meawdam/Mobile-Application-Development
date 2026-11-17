@@ -5,8 +5,9 @@ import '../model/dashboard_model.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToApprove;
+  final VoidCallback? onNavigateToRecords;
 
-  const AdminDashboardScreen({super.key, this.onNavigateToApprove});
+  const AdminDashboardScreen({super.key, this.onNavigateToApprove, this.onNavigateToRecords});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -111,7 +112,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final chart = _borrowingCard(stats);
-                            final finances = _financeCard(stats);
+                            final finances = _financeCard(stats, widget.onNavigateToRecords);
                             if (constraints.maxWidth < 760) {
                               return Column(children: [chart, const SizedBox(height: 12), finances]);
                             }
@@ -164,13 +165,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           }).toList())),
   );
 
-  Widget _financeCard(DashboardStats? stats) => _panel(
+  Widget _financeCard(DashboardStats? stats, VoidCallback? onViewRefunds) => _panel(
     title: 'Finance snapshot',
     subtitle: 'Deposits and refunds',
     child: Column(children: [
       _financeRow(Icons.payments_outlined, 'Collected revenue', stats == null ? '—' : _currency(stats.collectedRevenue), const Color(0xFF16845B)),
       const Divider(height: 22),
       _financeRow(Icons.hourglass_bottom_rounded, 'Refunds to process', stats?.pendingRefunds.toString() ?? '—', const Color(0xFFB7791F)),
+      if ((stats?.pendingRefunds ?? 0) > 0 && onViewRefunds != null)
+        Align(alignment: Alignment.centerRight, child: TextButton.icon(onPressed: onViewRefunds, icon: const Icon(Icons.arrow_forward_rounded, size: 16), label: const Text('Review refunds'))),
       const Divider(height: 22),
       _financeRow(Icons.check_circle_outline, 'Refunds completed', stats == null ? '—' : _currency(stats.processedRefunds), _blue),
     ]),

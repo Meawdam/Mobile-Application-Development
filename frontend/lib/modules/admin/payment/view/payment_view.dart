@@ -22,6 +22,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   final PaymentController _paymentController = PaymentController();
   final DashboardController _dashboardController = DashboardController();
   List<PaymentTransaction> _transactions = [];
+  List<PaymentTransaction> _pendingRefundTransactions = [];
   DashboardStats? _stats;
   bool _isLoading = true;
   bool _isRefunding = false;
@@ -41,7 +42,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     try {
       final transactions = await _paymentController.fetchTransactions(limit: 4);
-      if (mounted) setState(() => _transactions = transactions);
+      final pendingRefunds = await _paymentController.fetchTransactions(
+        type: 'deposit_refund',
+        status: 'pending',
+        limit: 100,
+      );
+      if (mounted) {
+        setState(() {
+          _transactions = transactions.where((tx) => !tx.isRefundable).toList();
+          _pendingRefundTransactions = pendingRefunds;
+        });
+      }
     } catch (error) {
       if (mounted) {
         setState(
@@ -193,6 +204,31 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ],
               ),
             ),
+          if (_pendingRefundTransactions.isNotEmpty) ...[
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Deposit refunds to process',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _onLight),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                  decoration: BoxDecoration(color: const Color(0xFFFFF6DF), borderRadius: BorderRadius.circular(18)),
+                  child: Text('${_pendingRefundTransactions.length} pending', style: const TextStyle(color: Color(0xFF9A6700), fontSize: 11, fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text('These deposits are ready to be returned to the borrowers.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+            const SizedBox(height: 11),
+            for (final transaction in _pendingRefundTransactions) ...[
+              _buildTransactionCard(transaction),
+              const SizedBox(height: 9),
+            ],
+          ],
           const SizedBox(height: 24),
 
           Row(

@@ -15,6 +15,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   final TextEditingController _searchController = TextEditingController();
   final PaymentController _controller = PaymentController();
   List<PaymentTransaction> allTransactions = [];
+  List<PaymentTransaction> _pendingRefundTransactions = [];
   bool _isLoading = true;
   String? _errorMessage;
   String? _refundingTransactionId;
@@ -43,8 +44,16 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     });
     try {
       final transactions = await _controller.fetchTransactions(limit: 100);
+      final pendingRefunds = await _controller.fetchTransactions(
+        type: 'deposit_refund',
+        status: 'pending',
+        limit: 100,
+      );
       if (!mounted) return;
-      setState(() => allTransactions = transactions);
+      setState(() {
+        allTransactions = transactions;
+        _pendingRefundTransactions = pendingRefunds;
+      });
     } catch (error) {
       if (!mounted) return;
       setState(
@@ -96,8 +105,11 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final sourceTransactions = selectedFilter == 'Pending Refund'
+        ? _pendingRefundTransactions
+        : allTransactions;
     final filteredList = _controller
-        .filterTransactions(allTransactions, selectedFilter)
+        .filterTransactions(sourceTransactions, selectedFilter)
         .where((transaction) {
           final query = _searchController.text.toLowerCase();
           return query.isEmpty ||

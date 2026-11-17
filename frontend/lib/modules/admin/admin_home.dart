@@ -53,7 +53,10 @@ class _AdminHomeState extends State<AdminHome> {
   Widget build(BuildContext context) {
     const tabTitles = ['Dashboard', 'Approve items', 'Users & history', 'Records'];
     final pages = [
-      AdminDashboardScreen(onNavigateToApprove: () => changeTab(1)),
+      AdminDashboardScreen(
+        onNavigateToApprove: () => changeTab(1),
+        onNavigateToRecords: () => changeTab(3),
+      ),
       const ApproveItemsPage(), // Index 1: Approve (หน้าอนุมัติ)
       const UsersHistoryPage(), // Index 2: Users
       const PaymentScreen(), // Index 3: Records / Payment
