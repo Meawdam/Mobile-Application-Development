@@ -80,6 +80,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: _blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.insights_outlined, color: _blue),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Admin overview', style: TextStyle(fontWeight: FontWeight.w700, color: _onLight)),
+                          const SizedBox(height: 3),
+                          Text('Key activity and deposit summary for ${_todayLabel()}', style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                        ],
+                      ),
+                    ),
+                    if (stats != null)
+                      Text('${stats.pendingCount} pending', style: const TextStyle(color: _blue, fontWeight: FontWeight.w700, fontSize: 12)),
+                  ],
+                ),
+              ),
               if (snapshot.connectionState == ConnectionState.waiting)
                 const LinearProgressIndicator(),
               if (snapshot.hasError)
@@ -158,7 +192,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   String _todayLabel() {
     final now = DateTime.now();
-    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
   }
 
   String _formatCurrency(double amount) {

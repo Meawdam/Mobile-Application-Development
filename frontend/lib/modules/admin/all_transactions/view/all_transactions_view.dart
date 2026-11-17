@@ -60,7 +60,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Confirm Refund'),
-        content: Text('Process the refund for ${transaction.user}?'),
+        content: Text('Return the held deposit to ${transaction.user}? You can do this after the item is confirmed returned and the deposit refund is pending.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -120,6 +120,13 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh records',
+            onPressed: _isLoading ? null : _loadTransactions,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       body: Column(
         children: [

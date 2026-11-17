@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 //import 'model/user_history_model.dart';
 import 'package:frontend/modules/admin/users_history/controller/users_history_controller.dart';
 import 'package:frontend/modules/admin/users_history/model/user_history_model.dart';
+import '../../admin_time.dart';
 
 class UsersHistoryPage extends StatefulWidget {
   const UsersHistoryPage({super.key});
@@ -347,6 +348,9 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
         TextField(
           controller: userSearchController,
           onChanged: _onUserSearch,
+          textInputAction: TextInputAction.search,
+          onSubmitted: _onUserSearch,
+          autocorrect: false,
           decoration: InputDecoration(
             hintText: 'Search users by name...',
             prefixIcon: const Icon(Icons.search_rounded, color: _blue),
@@ -1032,7 +1036,7 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
                 runSpacing: 7,
                 children: [
                   Text(
-                    activity.date,
+                    formatAdminTime(activity.date),
                     style: const TextStyle(
                       fontSize: 11,
                       color: Color(0xFF64748B),

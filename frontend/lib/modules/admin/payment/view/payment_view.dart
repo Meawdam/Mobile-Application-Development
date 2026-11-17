@@ -74,7 +74,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Confirm Refund'),
         content: Text(
-          'Are you sure you want to process the refund for "${transaction.title}"?',
+          'Return the held deposit to ${transaction.user}? You can do this after the item is confirmed returned and the deposit refund is pending.',
         ),
         actions: [
           TextButton(

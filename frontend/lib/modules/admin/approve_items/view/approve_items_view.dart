@@ -23,6 +23,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
   static const _blueTint = Color(0xFFE8ECFF);
 
   final TextEditingController noteController = TextEditingController();
+  bool _reasonError = false;
 
   late final ApproveItemsController controller;
 
@@ -58,13 +59,15 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
 
   void _openDetails(ApproveItem item) {
     noteController.clear();
+    _reasonError = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return SafeArea(
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) => SafeArea(
           child: Container(
             height: MediaQuery.of(context).size.height * 0.88,
             decoration: const BoxDecoration(
@@ -106,7 +109,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(20),
-                    child: _buildDetails(item),
+                    child: _buildDetails(item, setSheetState),
                   ),
                 ),
                 Padding(
@@ -121,7 +124,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () =>
-                              _decide(item.id, item.name, false, sheetContext),
+                              _decide(item.id, item.name, false, sheetContext, setSheetState),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: _red,
                             side: const BorderSide(color: _red),
@@ -134,7 +137,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () =>
-                              _decide(item.id, item.name, true, sheetContext),
+                              _decide(item.id, item.name, true, sheetContext, setSheetState),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _green,
                             foregroundColor: _onLight,
@@ -149,12 +152,13 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
               ],
             ),
           ),
+        ),
         );
       },
     );
   }
 
-  Widget _buildDetails(ApproveItem item) {
+  Widget _buildDetails(ApproveItem item, StateSetter setSheetState) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -177,24 +181,66 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
         _detailRow('Item Name', item.name),
         _detailRow('Owner', item.owner),
         _detailRow('Submitted', item.time),
-        _detailRow('Category', item.category),
         _detailRow('Description', item.description),
         const SizedBox(height: 8),
         const Text(
-          'Rejection reason (required when rejecting)',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          'Rejection reason',
+          style: TextStyle(fontWeight: FontWeight.bold, color: _onLight),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Required to reject this item. Explain what needs to be corrected.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: noteController,
           maxLines: 3,
+          maxLength: 500,
+          onChanged: (_) {
+            if (_reasonError && noteController.text.trim().isNotEmpty) {
+              setSheetState(() => _reasonError = false);
+            }
+          },
           decoration: InputDecoration(
-            hintText: 'Enter reason for rejection...',
+            hintText: 'Example: Please add a clear photo of the item label.',
             filled: true,
             fillColor: Colors.white,
+            errorText: _reasonError ? 'A rejection reason is required.' : null,
+            errorMaxLines: 2,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: _reasonError ? _red : const Color(0xFFDCE5F2)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: _reasonError ? _red : _blue, width: 1.5),
+            ),
           ),
         ),
+        if (_reasonError)
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFCE8E8),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.error_outline, size: 18, color: _red),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'You can’t reject this item yet. Enter a reason above so the owner knows what to fix.',
+                    style: TextStyle(color: _red, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -224,13 +270,12 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
     String itemName,
     bool approve,
     BuildContext sheetContext,
+    StateSetter setSheetState,
   ) async {
     final reason = noteController.text.trim();
 
     if (!approve && reason.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a reason for rejection.')),
-      );
+      setSheetState(() => _reasonError = true);
       return;
     }
 
@@ -447,29 +492,6 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                                           style: const TextStyle(
                                             color: Colors.black54,
                                             fontSize: 12,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 7),
-                                        Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 9,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: _blueTint,
-                                              borderRadius:
-                                                  BorderRadius.circular(20),
-                                            ),
-                                            child: Text(
-                                              item.category,
-                                              style: const TextStyle(
-                                                color: _blue,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
                                           ),
                                         ),
                                       ],

@@ -6,6 +6,8 @@ import 'approve_items/view/approve_items_view.dart';
 import 'dashboard/view/dashboard_view.dart';
 import 'users_history/view/users_history_view.dart';
 import 'payment/view/payment_view.dart';
+import 'package:frontend/services/auth_service.dart';
+import '../auth/login/view/login_view.dart';
 
 class AdminHome extends StatefulWidget {
   const AdminHome({super.key});
@@ -17,6 +19,28 @@ class AdminHome extends StatefulWidget {
 class _AdminHomeState extends State<AdminHome> {
   // แก้ไขมาใช้ตัวแปรเก็บ index เป็นตัวเลข (เริ่มต้นที่ 0 คือ Dashboard)
   int _currentIndex = 0;
+  final Authservice _authService = Authservice();
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text('You will need to sign in again to access admin tools.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Log out')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _authService.deleteToken();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
+  }
 
   // ฟังก์ชันสำหรับสั่งเปลี่ยนหน้าจากภายนอก (เช่น กดปุ่ม Review จาก Dashboard)
   void changeTab(int index) {
@@ -39,6 +63,7 @@ class _AdminHomeState extends State<AdminHome> {
         backgroundColor: const Color(0xFF2F4BFF),
         foregroundColor: Colors.white,
         title: const Text('Borrow Admin Console'),
+        actions: [IconButton(tooltip: 'Log out', onPressed: _logout, icon: const Icon(Icons.logout))],
       ),
       body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: NavigationBar(

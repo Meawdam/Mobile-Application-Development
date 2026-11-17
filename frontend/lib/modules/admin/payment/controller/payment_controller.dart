@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../../services/auth_service.dart';
 import '../model/payment_model.dart';
+import '../../admin_time.dart';
 
 class PaymentController {
   static const String _baseUrl = 'http://localhost:3000';
@@ -178,7 +179,7 @@ class PaymentController {
       'user_name',
     ], fallback: '-');
 
-    final time = _value(data, ['time', 'created_at', 'transaction_date']);
+    final time = formatAdminTime(_value(data, ['time', 'created_at', 'transaction_date']));
 
     final amountValue =
         data['amount'] ?? data['total_amount'] ?? data['value'] ?? 0;

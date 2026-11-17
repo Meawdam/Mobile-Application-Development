@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../../services/auth_service.dart';
 import '../model/approve_item_model.dart';
+import '../../admin_time.dart';
 
 
 class ApproveItemsController extends ChangeNotifier {
@@ -76,10 +77,9 @@ class ApproveItemsController extends ChangeNotifier {
                   'owner': item['owner_username']?.toString() ??
                       item['username']?.toString() ??
                       '-',
-                  'time': item['created_at']?.toString() ??
+                  'time': formatAdminTime(item['created_at']?.toString() ??
                       item['submitted_at']?.toString() ??
-                      '-',
-                  'category': item['category']?.toString() ?? '-',
+                      '-'),
                   'description': item['description']?.toString() ?? '',
                 }),
               ),
