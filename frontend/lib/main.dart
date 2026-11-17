@@ -1,16 +1,22 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 
+import 'app_router.dart';
+
 void main() {
-  runApp(const MainApp());
+  runApp(const BorrowApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class BorrowApp extends StatelessWidget {
+  const BorrowApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(body: Center(child: Text('Hello World!'))),
+    return MaterialApp(
+      title: 'Borrow',
+      debugShowCheckedModeBanner: false,
+      initialRoute: '/login',
+      onGenerateRoute: onGenerateAppRoute,
     );
   }
 }
