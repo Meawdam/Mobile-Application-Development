@@ -1,41 +1,26 @@
 import 'package:flutter/material.dart';
+//import 'package:frontend/admin/dashboard_requests_page.dart';
+//import 'package:frontend/admin/approve_items_page.dart';
+import 'package:frontend/modules/admin/approve_items/view/approve_items_view.dart';
 
-import '../../approve_items/view/approve_items_view.dart';
-import '../../payment/view/payment_view.dart';
-import 'dashboard_requests_view.dart';
+class AdminDashboardScreen extends StatelessWidget {
+  final VoidCallback? onNavigateToApprove; // 1. เพิ่มตัวรับฟังก์ชันนี้
 
-class BorrowAdminApp extends StatelessWidget {
-  const BorrowAdminApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Admin Dashboard',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: const Color(0xFFF3F4F6),
-        fontFamily: 'Roboto',
-      ),
-      home: const AdminDashboardScreen(),
-    );
-  }
-}
-
-class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({super.key});
-
-  @override
-  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
-}
-
-class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  int pendingRequestsCount = 8;
+  const AdminDashboardScreen({
+    super.key,
+    this.onNavigateToApprove, // 2. รับค่าเข้ามา
+  });
+  //  Color Code
+  static const _blue = Color(0xFF2F4BFF);
+  static const _red = Color.fromARGB(255, 223, 42, 42);
+  static const _yellow = Color.fromARGB(255, 252, 252, 75);
+  static const _green = Color.fromARGB(255, 72, 230, 83);
+  static const _onLight = Color(0xFF172554);
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -44,91 +29,54 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Column(
+              const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
                     'Dashboard',
                     style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF111827),
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: _onLight,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  SizedBox(height: 4),
                   Text(
                     'Friday, October 30, 2026',
                     style: TextStyle(
                       color: Color(0xFF6B7280),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
                     ),
                   ),
                 ],
               ),
-              // à¹€à¸£à¸µà¸¢à¸à¹ƒà¸Šà¹‰à¸‡à¸²à¸™ Widget à¸›à¸¸à¹ˆà¸¡à¹à¸¢à¸ à¸žà¸£à¹‰à¸­à¸¡à¸à¸³à¸«à¸™à¸”à¸à¸²à¸£à¸à¸”à¹€à¸›à¸´à¸”à¸«à¸™à¹‰à¸² Approve
-              ReviewRequestsWidget(
-                pendingCount: pendingRequestsCount,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => Scaffold(
-                        appBar: AppBar(
-                          backgroundColor: const Color(0xFF1800A8),
-                          foregroundColor: Colors.white,
-                          centerTitle: false,
-                          iconTheme: const IconThemeData(color: Colors.white),
-                          titleTextStyle: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          title: const Text('Approve Items'),
-                        ),
-                        body: const ApproveItemsPage(),
-                      ),
-                    ),
-                  );
-                },
-              ),
+             
             ],
           ),
           const SizedBox(height: 20),
 
-          // Stat Cards Grid
-          GridView.count(
-            crossAxisCount: 3,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 1.1,
-            children: [
-              _buildStatCard(
-                'Approved',
-                '1,248',
-                Icons.check_circle_outline,
-                Colors.green,
-              ),
-              _buildStatCard(
-                'Pending',
-                '$pendingRequestsCount',
-                Icons.hourglass_top_outlined,
-                Colors.orange,
-              ),
-              _buildStatCard(
-                'Borrowed',
-                '96',
-                Icons.inventory_2_outlined,
-                Colors.indigo,
-              ),
-            ],
+          // Stat Cards Grid 
+          LayoutBuilder(
+            builder: (context, cardConstraints) {
+              int crossAxisCount = cardConstraints.maxWidth > 900
+                  ? 4
+                  : (cardConstraints.maxWidth > 500 ? 2 : 1);
+              return GridView.count(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                childAspectRatio: 1.6,
+                children: [
+                  _buildStatCard('Approved Items', '1,248', Icons.check_circle_outline, _green),
+                  _buildStatCard('Pending Approval', '3', Icons.hourglass_top_outlined, _yellow),
+                  _buildStatCard('Currently Borrowed', '96', Icons.inventory_2_outlined, _blue),
+                  _buildStatCard('Held Deposits', '฿84,500', Icons.account_balance_wallet_outlined, _red),
+                ],
+              );
+            },
           ),
-          const SizedBox(height: 20),
-
-          // à¹€à¸Šà¸·à¹ˆà¸­à¸¡à¸«à¸™à¹‰à¸² Payment
-          const PaymentScreen(),
           const SizedBox(height: 20),
 
           // Lower Section: Chart Section
@@ -138,22 +86,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  // Widget การ์ดสถิติพร้อมไอคอนและสีสันสดใส
+  Widget _buildStatCard(String title, String value, IconData icon, Color accentColor) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.01),
-            blurRadius: 4,
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -165,23 +109,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(icon, color: color, size: 20),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: accentColor, size: 20),
+              ),
               Text(
                 value,
                 style: TextStyle(
-                  color: color,
-                  fontSize: 16,
+                  color: accentColor == _yellow ? const Color(0xFFB45309) : accentColor,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             title,
             style: const TextStyle(
               color: Color(0xFF6B7280),
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
             maxLines: 1,
@@ -192,9 +143,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Widget ส่วนกราฟ
   Widget _buildChartSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -202,7 +154,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -210,15 +162,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
+            children: [
               Text(
-                'Borrowing Volume (Last 7 Days)',
+                'Number of borrowing in the last 7 days',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF374151),
+                  color: _onLight,
                 ),
               ),
               Text(
@@ -246,27 +198,59 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  // Widget แท่งกราฟ
   Widget _buildBar(String day, double height) {
     return Column(
       children: [
         Container(
-          width: 14,
+          width: 16,
           height: height,
           decoration: BoxDecoration(
-            color: const Color(0xFF0000A0),
+            color: _blue,
             borderRadius: BorderRadius.circular(6),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
           day,
           style: const TextStyle(
-            fontSize: 10,
+            fontSize: 11,
             color: Color(0xFF9CA3AF),
             fontWeight: FontWeight.w500,
           ),
         ),
       ],
+    );
+  }
+}
+
+// 🔹 Widget ย่อยสำหรับปุ่ม Review Requests
+class ReviewRequestsWidget extends StatelessWidget {
+  final int pendingCount;
+  final VoidCallback onTap;
+
+  const ReviewRequestsWidget({
+    super.key,
+    required this.pendingCount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      icon: const Icon(Icons.notifications_active_outlined, size: 16),
+      label: Text(
+        'Review $pendingCount requests',
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF2F4BFF), // ปรับให้ใช้สี _blue ของทีม
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 2,
+      ),
     );
   }
 }

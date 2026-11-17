@@ -11,13 +11,17 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   String selectedFilter = 'All';
   final TextEditingController _searchController = TextEditingController();
 
-  // à¸‚à¹‰à¸­à¸¡à¸¹à¸¥à¸ˆà¸³à¸¥à¸­à¸‡ à¹ƒà¸Šà¹‰à¸Šà¸·à¹ˆà¸­à¸šà¸¸à¸„à¸„à¸¥à¸ˆà¸£à¸´à¸‡ à¹à¸¥à¸°à¸£à¸­à¸‡à¸£à¸±à¸šà¸—à¸±à¹‰à¸‡à¸à¸²à¸£à¸£à¸±à¸šà¹€à¸‡à¸´à¸™à¹à¸¥à¸°à¸„à¸·à¸™à¹€à¸‡à¸´à¸™à¸—à¸±à¹‰à¸‡à¸ªà¸­à¸‡à¸à¸±à¹ˆà¸‡
+  static const Color _blue = Color(0xFF2F4BFF);
+  static const Color _green = Color.fromARGB(255, 72, 230, 83);
+  static const Color _red = Color.fromARGB(255, 223, 42, 42);
+  static const Color _onLight = Color(0xFF172554);
+
   final allTransactions = [
     {
       'title': 'Deposit Refunded - Lab Coat',
       'user': 'Anucha Khetthong',
       'time': '28 Oct. 14:30',
-      'amount': '-à¸¿500.00',
+      'amount': '-฿500.00',
       'isIncome': false,
       'isPending': false,
     },
@@ -25,7 +29,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       'title': 'Fine Payment - Calculator',
       'user': 'Thanakon Srisuk',
       'time': '29 Oct. 09:10',
-      'amount': '+à¸¿50.00',
+      'amount': '+฿50.00',
       'isIncome': true,
       'isPending': false,
     },
@@ -33,7 +37,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       'title': 'Deposit Held - Microscope',
       'user': 'Pimchanok Sriboon',
       'time': '30 Oct. 10:15',
-      'amount': '+à¸¿1,500.00',
+      'amount': '+฿1,500.00',
       'isIncome': true,
       'isPending': true,
     },
@@ -41,7 +45,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       'title': 'Deposit Held - Laptop Stand',
       'user': 'Somchai Jaidee',
       'time': '30 Oct. 11:45',
-      'amount': '+à¸¿300.00',
+      'amount': '+฿300.00',
       'isIncome': true,
       'isPending': true,
     },
@@ -74,21 +78,21 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F7FC),
       appBar: AppBar(
         title: const Text('All Transactions History'),
-        backgroundColor: const Color(0xFF0000A0),
+        backgroundColor: _blue,
         foregroundColor: Colors.white,
         centerTitle: false,
         iconTheme: const IconThemeData(color: Colors.white),
         titleTextStyle: const TextStyle(
           color: Colors.white,
           fontSize: 20,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         ),
       ),
       body: Column(
         children: [
-          // à¸Šà¹ˆà¸­à¸‡à¸„à¹‰à¸™à¸«à¸²à¸‚à¹‰à¸­à¸¡à¸¹à¸¥
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
@@ -96,7 +100,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
               onChanged: (value) => setState(() {}),
               decoration: InputDecoration(
                 hintText: 'Search by name, item or date...',
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF6B7280)),
+                prefixIcon: const Icon(Icons.search, color: _blue),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, size: 18),
@@ -116,11 +120,14 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                 ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: _blue, width: 1.5),
+                ),
               ),
             ),
           ),
 
-          // à¹à¸–à¸šà¸«à¸¡à¸§à¸”à¸«à¸¡à¸¹à¹ˆ
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -138,7 +145,6 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // à¸£à¸²à¸¢à¸à¸²à¸£à¸˜à¸¸à¸£à¸à¸£à¸£à¸¡ (à¹€à¸£à¸µà¸¢à¸‡à¸ˆà¸²à¸à¸¥à¹ˆà¸²à¸‡à¸‚à¸¶à¹‰à¸™à¸šà¸™ à¹ƒà¸«à¹‰à¸£à¸²à¸¢à¸à¸²à¸£à¸¥à¹ˆà¸²à¸ªà¸¸à¸”à¸­à¸¢à¸¹à¹ˆà¸šà¸™à¸ªà¸¸à¸”)
           Expanded(
             child: filteredList.isEmpty
                 ? const Center(
@@ -159,10 +165,11 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(14),
                           side: const BorderSide(color: Color(0xFFE5E7EB)),
                         ),
                         elevation: 0,
+                        color: Colors.white,
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -172,15 +179,15 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
                               color: isIncome
-                                  ? Colors.green.withOpacity(0.1)
-                                  : Colors.red.withOpacity(0.1),
+                                  ? _green.withOpacity(0.15)
+                                  : _red.withOpacity(0.15),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
                               isIncome
                                   ? Icons.arrow_downward
                                   : Icons.arrow_upward,
-                              color: isIncome ? Colors.green : Colors.red,
+                              color: isIncome ? _green : _red,
                               size: 18,
                             ),
                           ),
@@ -188,14 +195,15 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                             tx['title']?.toString() ?? '',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                              fontSize: 14,
+                              color: _onLight,
                             ),
                           ),
                           subtitle: Text(
                             'Name : ${tx['user'] ?? ''} | ${tx['time'] ?? ''}',
                             style: const TextStyle(
                               fontSize: 11,
-                              color: Colors.grey,
+                              color: Color(0xFF6B7280),
                             ),
                           ),
                           trailing: isPending
@@ -206,29 +214,37 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                                         content: Text(
                                           'Refund processed for ${tx['user']}!',
                                         ),
-                                        backgroundColor: Colors.green,
+                                        backgroundColor: _green,
                                       ),
                                     );
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF2563EB),
+                                    backgroundColor: _blue,
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 12,
                                       vertical: 6,
                                     ),
                                     minimumSize: const Size(0, 30),
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                   ),
                                   child: const Text(
                                     'Refund',
-                                    style: TextStyle(fontSize: 11),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 )
                               : Text(
                                   tx['amount']?.toString() ?? '',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: isIncome ? Colors.green : Colors.red,
+                                    fontSize: 14,
+                                    color: isIncome ? _green : _red,
                                   ),
                                 ),
                         ),
@@ -248,12 +264,10 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0000A0) : Colors.white,
+          color: isSelected ? _blue : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected
-                ? const Color(0xFF0000A0)
-                : const Color(0xFFE5E7EB),
+            color: isSelected ? _blue : const Color(0xFFE5E7EB),
           ),
         ),
         child: Text(

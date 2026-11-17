@@ -75,6 +75,14 @@ class PaymentController {
           .timeout(const Duration(seconds: 15));
 
 
+      if (response.statusCode == 401 ||
+          response.statusCode == 403) {
+        throw Exception(
+          'No access to data; please check the Admin Token.',
+        );
+      }
+
+
       if (response.statusCode != 200) {
         throw Exception(_getErrorMessage(response));
       }
@@ -83,16 +91,27 @@ class PaymentController {
       final decoded = jsonDecode(response.body);
 
 
-      if (decoded is! Map<String, dynamic> ||
-          decoded['data'] is! List) {
+      if (decoded is! Map<String, dynamic>) {
         throw Exception('Transaction data format is incorrect.');
+      }
+
+
+      final rawData = decoded['data'];
+
+
+      if (rawData is! List) {
+        throw Exception('No transaction records found from the backend.');
       }
 
 
       final transactions = <PaymentTransaction>[];
 
 
-      for (final item in decoded['data']) {
+      // ล้าง ID เก่าก่อนเก็บข้อมูลชุดใหม่
+      _transactionIds.clear();
+
+
+      for (final item in rawData) {
         if (item is! Map) continue;
 
 
@@ -103,7 +122,10 @@ class PaymentController {
         transactions.add(transaction);
 
 
-        final id = _value(data, ['id', 'transaction_id']);
+        final id = _value(
+          data,
+          ['id', 'transaction_id'],
+        );
 
 
         if (id.isNotEmpty) {
@@ -153,6 +175,12 @@ class PaymentController {
             headers: _headers(token),
           )
           .timeout(const Duration(seconds: 15));
+
+
+      if (response.statusCode == 401 ||
+          response.statusCode == 403) {
+        throw Exception('Not eligible for a refund');
+      }
 
 
       if (response.statusCode != 200) {
@@ -221,14 +249,23 @@ class PaymentController {
 
     final user = _value(
       data,
-      ['user', 'username', 'borrower_name', 'user_name'],
+      [
+        'user',
+        'username',
+        'borrower_name',
+        'user_name',
+      ],
       fallback: '-',
     );
 
 
     final time = _value(
       data,
-      ['time', 'created_at', 'transaction_date'],
+      [
+        'time',
+        'created_at',
+        'transaction_date',
+      ],
     );
 
 
@@ -238,14 +275,11 @@ class PaymentController {
         0;
 
 
-    final amount = amountValue.toString();
-
-
     return PaymentTransaction.fromJson({
       'title': title,
       'user': user,
       'time': time,
-      'amount': amount,
+      'amount': amountValue.toString(),
       'isIncome': isIncome,
       'isPending': isPending,
     });
