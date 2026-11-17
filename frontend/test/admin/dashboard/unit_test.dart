@@ -4,15 +4,6 @@ import 'package:frontend/modules/admin/dashboard/model/dashboard_model.dart';
 
 void main() {
   group('DashboardController & Model Tests', () {
-    test('fetchDashboardStats should return correct stats', () async {
-      final controller = DashboardController();
-      final stats = await controller.fetchDashboardStats();
-
-      expect(stats.approvedCount, 1248);
-      expect(stats.pendingCount, 8);
-      expect(stats.borrowedCount, 96);
-    });
-
     test(
       'hasPendingRequests should return true if count is greater than zero',
       () {
@@ -24,9 +15,16 @@ void main() {
 
     test('DashboardStats.fromJson should map json correctly', () {
       final json = {
-        'approved_count': 100,
-        'pending_count': 5,
-        'borrowed_count': 10,
+        'assets': {'approved': 100, 'pending': 5, 'borrowed': 10},
+        'finance': {
+          'collected_revenue': 1500.5,
+          'held_deposits': 500,
+          'pending_refunds': 2,
+          'processed_refunds': 300,
+        },
+        'borrowing_volume_last_7_days': [
+          {'date': '2026-11-17', 'count': 4},
+        ],
       };
 
       final stats = DashboardStats.fromJson(json);
@@ -34,6 +32,11 @@ void main() {
       expect(stats.approvedCount, 100);
       expect(stats.pendingCount, 5);
       expect(stats.borrowedCount, 10);
+      expect(stats.collectedRevenue, 1500.5);
+      expect(stats.heldDeposits, 500);
+      expect(stats.pendingRefunds, 2);
+      expect(stats.processedRefunds, 300);
+      expect(stats.borrowingVolume.single.count, 4);
     });
   });
 }

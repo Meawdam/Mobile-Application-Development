@@ -6,12 +6,14 @@ void main() {
   group('PaymentController Tests', () {
     final sampleTransactions = [
       PaymentTransaction(
+        id: 'refund-1',
         title: 'Deposit Refunded - Lab Coat',
         user: 'Anucha Khetthong',
-        time: '28 Oct. 14:30',
+        time: '2026-10-28 14:30:00',
         amount: '-฿500.00',
         isIncome: false,
-        isPending: false,
+        isPending: true,
+        isRefundable: true,
       ),
       PaymentTransaction(
         title: 'Deposit Held - Microscope',
@@ -20,6 +22,7 @@ void main() {
         amount: '+฿1,500.00',
         isIncome: true,
         isPending: true,
+        isRefundable: false,
       ),
     ];
 
@@ -31,7 +34,7 @@ void main() {
       );
 
       expect(result.length, 1);
-      expect(result.first.user, 'Pimchanok Sriboon');
+      expect(result.first.user, 'Anucha Khetthong');
     });
 
     test('validateAmount should return true for valid amounts', () {

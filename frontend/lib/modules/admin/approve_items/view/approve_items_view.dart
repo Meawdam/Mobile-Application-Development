@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+//import 'controller/approve_items_controller.dart';
+//import 'model/approve_item_model.dart';
+import 'package:frontend/modules/admin/approve_items/controller/approve_items_controller.dart';
+import 'package:frontend/modules/admin/approve_items/model/approve_item_model.dart';
 
 class ApproveItemsPage extends StatefulWidget {
   const ApproveItemsPage({super.key});
@@ -8,47 +12,62 @@ class ApproveItemsPage extends StatefulWidget {
 }
 
 class _ApproveItemsPageState extends State<ApproveItemsPage> {
-  final TextEditingController noteController = TextEditingController();
+  // Team palette (agreed colors only). Do not add new colors without
+  // sending the code to the team first.
+  static const _blue = Color(0xFF2F4BFF);
+  static const _red = Color.fromARGB(255, 223, 42, 42);
+  static const _yellow = Color.fromARGB(255, 252, 252, 75);
+  static const _green = Color.fromARGB(255, 72, 230, 83);
+  // Dark text for light backgrounds (yellow / green).
+  static const _onLight = Color(0xFF172554);
+  static const _blueTint = Color(0xFFE8ECFF);
 
-  final items = [
-    {
-      'name': 'Casio fx-991EX Calculator',
-      'owner': 'Somchai Jaidee',
-      'time': '30 Oct. 11:10',
-      'category': 'Calculator',
-      'description': 'Scientific calculator for university study.',
-    },
-    {
-      'name': 'Lab Coat Size M',
-      'owner': 'Suphaporn K.',
-      'time': '29 Oct. 16:08',
-      'category': 'Clothing',
-      'description': 'White laboratory coat, size M.',
-    },
-    {
-      'name': 'Calculus Textbook Vol. 1',
-      'owner': 'Nattapat P.',
-      'time': '28 Oct. 09:30',
-      'category': 'Book',
-      'description': 'Calculus textbook in good condition.',
-    },
-  ];
+  final TextEditingController noteController = TextEditingController();
+  bool _reasonError = false;
+
+  late final ApproveItemsController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = ApproveItemsController();
+    controller.addListener(_refresh);
+    _loadItems();
+  }
+
+  Future<void> _loadItems() async {
+    try {
+      await controller.fetchItems();
+    } catch (_) {
+      // The controller stores the message for display in the page.
+    }
+  }
+
+  void _refresh() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   @override
   void dispose() {
     noteController.dispose();
+    controller.removeListener(_refresh);
+    controller.dispose();
     super.dispose();
   }
 
-  void _openDetails(int index) {
+  void _openDetails(ApproveItem item) {
     noteController.clear();
+    _reasonError = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return SafeArea(
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) => SafeArea(
           child: Container(
             height: MediaQuery.of(context).size.height * 0.88,
             decoration: const BoxDecoration(
@@ -90,7 +109,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(20),
-                    child: _buildDetails(items[index]),
+                    child: _buildDetails(item, setSheetState),
                   ),
                 ),
                 Padding(
@@ -104,9 +123,11 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () => _decide(index, false, sheetContext),
+                          onPressed: () =>
+                              _decide(item.id, item.name, false, sheetContext, setSheetState),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
+                            foregroundColor: _red,
+                            side: const BorderSide(color: _red),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: const Text('Reject'),
@@ -115,10 +136,11 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => _decide(index, true, sheetContext),
+                          onPressed: () =>
+                              _decide(item.id, item.name, true, sheetContext, setSheetState),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
+                            backgroundColor: _green,
+                            foregroundColor: _onLight,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: const Text('Approve'),
@@ -130,12 +152,13 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
               ],
             ),
           ),
+        ),
         );
       },
     );
   }
 
-  Widget _buildDetails(Map<String, String> item) {
+  Widget _buildDetails(ApproveItem item, StateSetter setSheetState) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -144,38 +167,80 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
             width: 110,
             height: 110,
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: _blueTint,
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Icon(
               Icons.inventory_2_outlined,
               size: 55,
-              color: Color(0xFF1260C5),
+              color: _blue,
             ),
           ),
         ),
         const SizedBox(height: 20),
-        _detailRow('Item Name', item['name']!),
-        _detailRow('Owner', item['owner']!),
-        _detailRow('Submitted', item['time']!),
-        _detailRow('Category', item['category']!),
-        _detailRow('Description', item['description']!),
+        _detailRow('Item Name', item.name),
+        _detailRow('Owner', item.owner),
+        _detailRow('Submitted', item.time),
+        _detailRow('Description', item.description),
         const SizedBox(height: 8),
         const Text(
-          'Rejection reason (required when rejecting)',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          'Rejection reason',
+          style: TextStyle(fontWeight: FontWeight.bold, color: _onLight),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Required to reject this item. Explain what needs to be corrected.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: noteController,
           maxLines: 3,
+          maxLength: 500,
+          onChanged: (_) {
+            if (_reasonError && noteController.text.trim().isNotEmpty) {
+              setSheetState(() => _reasonError = false);
+            }
+          },
           decoration: InputDecoration(
-            hintText: 'Enter reason for rejection...',
+            hintText: 'Example: Please add a clear photo of the item label.',
             filled: true,
             fillColor: Colors.white,
+            errorText: _reasonError ? 'A rejection reason is required.' : null,
+            errorMaxLines: 2,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: _reasonError ? _red : const Color(0xFFDCE5F2)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: _reasonError ? _red : _blue, width: 1.5),
+            ),
           ),
         ),
+        if (_reasonError)
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFCE8E8),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.error_outline, size: 18, color: _red),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'You can’t reject this item yet. Enter a reason above so the owner knows what to fix.',
+                    style: TextStyle(color: _red, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -201,18 +266,18 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
   }
 
   Future<void> _decide(
-    int index,
+    String itemId,
+    String itemName,
     bool approve,
     BuildContext sheetContext,
+    StateSetter setSheetState,
   ) async {
-    if (!approve && noteController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a reason for rejection.')),
-      );
+    final reason = noteController.text.trim();
+
+    if (!approve && reason.isEmpty) {
+      setSheetState(() => _reasonError = true);
       return;
     }
-
-    final itemName = items[index]['name']!;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -230,8 +295,8 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: approve ? Colors.green : Colors.red,
-              foregroundColor: Colors.white,
+              backgroundColor: approve ? _green : _red,
+              foregroundColor: approve ? _onLight : Colors.white,
             ),
             onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Confirm'),
@@ -240,15 +305,26 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
       ),
     );
 
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted || !sheetContext.mounted) return;
 
-    setState(() {
-      items.removeAt(index);
-    });
+    final success = approve
+        ? await controller.approveItem(itemId)
+        : await controller.rejectItem(itemId, reason);
 
-    if (sheetContext.mounted) {
-      Navigator.pop(sheetContext);
+    if (!mounted || !sheetContext.mounted) return;
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            controller.errorMessage ?? 'Unable to process this item.',
+          ),
+        ),
+      );
+      return;
     }
+
+    Navigator.pop(sheetContext);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -256,134 +332,165 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
           approve
               ? 'Item approved successfully!'
               : 'Item rejected successfully!',
+          style: TextStyle(color: approve ? _onLight : Colors.white),
         ),
-        backgroundColor: approve ? Colors.green : Colors.red,
+        backgroundColor: approve ? _green : _red,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFF0EEEE),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 22, 18, 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Approve Items',
-                  style: TextStyle(
-                    fontSize: 27,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Review and approve submitted items',
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    final items = controller.items;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F7FC),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE1E8F2)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.pending_actions, color: Colors.orange),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Pending',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(color: _blueTint, borderRadius: BorderRadius.circular(15)),
+                    child: const Icon(Icons.inventory_2_outlined, color: _blue),
                   ),
-                  const Spacer(),
-                  CircleAvatar(
-                    radius: 13,
-                    backgroundColor: Colors.orange.shade100,
-                    child: Text(
-                      '${items.length}',
-                      style: const TextStyle(
-                        color: Colors.deepOrange,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  const SizedBox(width: 13),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Approve items', style: TextStyle(fontSize: 21, color: _onLight, fontWeight: FontWeight.w800)),
+                        SizedBox(height: 4),
+                        Text('Review new listings before they appear to users.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                      ],
                     ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    decoration: BoxDecoration(color: const Color(0xFFFFF6DF), borderRadius: BorderRadius.circular(14)),
+                    child: Column(children: [Text('${controller.pendingCount}', style: const TextStyle(fontSize: 18, color: Color(0xFF9A6700), fontWeight: FontWeight.w800)), const Text('PENDING', style: TextStyle(fontSize: 9, letterSpacing: .5, color: Color(0xFF9A6700), fontWeight: FontWeight.w800))]),
                   ),
                 ],
               ),
             ),
-          ),
-          Expanded(
-            child: items.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline,
-                          size: 55,
-                          color: Colors.green,
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          'No pending items',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          'All requests have been reviewed.',
-                          style: TextStyle(color: Colors.black54),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index];
+            Expanded(
+              child: controller.isLoading && items.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : controller.errorMessage != null && items.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            controller.errorMessage!,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: _loadItems,
+                            child: const Text('Try again'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : items.isEmpty
+                  ? Center(
+                      child: Container(
+                        margin: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(28),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFE1E8F2))),
+                        child: const Column(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.task_alt_rounded, size: 48, color: Color(0xFF16845B)),
+                          SizedBox(height: 12),
+                          Text('You’re all caught up', style: TextStyle(fontSize: 17, color: _onLight, fontWeight: FontWeight.w800)),
+                          SizedBox(height: 4),
+                          Text('There are no items waiting for review.', style: TextStyle(color: Color(0xFF64748B))),
+                        ]),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
 
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(14),
-                          leading: CircleAvatar(
-                            radius: 25,
-                            backgroundColor: Colors.blue.shade50,
-                            child: const Icon(
-                              Icons.inventory_2_outlined,
-                              color: Color(0xFF1260C5),
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          elevation: 0,
+                          color: Colors.white,
+                          clipBehavior: Clip.antiAlias,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            side: const BorderSide(color: Color(0xFFE1E8F2)),
+                          ),
+                          child: InkWell(
+                            onTap: () => _openDetails(item),
+                            child: Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 24,
+                                    backgroundColor: _blueTint,
+                                    child: const Icon(
+                                      Icons.inventory_2_outlined,
+                                      color: _blue,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 13),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.name,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          '${item.owner} • ${item.time}',
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.black54,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  const Icon(
+                                    Icons.chevron_right,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          title: Text(
-                            item['name']!,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Text('${item['owner']} â€¢ ${item['time']}'),
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => _openDetails(index),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
