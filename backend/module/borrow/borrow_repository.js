@@ -414,41 +414,127 @@ class BorrowRepository {
     try {
       await connection.beginTransaction();
       const [borrows] = await connection.query(
-        `SELECT b.id, b.status, b.payment_status, a.owner_id
+        `SELECT b.id, b.status, b.payment_status, b.total_amount,
+          a.owner_id
          FROM borrow b
          JOIN asset a ON a.id = b.asset_id
          WHERE b.id = ? AND b.borrower_id = ?
          FOR UPDATE`,
         [id, borrowerId],
       );
+      const borrow = borrows[0];
       if (
-        borrows.length === 0 ||
-        !["requested", "approved"].includes(borrows[0].status) ||
-        borrows[0].payment_status !== "unpaid"
+        !borrow ||
+        !["requested", "approved"].includes(borrow.status) ||
+        !["unpaid", "paid"].includes(borrow.payment_status)
       ) {
         await connection.rollback();
         return false;
       }
 
-      await connection.query(
+      let refundAmount = 0;
+      let walletBalance = null;
+      if (borrow.payment_status === "paid") {
+        const refundAmountCents = parseAmountCents(borrow.total_amount);
+        if (
+          refundAmountCents === null ||
+          refundAmountCents > MAX_STORED_AMOUNT_CENTS
+        ) {
+          throw new Error(`Invalid refund amount for borrow ${id}`);
+        }
+
+        const [users] = await connection.query(
+          "SELECT wallet_balance FROM users WHERE id = ? FOR UPDATE",
+          [borrowerId],
+        );
+        if (users.length === 0) {
+          const err = new Error("Refund recipient no longer exists");
+          err.status = 409;
+          throw err;
+        }
+
+        const balanceCents = parseAmountCents(users[0].wallet_balance);
+        if (
+          balanceCents === null ||
+          balanceCents + refundAmountCents > MAX_STORED_AMOUNT_CENTS
+        ) {
+          const err = new Error(
+            "Refund recipient wallet balance exceeds the supported range",
+          );
+          err.status = 409;
+          throw err;
+        }
+
+        refundAmount = formatAmountCents(refundAmountCents);
+        walletBalance = amountCentsToNumber(
+          balanceCents + refundAmountCents,
+        );
+        await connection.query(
+          "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?",
+          [refundAmount, borrowerId],
+        );
+      }
+
+      const [updatedBorrow] = await connection.query(
         `UPDATE borrow SET status = 'cancelled'
          WHERE id = ? AND borrower_id = ? AND status IN ('requested', 'approved')
-           AND payment_status = 'unpaid'`,
+           AND payment_status IN ('unpaid', 'paid')`,
         [id, borrowerId],
       );
+      if (updatedBorrow.affectedRows === 0) {
+        await connection.rollback();
+        return false;
+      }
+
+      if (borrow.payment_status === "paid") {
+        const [paymentUpdate] = await connection.query(
+          `UPDATE borrow SET payment_status = 'refunded'
+           WHERE id = ? AND payment_status = 'paid'`,
+          [id],
+        );
+        if (paymentUpdate.affectedRows === 0) {
+          throw new Error(`Payment status changed while cancelling borrow ${id}`);
+        }
+        await connection.query(
+          `UPDATE financial_transactions
+           SET status = 'released', processed_at = NOW()
+           WHERE borrow_id = ? AND transaction_type = 'deposit_hold'
+             AND status = 'pending'`,
+          [id],
+        );
+        await connection.query(
+          `INSERT INTO financial_transactions
+            (user_id, actor_id, borrow_id, transaction_type, amount, status,
+             description, processed_at)
+           VALUES (?, ?, ?, 'borrow_refund', ?, 'completed',
+             'Borrow cancellation refund', NOW())`,
+          [borrowerId, borrowerId, id, refundAmount],
+        );
+      }
+
       await logActivities(
         borrowActivityEntries({
           borrowerId,
-          ownerId: Number(borrows[0].owner_id),
+          ownerId: Number(borrow.owner_id),
           actorId: borrowerId,
           action: "borrow_cancelled",
-          message: "Borrow request cancelled",
+          message: borrow.payment_status === "paid"
+            ? "Paid borrow request cancelled and refunded"
+            : "Borrow request cancelled",
           borrowId: id,
+          details: borrow.payment_status === "paid"
+            ? { refund_amount: Number(refundAmount) }
+            : undefined,
         }),
         connection,
       );
       await connection.commit();
-      return true;
+      return {
+        cancelled: true,
+        refund_amount: Number(refundAmount),
+        wallet_balance: walletBalance,
+        payment_status: borrow.payment_status === "paid" ? "refunded" : "unpaid",
+      };
     } catch (error) {
       await connection.rollback();
       throw error;

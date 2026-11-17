@@ -34,7 +34,8 @@ class AdminRepository {
           WHEN transaction_type = 'deposit_hold' AND status = 'pending'
           THEN amount ELSE 0 END), 0) AS held_deposits,
         COALESCE(SUM(CASE
-          WHEN transaction_type = 'deposit_refund' AND status = 'completed'
+          WHEN transaction_type IN ('deposit_refund', 'borrow_refund')
+            AND status = 'completed'
           THEN amount ELSE 0 END), 0) AS processed_refunds,
         COALESCE(SUM(CASE
           WHEN transaction_type = 'deposit_refund' AND status = 'pending'

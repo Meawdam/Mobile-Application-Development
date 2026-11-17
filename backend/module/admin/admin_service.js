@@ -6,6 +6,7 @@ const transactionTypes = new Set([
   "deposit_hold",
   "deposit_forfeiture",
   "deposit_refund",
+  "borrow_refund",
 ]);
 const transactionStatuses = new Set(["pending", "completed", "released"]);
 
