@@ -3,6 +3,11 @@ import 'dart:convert';
 import 'package:frontend/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 
+class AccountSuspendedException implements Exception {
+  final String reason;
+  const AccountSuspendedException(this.reason);
+}
+
 class LoginController {
   Authservice authService = Authservice();
 
@@ -34,6 +39,26 @@ class LoginController {
     }
 
     if (response.statusCode != 200) {
+      if (response.statusCode == 403) {
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map) {
+            final reason = decoded['reason']?.toString().trim();
+            final message = decoded['message']?.toString().trim();
+            throw AccountSuspendedException(
+              reason == null || reason.isEmpty
+                  ? (message != null && message.isNotEmpty
+                      ? message
+                      : 'No reason was provided.')
+                  : reason,
+            );
+          }
+        } on AccountSuspendedException {
+          rethrow;
+        } catch (_) {
+          // Keep the normal login failure below if the response isn't JSON.
+        }
+      }
       return null;
     }
 
