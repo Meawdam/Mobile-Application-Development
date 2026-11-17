@@ -111,12 +111,14 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       backgroundColor: const Color(0xFFF4F7FC),
       appBar: AppBar(
         title: const Text('All Transactions History'),
-        backgroundColor: _blue,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: _onLight,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
         centerTitle: false,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: _onLight),
         titleTextStyle: const TextStyle(
-          color: Colors.white,
+          color: _onLight,
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
@@ -150,15 +152,15 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   borderSide: const BorderSide(color: _blue, width: 1.5),
                 ),
               ),
@@ -218,10 +220,10 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                       final tx = filteredList[index];
 
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
+                        margin: const EdgeInsets.only(bottom: 10),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: const BorderSide(color: Color(0xFFE5E7EB)),
+                          borderRadius: BorderRadius.circular(18),
+                          side: const BorderSide(color: Color(0xFFE1E8F2)),
                         ),
                         elevation: 0,
                         color: Colors.white,

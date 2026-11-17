@@ -51,8 +51,9 @@ class _AdminHomeState extends State<AdminHome> {
 
   @override
   Widget build(BuildContext context) {
+    const tabTitles = ['Dashboard', 'Approve items', 'Users & history', 'Records'];
     final pages = [
-      const AdminDashboardScreen(), // Index 0: Dashboard
+      AdminDashboardScreen(onNavigateToApprove: () => changeTab(1)),
       const ApproveItemsPage(), // Index 1: Approve (หน้าอนุมัติ)
       const UsersHistoryPage(), // Index 2: Users
       const PaymentScreen(), // Index 3: Records / Payment
@@ -60,15 +61,54 @@ class _AdminHomeState extends State<AdminHome> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2F4BFF),
-        foregroundColor: Colors.white,
-        title: const Text('Borrow Admin Console'),
-        actions: [IconButton(tooltip: 'Log out', onPressed: _logout, icon: const Icon(Icons.logout))],
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF172554),
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: const Color(0xFF2F4BFF),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.swap_horiz_rounded, color: Colors.white),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Borrow Admin', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                  Text(tabTitles[_currentIndex], style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: IconButton.filledTonal(
+              tooltip: 'Log out',
+              onPressed: _logout,
+              style: IconButton.styleFrom(foregroundColor: const Color(0xFFB54747), backgroundColor: const Color(0xFFFFEEEE)),
+              icon: const Icon(Icons.logout_rounded),
+            ),
+          ),
+        ],
       ),
       body: IndexedStack(index: _currentIndex, children: pages),
       bottomNavigationBar: NavigationBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         selectedIndex: _currentIndex,
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
+        indicatorColor: const Color(0xFFE8ECFF),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),

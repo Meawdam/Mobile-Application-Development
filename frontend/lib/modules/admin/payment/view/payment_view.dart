@@ -116,23 +116,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    return ColoredBox(
+      color: const Color(0xFFF5F7FC),
+      child: SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 30),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Payment & Refund Management',
-            style: TextStyle(
-              fontSize: 27,
-              fontWeight: FontWeight.bold,
-              color: _onLight,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE1E8F2)),
             ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Track collected revenues, held deposits, and process refunds',
-            style: TextStyle(fontSize: 14, color: Colors.black54),
+            child: const Row(children: [
+              CircleAvatar(radius: 23, backgroundColor: Color(0xFFE8ECFF), child: Icon(Icons.account_balance_wallet_outlined, color: _blue)),
+              SizedBox(width: 13),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Payments & refunds', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _onLight)),
+                SizedBox(height: 4),
+                Text('Review balances and handle eligible deposit returns.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+              ])),
+            ]),
           ),
           const SizedBox(height: 20),
 
@@ -234,6 +241,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ],
         ],
       ),
+      ),
     );
   }
 
@@ -251,8 +259,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE1E8F2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.01),
@@ -296,8 +304,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE1E8F2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.01),

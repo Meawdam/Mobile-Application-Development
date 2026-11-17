@@ -60,6 +60,8 @@ class UsersHistoryController extends ChangeNotifier {
     return _suspendedUsers[_selectedUserId] ?? false;
   }
 
+  bool isUserSuspended(String userId) => _suspendedUsers[userId] ?? false;
+
   String? get selectedUserSuspensionReason {
     if (_selectedUserId == null) return null;
     return _suspensionReasons[_selectedUserId];

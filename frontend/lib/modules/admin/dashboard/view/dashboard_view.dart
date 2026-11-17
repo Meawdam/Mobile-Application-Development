@@ -4,24 +4,19 @@ import '../controller/dashboard_controller.dart';
 import '../model/dashboard_model.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  final VoidCallback? onNavigateToApprove; // 1. เพิ่มตัวรับฟังก์ชันนี้
+  final VoidCallback? onNavigateToApprove;
 
-  const AdminDashboardScreen({
-    super.key,
-    this.onNavigateToApprove, // 2. รับค่าเข้ามา
-  });
+  const AdminDashboardScreen({super.key, this.onNavigateToApprove});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  //  Color Code
   static const _blue = Color(0xFF2F4BFF);
-  static const _red = Color.fromARGB(255, 223, 42, 42);
-  static const _yellow = Color.fromARGB(255, 252, 252, 75);
-  static const _green = Color.fromARGB(255, 72, 230, 83);
-  static const _onLight = Color(0xFF172554);
+  static const _navy = Color(0xFF172554);
+  static const _muted = Color(0xFF64748B);
+  static const _line = Color(0xFFE5EAF2);
 
   final DashboardController _controller = DashboardController();
   late Future<DashboardStats> _statsFuture;
@@ -32,380 +27,172 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     _statsFuture = _controller.fetchDashboardStats();
   }
 
-  void _reload() {
-    setState(() {
-      _statsFuture = _controller.fetchDashboardStats();
-    });
+  Future<void> _reload() async {
+    setState(() => _statsFuture = _controller.fetchDashboardStats());
+    try {
+      await _statsFuture;
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<DashboardStats>(
-      future: _statsFuture,
-      builder: (context, snapshot) {
-        final stats = snapshot.data;
-        return RefreshIndicator(
-          onRefresh: () async => _reload(),
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Dashboard',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: _onLight,
+    final today = DateTime.now();
+    final dateLabel = '${today.day.toString().padLeft(2, '0')}/${today.month.toString().padLeft(2, '0')}/${today.year}';
+
+    return Container(
+      color: const Color(0xFFF5F7FC),
+      child: FutureBuilder<DashboardStats>(
+        future: _statsFuture,
+        builder: (context, snapshot) {
+          final stats = snapshot.data;
+          return RefreshIndicator(
+            onRefresh: _reload,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(18, 22, 18, 30),
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1180),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Good day, Admin', style: TextStyle(fontSize: 27, fontWeight: FontWeight.w800, color: _navy)),
+                                  const SizedBox(height: 5),
+                                  Text('$dateLabel  ·  Here’s what’s happening today.', style: const TextStyle(color: _muted, fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                            IconButton.filledTonal(
+                              tooltip: 'Refresh dashboard',
+                              onPressed: _reload,
+                              icon: const Icon(Icons.refresh_rounded),
+                              style: IconButton.styleFrom(foregroundColor: _blue, backgroundColor: const Color(0xFFE8ECFF)),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _todayLabel(),
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    onPressed: _reload,
-                    tooltip: 'Refresh dashboard',
-                    icon: const Icon(Icons.refresh),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: _blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.insights_outlined, color: _blue),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Admin overview', style: TextStyle(fontWeight: FontWeight.w700, color: _onLight)),
-                          const SizedBox(height: 3),
-                          Text('Key activity and deposit summary for ${_todayLabel()}', style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                        const SizedBox(height: 20),
+                        if (snapshot.connectionState == ConnectionState.waiting) ...[
+                          const SizedBox(height: 14),
+                          const LinearProgressIndicator(minHeight: 3),
                         ],
-                      ),
-                    ),
-                    if (stats != null)
-                      Text('${stats.pendingCount} pending', style: const TextStyle(color: _blue, fontWeight: FontWeight.w700, fontSize: 12)),
-                  ],
-                ),
-              ),
-              if (snapshot.connectionState == ConnectionState.waiting)
-                const LinearProgressIndicator(),
-              if (snapshot.hasError)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          snapshot.error.toString().replaceFirst(
-                            'Exception: ',
-                            '',
-                          ),
-                          style: const TextStyle(color: _red),
+                        if (snapshot.hasError) ...[
+                          const SizedBox(height: 14),
+                          _errorPanel(snapshot.error.toString().replaceFirst('Exception: ', '')),
+                        ],
+                        const SizedBox(height: 22),
+                        const Text('Platform overview', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _navy)),
+                        const SizedBox(height: 12),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            return GridView.count(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                              childAspectRatio: constraints.maxWidth < 500 ? 1.1 : 1.75,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              children: [
+                                _metricCard('Approved items', stats?.approvedCount.toString() ?? '—', Icons.inventory_2_outlined, const Color(0xFF16845B), const Color(0xFFE8F7F0)),
+                                _metricCard('Waiting for review', stats?.pendingCount.toString() ?? '—', Icons.pending_actions_rounded, const Color(0xFFB7791F), const Color(0xFFFFF6DF), onTap: widget.onNavigateToApprove),
+                                _metricCard('Currently borrowed', stats?.borrowedCount.toString() ?? '—', Icons.swap_horiz_rounded, _blue, const Color(0xFFE8ECFF)),
+                                _metricCard('Deposits held', stats == null ? '—' : _currency(stats.heldDeposits), Icons.account_balance_wallet_outlined, const Color(0xFFB54747), const Color(0xFFFFEEEE)),
+                              ],
+                            );
+                          },
                         ),
-                      ),
-                      TextButton(
-                        onPressed: _reload,
-                        child: const Text('Retry'),
-                      ),
-                    ],
+                        const SizedBox(height: 18),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final chart = _borrowingCard(stats);
+                            final finances = _financeCard(stats);
+                            if (constraints.maxWidth < 760) {
+                              return Column(children: [chart, const SizedBox(height: 12), finances]);
+                            }
+                            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(flex: 3, child: chart), const SizedBox(width: 12), Expanded(flex: 2, child: finances)]);
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              const SizedBox(height: 20),
-              LayoutBuilder(
-                builder: (context, cardConstraints) {
-                  final crossAxisCount = cardConstraints.maxWidth > 900
-                      ? 4
-                      : (cardConstraints.maxWidth > 500 ? 2 : 1);
-                  return GridView.count(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 1.6,
-                    children: [
-                      _buildStatCard(
-                        'Approved Items',
-                        stats?.approvedCount.toString() ?? '--',
-                        Icons.check_circle_outline,
-                        _green,
-                      ),
-                      _buildStatCard(
-                        'Pending Approval',
-                        stats?.pendingCount.toString() ?? '--',
-                        Icons.hourglass_top_outlined,
-                        _yellow,
-                      ),
-                      _buildStatCard(
-                        'Currently Borrowed',
-                        stats?.borrowedCount.toString() ?? '--',
-                        Icons.inventory_2_outlined,
-                        _blue,
-                      ),
-                      _buildStatCard(
-                        'Held Deposits',
-                        stats == null
-                            ? '--'
-                            : _formatCurrency(stats.heldDeposits),
-                        Icons.account_balance_wallet_outlined,
-                        _red,
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-              _buildChartSection(stats),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
-  String _todayLabel() {
-    final now = DateTime.now();
-    return '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
-  }
+  Widget _metricCard(String title, String value, IconData icon, Color accent, Color tint, {VoidCallback? onTap}) => Material(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(18),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(11)), child: Icon(icon, color: accent, size: 19)), const Spacer(), if (onTap != null) Icon(Icons.arrow_outward_rounded, size: 16, color: accent)]),
+          const Spacer(),
+          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: _navy)),
+          const SizedBox(height: 3),
+          Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, height: 1.1, color: _muted, fontWeight: FontWeight.w600)),
+        ]),
+      ),
+    ),
+  );
 
-  String _formatCurrency(double amount) {
+  Widget _borrowingCard(DashboardStats? stats) => _panel(
+    title: 'Borrowing activity',
+    subtitle: 'Daily requests over the last 7 days',
+    child: stats == null || stats.borrowingVolume.isEmpty
+        ? const Padding(padding: EdgeInsets.symmetric(vertical: 28), child: Center(child: Text('No borrowing activity yet', style: TextStyle(color: _muted))))
+        : SizedBox(height: 150, child: Row(crossAxisAlignment: CrossAxisAlignment.end, mainAxisAlignment: MainAxisAlignment.spaceAround, children: stats.borrowingVolume.map((day) {
+            final maxCount = stats.borrowingVolume.fold<int>(0, (max, entry) => entry.count > max ? entry.count : max);
+            final date = DateTime.tryParse(day.date);
+            final label = date == null ? day.date : const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday - 1];
+            final barHeight = maxCount == 0 ? 4.0 : (86 * day.count / maxCount).clamp(4.0, 86.0).toDouble();
+            return Column(mainAxisAlignment: MainAxisAlignment.end, children: [Text('${day.count}', style: const TextStyle(fontSize: 11, color: _muted, fontWeight: FontWeight.w700)), const SizedBox(height: 6), Container(width: 22, height: barHeight, decoration: BoxDecoration(color: _blue, borderRadius: BorderRadius.circular(8))), const SizedBox(height: 8), Text(label, style: const TextStyle(fontSize: 10, color: _muted))]);
+          }).toList())),
+  );
+
+  Widget _financeCard(DashboardStats? stats) => _panel(
+    title: 'Finance snapshot',
+    subtitle: 'Deposits and refunds',
+    child: Column(children: [
+      _financeRow(Icons.payments_outlined, 'Collected revenue', stats == null ? '—' : _currency(stats.collectedRevenue), const Color(0xFF16845B)),
+      const Divider(height: 22),
+      _financeRow(Icons.hourglass_bottom_rounded, 'Refunds to process', stats?.pendingRefunds.toString() ?? '—', const Color(0xFFB7791F)),
+      const Divider(height: 22),
+      _financeRow(Icons.check_circle_outline, 'Refunds completed', stats == null ? '—' : _currency(stats.processedRefunds), _blue),
+    ]),
+  );
+
+  Widget _financeRow(IconData icon, String label, String value, Color color) => Row(children: [Icon(icon, color: color, size: 20), const SizedBox(width: 10), Expanded(child: Text(label, style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w600))), Text(value, style: const TextStyle(color: _navy, fontWeight: FontWeight.w800, fontSize: 13))]);
+
+  Widget _panel({required String title, required String subtitle, required Widget child}) => Container(
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line)),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: _navy, fontSize: 16, fontWeight: FontWeight.w800)), const SizedBox(height: 3), Text(subtitle, style: const TextStyle(color: _muted, fontSize: 12)), const SizedBox(height: 18), child]),
+  );
+
+  Widget _errorPanel(String message) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(color: const Color(0xFFFFEEEE), borderRadius: BorderRadius.circular(12)),
+    child: Row(children: [const Icon(Icons.error_outline, color: Color(0xFFB54747)), const SizedBox(width: 8), Expanded(child: Text(message, style: const TextStyle(color: Color(0xFF9B2C2C)))), TextButton(onPressed: _reload, child: const Text('Retry'))]),
+  );
+
+  String _currency(double amount) {
     final parts = amount.toStringAsFixed(2).split('.');
-    final whole = parts.first.replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (_) => ',',
-    );
+    final whole = parts.first.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
     return '฿$whole.${parts.last}';
-  }
-
-  // Widget การ์ดสถิติพร้อมไอคอนและสีสันสดใส
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color accentColor,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: accentColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: accentColor, size: 20),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  color: accentColor == _yellow
-                      ? const Color(0xFFB45309)
-                      : accentColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Widget ส่วนกราฟ
-  Widget _buildChartSection(DashboardStats? stats) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Number of borrowing in the last 7 days',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: _onLight,
-                ),
-              ),
-              Text(
-                'Times / day',
-                style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          if (stats == null || stats.borrowingVolume.isEmpty)
-            const Text(
-              'No borrowing activity in the last 7 days.',
-              style: TextStyle(color: Color(0xFF9CA3AF)),
-            )
-          else
-            _buildBorrowingChart(stats.borrowingVolume),
-        ],
-      ),
-    );
-  }
-
-  // Widget แท่งกราฟ
-  Widget _buildBorrowingChart(List<DailyBorrowingStats> borrowingVolume) {
-    final maximum = borrowingVolume.fold<int>(
-      0,
-      (value, day) => day.count > value ? day.count : value,
-    );
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: borrowingVolume.map((day) {
-        final date = DateTime.tryParse(day.date);
-        final label = date == null
-            ? day.date
-            : const [
-                'Mon',
-                'Tue',
-                'Wed',
-                'Thu',
-                'Fri',
-                'Sat',
-                'Sun',
-              ][date.weekday - 1];
-        final height = maximum == 0 ? 0.0 : 95 * day.count / maximum;
-        return Column(
-          children: [
-            Text(
-              day.count.toString(),
-              style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
-            ),
-            const SizedBox(height: 4),
-            _buildBar(label, height),
-          ],
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildBar(String day, double height) {
-    return Column(
-      children: [
-        Container(
-          width: 16,
-          height: height,
-          decoration: BoxDecoration(
-            color: _blue,
-            borderRadius: BorderRadius.circular(6),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          day,
-          style: const TextStyle(
-            fontSize: 11,
-            color: Color(0xFF9CA3AF),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// 🔹 Widget ย่อยสำหรับปุ่ม Review Requests
-class ReviewRequestsWidget extends StatelessWidget {
-  final int pendingCount;
-  final VoidCallback onTap;
-
-  const ReviewRequestsWidget({
-    super.key,
-    required this.pendingCount,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: const Icon(Icons.notifications_active_outlined, size: 16),
-      label: Text(
-        'Review $pendingCount requests',
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF2F4BFF), // ปรับให้ใช้สี _blue ของทีม
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 2,
-      ),
-    );
   }
 }

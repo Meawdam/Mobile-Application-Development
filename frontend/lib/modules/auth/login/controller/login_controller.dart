@@ -42,10 +42,15 @@ class LoginController {
       if (response.statusCode == 403) {
         try {
           final decoded = jsonDecode(response.body);
-          if (decoded is Map && decoded['message'] == 'Account suspended') {
+          if (decoded is Map) {
             final reason = decoded['reason']?.toString().trim();
+            final message = decoded['message']?.toString().trim();
             throw AccountSuspendedException(
-              reason == null || reason.isEmpty ? 'No reason was provided.' : reason,
+              reason == null || reason.isEmpty
+                  ? (message != null && message.isNotEmpty
+                      ? message
+                      : 'No reason was provided.')
+                  : reason,
             );
           }
         } on AccountSuspendedException {

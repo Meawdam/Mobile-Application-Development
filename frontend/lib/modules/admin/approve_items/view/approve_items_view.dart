@@ -349,54 +349,39 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(18, 22, 18, 4),
-              child: Text(
-                'Approve Items',
-                style: TextStyle(fontSize: 27, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 18),
-              child: Text(
-                'Review and approve submitted items',
-                style: TextStyle(color: Colors.black54),
-              ),
-            ),
-            Padding(
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 18, 16, 14),
               padding: const EdgeInsets.all(18),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.pending_actions, color: _onLight),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'Pending',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE1E8F2)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(color: _blueTint, borderRadius: BorderRadius.circular(15)),
+                    child: const Icon(Icons.inventory_2_outlined, color: _blue),
+                  ),
+                  const SizedBox(width: 13),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Approve items', style: TextStyle(fontSize: 21, color: _onLight, fontWeight: FontWeight.w800)),
+                        SizedBox(height: 4),
+                        Text('Review new listings before they appear to users.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    CircleAvatar(
-                      radius: 13,
-                      backgroundColor: _yellow,
-                      child: Text(
-                        '${controller.pendingCount}',
-                        style: const TextStyle(
-                          color: _onLight,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    decoration: BoxDecoration(color: const Color(0xFFFFF6DF), borderRadius: BorderRadius.circular(14)),
+                    child: Column(children: [Text('${controller.pendingCount}', style: const TextStyle(fontSize: 18, color: Color(0xFF9A6700), fontWeight: FontWeight.w800)), const Text('PENDING', style: TextStyle(fontSize: 9, letterSpacing: .5, color: Color(0xFF9A6700), fontWeight: FontWeight.w800))]),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -420,25 +405,18 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                       ),
                     )
                   : items.isEmpty
-                  ? const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_circle_outline,
-                            size: 55,
-                            color: Color(0xFF1F9D2B),
-                          ),
+                  ? Center(
+                      child: Container(
+                        margin: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(28),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFE1E8F2))),
+                        child: const Column(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.task_alt_rounded, size: 48, color: Color(0xFF16845B)),
                           SizedBox(height: 12),
-                          Text(
-                            'No pending items',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            'All requests have been reviewed.',
-                            style: TextStyle(color: Colors.black54),
-                          ),
-                        ],
+                          Text('You’re all caught up', style: TextStyle(fontSize: 17, color: _onLight, fontWeight: FontWeight.w800)),
+                          SizedBox(height: 4),
+                          Text('There are no items waiting for review.', style: TextStyle(color: Color(0xFF64748B))),
+                        ]),
                       ),
                     )
                   : ListView.builder(
@@ -448,12 +426,13 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                         final item = items[index];
 
                         return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          elevation: 1,
+                          margin: const EdgeInsets.only(bottom: 10),
+                          elevation: 0,
+                          color: Colors.white,
                           clipBehavior: Clip.antiAlias,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: const BorderSide(color: Color(0xFFE5EAF2)),
+                            borderRadius: BorderRadius.circular(18),
+                            side: const BorderSide(color: Color(0xFFE1E8F2)),
                           ),
                           child: InkWell(
                             onTap: () => _openDetails(item),
