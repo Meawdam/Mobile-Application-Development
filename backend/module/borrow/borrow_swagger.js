@@ -329,8 +329,8 @@
  * /api/borrows/{id}/cancel:
  *   patch:
  *     tags: [Borrows]
- *     summary: Cancel an unpaid borrow request
- *     description: The authenticated user must be the borrower. Only requests that have not been paid can be cancelled.
+ *     summary: Cancel a borrow request awaiting receipt
+ *     description: The authenticated borrower may cancel a requested or approved borrow before confirming receipt. If already paid, the full payment is immediately refunded to the borrower's wallet.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -343,7 +343,7 @@
  *       200:
  *         description: Borrow request cancelled
  *       400:
- *         description: Only unpaid borrow requests can be cancelled
+ *         description: The borrow is no longer awaiting receipt or has an invalid payment status
  *       401:
  *         description: Access token is required
  *       403:

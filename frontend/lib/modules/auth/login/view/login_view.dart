@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/modules/auth/login/controller/login_controller.dart';
+import 'package:frontend/modules/auth/widgets/auth_feedback_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   final LoginController? controller;
@@ -29,8 +30,11 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (role == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid email or password')),
+        await showAuthFeedbackDialog(
+          context,
+          isSuccess: false,
+          title: 'Login failed',
+          message: 'Invalid email or password',
         );
         return;
       }
@@ -42,17 +46,31 @@ class _LoginScreenState extends State<LoginScreen> {
       };
 
       if (route == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('This account has an unsupported role')),
+        await showAuthFeedbackDialog(
+          context,
+          isSuccess: false,
+          title: 'Login failed',
+          message: 'This account has an unsupported role',
         );
         return;
       }
 
+      await showAuthFeedbackDialog(
+        context,
+        isSuccess: true,
+        title: 'Login successful',
+        message: 'Welcome back!',
+      );
+      if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(route, (_) => false);
     } on Exception catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
+      await showAuthFeedbackDialog(
+        context,
+        isSuccess: false,
+        title: 'Connection error',
+        message: error.toString().replaceFirst('Exception: ', ''),
+      );
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -113,6 +131,14 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _submitting ? null : _login,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2F4BFF),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 child: Text(_submitting ? 'Signing in...' : 'Log in'),
               ),
               const SizedBox(height: 16),
@@ -120,6 +146,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: _submitting
                     ? null
                     : () => Navigator.pushNamed(context, '/register'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF2F4BFF),
+                ),
                 child: const Text('Create an account'),
               ),
             ],
