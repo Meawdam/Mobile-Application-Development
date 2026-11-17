@@ -4,7 +4,9 @@ import '../../payment/controller/payment_controller.dart';
 import '../../payment/model/payment_model.dart';
 
 class AllTransactionsScreen extends StatefulWidget {
-  const AllTransactionsScreen({super.key});
+  final String initialFilter;
+
+  const AllTransactionsScreen({super.key, this.initialFilter = 'All'});
 
   @override
   State<AllTransactionsScreen> createState() => _AllTransactionsScreenState();
@@ -28,6 +30,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   @override
   void initState() {
     super.initState();
+    selectedFilter = widget.initialFilter;
     _loadTransactions();
   }
 

@@ -214,19 +214,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _onLight),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                  decoration: BoxDecoration(color: const Color(0xFFFFF6DF), borderRadius: BorderRadius.circular(18)),
-                  child: Text('${_pendingRefundTransactions.length} pending', style: const TextStyle(color: Color(0xFF9A6700), fontSize: 11, fontWeight: FontWeight.w800)),
+                TextButton.icon(
+                  onPressed: () => _openTransactions(initialFilter: 'Pending Refund'),
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                  label: Text('View all (${_pendingRefundTransactions.length})'),
                 ),
               ],
             ),
             const SizedBox(height: 4),
-            const Text('These deposits are ready to be returned to the borrowers.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-            const SizedBox(height: 11),
-            for (final transaction in _pendingRefundTransactions) ...[
+            const Text('Ready to return to the borrowers.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+            const SizedBox(height: 9),
+            for (final transaction in _pendingRefundTransactions.take(3)) ...[
               _buildTransactionCard(transaction),
-              const SizedBox(height: 9),
+              const SizedBox(height: 7),
             ],
           ],
           const SizedBox(height: 24),
@@ -242,24 +242,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   color: _onLight,
                 ),
               ),
-              InkWell(
-                onTap: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AllTransactionsScreen(),
-                    ),
-                  );
-                  if (mounted) _load();
-                },
-                child: const Text(
-                  'View All',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: _blue,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              TextButton.icon(
+                onPressed: () => _openTransactions(),
+                icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                label: const Text('View all'),
               ),
             ],
           ),
@@ -279,6 +265,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ),
       ),
     );
+  }
+
+  Future<void> _openTransactions({String initialFilter = 'All'}) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AllTransactionsScreen(initialFilter: initialFilter),
+      ),
+    );
+    if (mounted) _load();
   }
 
   String _formatCurrency(double amount) {
