@@ -358,7 +358,10 @@ class BorrowService {
     const isEligible = decision === "approve"
       ? borrow.status === "requested"
       : ["requested", "approved"].includes(borrow.status);
-    if (!isEligible || borrow.payment_status !== "unpaid") {
+    if (
+      !isEligible ||
+      !["unpaid", "paid"].includes(borrow.payment_status)
+    ) {
       const err = new Error("Borrow request is no longer awaiting a decision");
       err.status = 400;
       throw err;
@@ -378,7 +381,9 @@ class BorrowService {
     return {
       message: decision === "approve"
         ? "Borrow request approved"
-        : "Borrow request rejected",
+        : result.payment_status === "refunded"
+          ? "Borrow request rejected and payment refunded to wallet"
+          : "Borrow request rejected",
       data: result,
     };
   }
