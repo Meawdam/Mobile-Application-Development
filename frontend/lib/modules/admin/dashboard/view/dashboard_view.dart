@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../controller/dashboard_controller.dart';
 import '../model/dashboard_model.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToApprove;
@@ -14,7 +15,7 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  static const _blue = Color(0xFF2F4BFF);
+  static const _blue = AppColors.blue;
   static const _navy = Color(0xFF172554);
   static const _muted = Color(0xFF64748B);
   static const _line = Color(0xFFE5EAF2);

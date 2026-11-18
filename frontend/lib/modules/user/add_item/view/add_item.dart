@@ -3,17 +3,22 @@ import 'package:flutter/services.dart';
 
 import 'package:frontend/modules/user/add_item/controller/add_item_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
+import 'package:frontend/widgets/app_popup.dart';
 import 'package:frontend/widgets/date_picker_field.dart';
 
 class AddItemScreen extends StatefulWidget {
-  const AddItemScreen({super.key});
+  /// ใส่ controller จากภายนอกได้ (ใช้ตอนทำ widget test) ถ้าไม่ใส่จะสร้างเอง
+  final AddItemController? controller;
+
+  const AddItemScreen({super.key, this.controller});
 
   @override
   State<AddItemScreen> createState() => _AddItemScreenState();
 }
 
 class _AddItemScreenState extends State<AddItemScreen> {
-  final _controller = AddItemController();
+  late final AddItemController _controller =
+      widget.controller ?? AddItemController();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
@@ -66,11 +71,15 @@ class _AddItemScreenState extends State<AddItemScreen> {
         _controller.error ?? 'Unable to submit item',
     };
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-
     if (result == AddItemResult.success) {
-      Navigator.of(context).pop();
+      // ปิดหน้านี้ก่อน แล้วโชว์ป๊อปอัปบนหน้าที่กลับไป
+      final navigator = Navigator.of(context);
+      navigator.pop();
+      showAppPopupOn(navigator, message: message);
+      return;
     }
+
+    await showAppPopup(context, message: message, isSuccess: false);
   }
 
   @override

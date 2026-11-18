@@ -3,16 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/modules/user/my_lending_items/controller/my_lending_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
+import 'package:frontend/utils/app_colors.dart';
+import 'package:frontend/widgets/app_popup.dart';
 
 class MyLendingItemsScreen extends StatefulWidget {
-  const MyLendingItemsScreen({super.key});
+  /// ใส่ controller จากภายนอกได้ (ใช้ตอนทำ widget test) ถ้าไม่ใส่จะสร้างเอง
+  final MyLendingController? controller;
+
+  const MyLendingItemsScreen({super.key, this.controller});
 
   @override
   State<MyLendingItemsScreen> createState() => _MyLendingItemsScreenState();
 }
 
 class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
-  final _controller = MyLendingController();
+  late final MyLendingController _controller =
+      widget.controller ?? MyLendingController();
 
   @override
   void initState() {
@@ -33,50 +39,20 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
   }
 
   Future<void> _showDeleteSheet(AssetModel asset) async {
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Delete "${asset.name}"?',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text('This cannot be undone.'),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Delete item'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    final confirmed = await showAppConfirmPopup(
+      context,
+      title: 'Delete "${asset.name}"?',
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete item',
     );
 
-    if (confirmed != true) return;
+    if (!confirmed) return;
     final err = await _controller.deleteAsset(asset.id);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(err ?? 'Item deleted')),
+    await showAppPopup(
+      context,
+      message: err ?? 'Item deleted',
+      isSuccess: err == null,
     );
   }
 
@@ -134,7 +110,7 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
                           : ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Image.network(
-                                asset.imageUrl,
+                                _imageSrc(asset.imageUrl),
                                 width: 48,
                                 height: 48,
                                 fit: BoxFit.cover,
@@ -160,7 +136,7 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
                       trailing: IconButton(
                         tooltip: 'Delete',
                         onPressed: () => _showDeleteSheet(asset),
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        icon: const Icon(Icons.delete_outline, color: AppColors.blue),
                       ),
                     ),
                   ),
@@ -184,3 +160,9 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
     );
   }
 }
+
+
+/// Backend stores images as relative paths (e.g. /uploads/xxx.jpg);
+/// build the full URL here so the image loads directly from the server.
+String _imageSrc(String path) =>
+    path.startsWith('http') ? path : 'http://localhost:3000$path';

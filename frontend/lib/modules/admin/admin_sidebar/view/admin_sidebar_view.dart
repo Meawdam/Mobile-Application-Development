@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class AdminSidebar extends StatelessWidget {
   final String selectedMenu;
@@ -17,8 +18,8 @@ class AdminSidebar extends StatelessWidget {
     this.onLogout,
   });
 
-  static const Color blue = Color(0xFF1800A8);
-  static const Color activeBlue = Color(0xFF1260C5);
+  static const Color blue = AppColors.blue;
+  static const Color activeBlue = AppColors.blue;
 
   static const List<String> menus = [
     'Dashboard',
@@ -126,8 +127,8 @@ class AdminSidebar extends StatelessWidget {
             const Spacer(),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
+              leading: const Icon(Icons.logout, color: AppColors.blue),
+              title: const Text('Logout', style: TextStyle(color: AppColors.blue)),
               onTap: () {
                 if (Navigator.canPop(context)) {
                   Navigator.pop(context);
@@ -185,7 +186,7 @@ class AdminSidebar extends StatelessWidget {
               ScaffoldMessenger.maybeOf(context)
                   ?.showSnackBar(const SnackBar(content: Text('Logout')));
             },
-            child: const Text('Confirm', style: TextStyle(color: Colors.red)),
+            child: const Text('Confirm', style: TextStyle(color: AppColors.blue)),
           ),
         ],
       ),

@@ -3,19 +3,24 @@ import 'package:flutter/services.dart';
 
 import 'package:frontend/modules/user/edit_item/controller/edit_item_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
+import 'package:frontend/widgets/app_popup.dart';
 import 'package:frontend/widgets/date_picker_field.dart';
 
 class EditItemScreen extends StatefulWidget {
   final int? assetId;
 
-  const EditItemScreen({super.key, this.assetId});
+  /// ใส่ controller จากภายนอกได้ (ใช้ตอนทำ widget test) ถ้าไม่ใส่จะสร้างเอง
+  final EditItemController? controller;
+
+  const EditItemScreen({super.key, this.assetId, this.controller});
 
   @override
   State<EditItemScreen> createState() => _EditItemScreenState();
 }
 
 class _EditItemScreenState extends State<EditItemScreen> {
-  final _controller = EditItemController();
+  late final EditItemController _controller =
+      widget.controller ?? EditItemController();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
@@ -77,10 +82,15 @@ class _EditItemScreenState extends State<EditItemScreen> {
       EditItemResult.failed => _controller.error ?? 'Unable to save changes',
     };
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     if (result == EditItemResult.success) {
-      Navigator.of(context).pop();
+      // ปิดหน้านี้ก่อน แล้วโชว์ป๊อปอัปบนหน้าที่กลับไป
+      final navigator = Navigator.of(context);
+      navigator.pop();
+      showAppPopupOn(navigator, message: message);
+      return;
     }
+
+    await showAppPopup(context, message: message, isSuccess: false);
   }
 
   @override
@@ -107,7 +117,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
                               width: double.infinity,
                               child: _controller.asset?.imageUrl.isNotEmpty == true
                                   ? Image.network(
-                                      _controller.asset!.imageUrl,
+                                      _imageSrc(_controller.asset!.imageUrl),
                                       fit: BoxFit.cover,
                                       errorBuilder: (context, error, stackTrace) =>
                                           const ColoredBox(
@@ -200,3 +210,9 @@ class _EditItemScreenState extends State<EditItemScreen> {
     );
   }
 }
+
+
+/// Backend stores images as relative paths (e.g. /uploads/xxx.jpg);
+/// build the full URL here so the image loads directly from the server.
+String _imageSrc(String path) =>
+    path.startsWith('http') ? path : 'http://localhost:3000$path';
