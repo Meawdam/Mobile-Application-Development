@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/modules/user/payment/controller/payment_controller.dart';
-import 'package:frontend/modules/user/payment/service/payment_api_service.dart';
 import 'package:frontend/modules/user/payment/view/payment.dart';
 import 'package:frontend/services/auth_service.dart';
 import 'package:http/http.dart' as http;
@@ -14,59 +13,61 @@ void main() {
     tester,
   ) async {
     var walletBalance = 420.75;
-    final service = PaymentApiService(
-      baseUrl: 'https://example.test',
-      authService: _TestAuthService(),
-      client: MockClient((request) async {
-        if (request.method == 'GET' && request.url.path == '/api/wallet') {
-          return http.Response(
-            jsonEncode({
-              'data': {'balance': walletBalance},
-            }),
-            200,
-          );
-        }
-        if (request.method == 'GET' && request.url.path == '/api/borrows/17') {
-          return http.Response(
-            jsonEncode({
-              'data': {
-                'id': 17,
-                'asset_id': 5,
-                'pickup_date': '2030-01-01',
-                'planned_return_date': '2030-01-02',
-                'rental_days': 2,
-                'lending_end_date': '2030-01-10',
-                'rental_amount': 20.5,
-                'deposit_amount': 30.25,
-                'total_amount': 50.75,
-                'status': 'approved',
-                'payment_status': 'unpaid',
-              },
-            }),
-            200,
-          );
-        }
-
-        expect(request.method, 'POST');
-        expect(request.url.path, '/api/borrows/17/pay');
-        walletBalance = 370;
+    final client = MockClient((request) async {
+      expect(request.headers['Authorization'], 'Bearer test-token');
+      if (request.method == 'GET' && request.url.path == '/api/wallet') {
         return http.Response(
           jsonEncode({
-            'message': 'Payment completed',
+            'data': {'balance': walletBalance},
+          }),
+          200,
+        );
+      }
+      if (request.method == 'GET' && request.url.path == '/api/borrows/17') {
+        return http.Response(
+          jsonEncode({
             'data': {
-              'borrow_id': 17,
+              'id': 17,
+              'asset_id': 5,
+              'pickup_date': '2030-01-01',
+              'planned_return_date': '2030-01-02',
+              'rental_days': 2,
+              'lending_end_date': '2030-01-10',
+              'rental_amount': 20.5,
+              'deposit_amount': 30.25,
               'total_amount': 50.75,
-              'wallet_balance': walletBalance,
-              'payment_status': 'paid',
               'status': 'approved',
+              'payment_status': 'unpaid',
             },
           }),
           200,
         );
-      }),
-    );
+      }
 
-    final controller = PaymentController(apiService: service);
+      expect(request.method, 'POST');
+      expect(request.url.path, '/api/borrows/17/pay');
+      expect(request.body, isEmpty);
+      walletBalance = 370;
+      return http.Response(
+        jsonEncode({
+          'message': 'Payment completed',
+          'data': {
+            'borrow_id': 17,
+            'total_amount': 50.75,
+            'wallet_balance': walletBalance,
+            'payment_status': 'paid',
+            'status': 'approved',
+          },
+        }),
+        200,
+      );
+    });
+
+    final controller = PaymentController(
+      client: client,
+      baseUrl: 'https://example.test',
+      authService: _TestAuthService(),
+    );
     await tester.pumpWidget(
       MaterialApp(
         home: PaymentScreen(
@@ -98,7 +99,7 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
     controller.dispose();
-    service.dispose();
+    client.close();
   });
 }
 

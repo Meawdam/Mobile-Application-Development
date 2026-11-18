@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:frontend/modules/user/wallet/controller/wallet_controller.dart';
-import 'package:frontend/modules/user/wallet/service/wallet_api_service.dart';
 
 class WalletScreen extends StatefulWidget {
-  const WalletScreen({super.key, this.apiService, this.controller});
+  const WalletScreen({super.key, this.controller});
 
-  final WalletApiService? apiService;
   final WalletController? controller;
 
   @override
@@ -15,10 +13,7 @@ class WalletScreen extends StatefulWidget {
 }
 
 class _WalletScreenState extends State<WalletScreen> {
-  late final WalletApiService _apiService =
-      widget.apiService ?? WalletApiService();
-  late final _controller =
-      widget.controller ?? WalletController(apiService: _apiService);
+  late final _controller = widget.controller ?? WalletController();
   final _amountController = TextEditingController();
   String? _amountError;
 
@@ -39,9 +34,6 @@ class _WalletScreenState extends State<WalletScreen> {
   void dispose() {
     _controller.removeListener(_onUpdate);
     if (widget.controller == null) _controller.dispose();
-    if (widget.apiService == null && widget.controller == null) {
-      _apiService.dispose();
-    }
     _amountController.dispose();
     super.dispose();
   }

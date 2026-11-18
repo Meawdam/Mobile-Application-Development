@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/modules/user/home/controller/home_controller.dart';
-import 'package:frontend/modules/user/home/service/home_api_service.dart';
 import 'package:frontend/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -62,51 +61,51 @@ void main() {
 
       expect(controller.query, 'digital');
       expect(controller.items.map((item) => item.name), ['Camera']);
-    },
-  );
-
-  test(
-    'controller loads and searches assets through its API service',
-    () async {
-      final queries = <String?>[];
-      final service = HomeApiService(
-        authService: _TestAuthService(),
-        client: MockClient((request) async {
-          queries.add(request.url.queryParameters['q']);
-          return http.Response(
-            jsonEncode({
-              'data': [
-                {
-                  'id': 12,
-                  'owner_id': 3,
-                  'name': 'Camera',
-                  'description': 'Digital camera',
-                  'status': 'ready',
-                  'approval': 'approved',
-                  'down_payment': 0,
-                  'return_before': '2030-01-01',
-                  'price': 50,
-                  'pickup_point': 'Library',
-                },
-              ],
-            }),
-            200,
-          );
-        }),
-      );
-      final controller = HomeController(apiService: service);
-
-      await controller.initialize();
-      expect(controller.items.single.name, 'Camera');
-      await controller.search('digital');
-
-      expect(queries, [null, 'digital']);
-      expect(controller.query, 'digital');
-      expect(controller.items.single.id, 12);
       controller.dispose();
-      service.dispose();
     },
   );
+
+  test('controller loads and searches assets through the backend', () async {
+    final queries = <String?>[];
+    final client = MockClient((request) async {
+      expect(request.headers['Authorization'], 'Bearer test-token');
+      queries.add(request.url.queryParameters['q']);
+      return http.Response(
+        jsonEncode({
+          'data': [
+            {
+              'id': 12,
+              'owner_id': 3,
+              'name': 'Camera',
+              'description': 'Digital camera',
+              'status': 'ready',
+              'approval': 'approved',
+              'down_payment': 0,
+              'return_before': '2030-01-01',
+              'price': 50,
+              'pickup_point': 'Library',
+            },
+          ],
+        }),
+        200,
+      );
+    });
+    final controller = HomeController(
+      client: client,
+      authService: _TestAuthService(),
+      baseUrl: 'https://example.test',
+    );
+
+    await controller.initialize();
+    expect(controller.items.single.name, 'Camera');
+    await controller.search('digital');
+
+    expect(queries, [null, 'digital']);
+    expect(controller.query, 'digital');
+    expect(controller.items.single.id, 12);
+    controller.dispose();
+    client.close();
+  });
 }
 
 class _TestAuthService extends Authservice {

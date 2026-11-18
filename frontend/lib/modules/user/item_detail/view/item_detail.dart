@@ -1,29 +1,20 @@
 import 'package:flutter/material.dart';
 
 import 'package:frontend/modules/user/item_detail/controller/item_detail_controller.dart';
-import 'package:frontend/modules/user/item_detail/service/item_detail_api_service.dart';
 
 class ItemDetailScreen extends StatefulWidget {
   final int? assetId;
-  final ItemDetailApiService? apiService;
   final ItemDetailController? controller;
 
-  const ItemDetailScreen({
-    super.key,
-    this.assetId,
-    this.apiService,
-    this.controller,
-  });
+  const ItemDetailScreen({super.key, this.assetId, this.controller});
 
   @override
   State<ItemDetailScreen> createState() => _ItemDetailScreenState();
 }
 
 class _ItemDetailScreenState extends State<ItemDetailScreen> {
-  late final ItemDetailApiService _apiService =
-      widget.apiService ?? ItemDetailApiService();
   late final ItemDetailController _controller =
-      widget.controller ?? ItemDetailController(apiService: _apiService);
+      widget.controller ?? ItemDetailController();
 
   @override
   void initState() {
@@ -45,9 +36,6 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   void dispose() {
     _controller.removeListener(_onControllerUpdate);
     if (widget.controller == null) _controller.dispose();
-    if (widget.apiService == null && widget.controller == null) {
-      _apiService.dispose();
-    }
     super.dispose();
   }
 

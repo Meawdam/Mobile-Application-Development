@@ -1,19 +1,32 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/model/user/user_model.dart';
-import 'package:frontend/modules/user/home/service/home_api_service.dart';
+import 'package:frontend/services/auth_service.dart';
+import 'package:http/http.dart' as http;
 
 class HomeController extends ChangeNotifier {
   HomeController({
     List<AssetModel>? availableItems,
     UserModel? initialUser,
-    this.apiService,
+    http.Client? client,
+    Authservice? authService,
+    this.baseUrl = 'http://localhost:3000',
   }) : _availableItems = availableItems ?? <AssetModel>[],
-       _user = initialUser;
+       _useFixtures = availableItems != null,
+       _user = initialUser,
+       _client = client ?? http.Client(),
+       _ownsClient = client == null,
+       _authService = authService ?? Authservice();
 
   final List<AssetModel> _availableItems;
-  final HomeApiService? apiService;
+  final bool _useFixtures;
+  final http.Client _client;
+  final bool _ownsClient;
+  final Authservice _authService;
+  final String baseUrl;
   List<AssetModel> _items = const [];
   UserModel? _user;
   bool _loading = false;
@@ -47,10 +60,9 @@ class HomeController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final service = apiService;
-      final items = service == null
+      final items = _useFixtures
           ? _filterAvailableItems()
-          : await service.fetchAvailableAssets(query: _query);
+          : await _fetchAvailableAssets();
       if (_disposed || generation != _loadGeneration) return;
       _items = items;
     } on Exception catch (exception) {
@@ -78,6 +90,56 @@ class HomeController extends ChangeNotifier {
     }).toList();
   }
 
+  Future<List<AssetModel>> _fetchAvailableAssets() async {
+    final token = await _authService.loadToken();
+    final query = _query.trim();
+    final uri = Uri.parse('$baseUrl/api/assets')
+        .replace(queryParameters: query.isEmpty ? null : {'q': query});
+    final response = await _client.get(
+      uri,
+      headers: {
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+      },
+    );
+    final data = _readData(response);
+    if (data is! List) {
+      throw const FormatException('Invalid available-items response');
+    }
+
+    return data.map((item) {
+      if (item is! Map<String, dynamic>) {
+        throw const FormatException('Invalid item in available-items response');
+      }
+      final normalizedItem = Map<String, dynamic>.from(item);
+      final image = normalizedItem['image']?.toString();
+      if (image != null && image.startsWith('/')) {
+        normalizedItem['image'] = '$baseUrl$image';
+      }
+      return AssetModel.fromJson(normalizedItem);
+    }).toList();
+  }
+
+  dynamic _readData(http.Response response) {
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(response.body);
+    } on FormatException {
+      throw const FormatException('The server returned an invalid response');
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = decoded is Map ? decoded['message']?.toString() : null;
+      throw HomeApiException(
+        message == null || message.isEmpty
+            ? 'Could not load items (${response.statusCode})'
+            : message,
+      );
+    }
+    if (decoded is! Map<String, dynamic> || !decoded.containsKey('data')) {
+      throw const FormatException('Invalid available-items response');
+    }
+    return decoded['data'];
+  }
+
   Future<void> search(String value) => loadItems(query: value);
 
   Future<void> logout() async {}
@@ -85,6 +147,16 @@ class HomeController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    if (_ownsClient) _client.close();
     super.dispose();
   }
+}
+
+class HomeApiException implements Exception {
+  const HomeApiException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }

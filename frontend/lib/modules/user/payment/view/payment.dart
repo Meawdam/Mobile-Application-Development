@@ -2,25 +2,21 @@ import 'package:flutter/material.dart';
 
 import 'package:frontend/model/borrow/borrow_model.dart';
 import 'package:frontend/modules/user/payment/controller/payment_controller.dart';
-import 'package:frontend/modules/user/payment/service/payment_api_service.dart';
 import 'package:frontend/utils/date_utils.dart';
 
 class PaymentScreen extends StatefulWidget {
   final Map<String, dynamic>? args;
-  final PaymentApiService? apiService;
   final PaymentController? controller;
 
-  const PaymentScreen({super.key, this.args, this.apiService, this.controller});
+  const PaymentScreen({super.key, this.args, this.controller});
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  late final PaymentApiService _apiService =
-      widget.apiService ?? PaymentApiService();
   late final PaymentController _controller =
-      widget.controller ?? PaymentController(apiService: _apiService);
+      widget.controller ?? PaymentController();
 
   int? get _borrowId => _asInt(widget.args?['borrowId']);
   BorrowModel? get _borrow => _controller.borrow;
@@ -58,9 +54,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void dispose() {
     _controller.removeListener(_onUpdate);
     if (widget.controller == null) _controller.dispose();
-    if (widget.apiService == null && widget.controller == null) {
-      _apiService.dispose();
-    }
     super.dispose();
   }
 
