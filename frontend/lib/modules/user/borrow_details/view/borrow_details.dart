@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/app_popup.dart';
 
 import 'package:frontend/modules/user/borrow_details/controller/borrow_details_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
@@ -223,10 +224,10 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
                                 onPressed: () async {
                                   final err = await _controller.requestReturn();
                                   if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(err ?? 'Return requested'),
-                                    ),
+                                  await showAppPopup(
+                                    context,
+                                    message: err ?? 'Return requested',
+                                    isSuccess: err == null,
                                   );
                                 },
                                 child: const Text('Request return'),
@@ -241,10 +242,10 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
                                 onPressed: () async {
                                   final err = await _controller.confirmReturn();
                                   if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(err ?? 'Return confirmed'),
-                                    ),
+                                  await showAppPopup(
+                                    context,
+                                    message: err ?? 'Return confirmed',
+                                    isSuccess: err == null,
                                   );
                                 },
                                 child: const Text('Confirm return'),

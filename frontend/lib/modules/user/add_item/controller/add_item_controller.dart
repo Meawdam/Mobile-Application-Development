@@ -1,9 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:frontend/services/api_helper.dart';
 import 'package:frontend/services/auth_service.dart';
 import 'package:frontend/utils/date_utils.dart';
 
@@ -153,13 +154,17 @@ class AddItemController extends ChangeNotifier {
     var result = AddItemResult.failed;
     try {
       // header: Authorization: Bearer <token> (multipart ไม่ต้องใส่ Content-Type)
-      final headers = await apiHeaders(_authService, json: false);
-      if (!hasToken(headers)) {
+      final token = await _authService.loadToken();
+      final headers = <String, String>{
+        if (token != null && token.isNotEmpty)
+          'Authorization': 'Bearer $token',
+      };
+      if (token == null || token.isEmpty) {
         _error = 'Please log in again';
       } else {
         // body: ฟิลด์ตามที่ Swagger POST /api/assets กำหนด
         final request =
-            http.MultipartRequest('POST', Uri.parse('$apiBaseUrl/api/assets'))
+            http.MultipartRequest('POST', Uri.parse('http://localhost:3000/api/assets'))
               ..headers.addAll(headers)
               ..fields.addAll({
                 'name': trimmedName,
@@ -185,7 +190,7 @@ class AddItemController extends ChangeNotifier {
         if (response.statusCode == 201) {
           result = AddItemResult.success;
         } else {
-          _error = apiMessage(response, 'Unable to submit item');
+          _error = _messageFrom(response, 'Unable to submit item');
         }
       }
     } on Exception {
@@ -195,5 +200,18 @@ class AddItemController extends ChangeNotifier {
     _submitting = false;
     notifyListeners();
     return result;
+  }
+
+  /// ดึงข้อความ error จาก body รูปแบบ { "message": "..." } ของ backend
+  String _messageFrom(http.Response response, String fallback) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['message'] is String) {
+        return decoded['message'] as String;
+      }
+    } catch (_) {
+      // body ไม่ใช่ JSON ใช้ข้อความสำรอง
+    }
+    return fallback;
   }
 }

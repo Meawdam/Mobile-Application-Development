@@ -4,6 +4,7 @@ import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/modules/user/my_lending_items/controller/my_lending_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
 import 'package:frontend/utils/app_colors.dart';
+import 'package:frontend/widgets/app_popup.dart';
 
 class MyLendingItemsScreen extends StatefulWidget {
   /// ใส่ controller จากภายนอกได้ (ใช้ตอนทำ widget test) ถ้าไม่ใส่จะสร้างเอง
@@ -38,50 +39,20 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
   }
 
   Future<void> _showDeleteSheet(AssetModel asset) async {
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Delete "${asset.name}"?',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text('This cannot be undone.'),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.blue,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Delete item'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    final confirmed = await showAppConfirmPopup(
+      context,
+      title: 'Delete "${asset.name}"?',
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete item',
     );
 
-    if (confirmed != true) return;
+    if (!confirmed) return;
     final err = await _controller.deleteAsset(asset.id);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(err ?? 'Item deleted')),
+    await showAppPopup(
+      context,
+      message: err ?? 'Item deleted',
+      isSuccess: err == null,
     );
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/app_popup.dart';
 
 import 'package:frontend/modules/user/payment/controller/payment_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
@@ -47,8 +48,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Future<void> _confirmPayment() async {
     final borrowId = _borrowId;
     if (borrowId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Missing borrow request')),
+      await showAppPopup(
+        context,
+        message: 'Missing borrow request',
+        isSuccess: false,
       );
       return;
     }
@@ -60,22 +63,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (!mounted) return;
 
     if (result == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_controller.error ?? 'Unable to complete payment'),
-        ),
+      await showAppPopup(
+        context,
+        message: _controller.error ?? 'Unable to complete payment',
+        isSuccess: false,
       );
       return;
     }
 
-    Navigator.of(context).pushNamedAndRemoveUntil(
+    final navigator = Navigator.of(context);
+    navigator.pushNamedAndRemoveUntil(
       '/borrow-details',
       (route) => route.settings.name == '/home' || route.isFirst,
       arguments: {'borrowId': borrowId},
     );
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Payment completed')),
-    );
+    // โชว์ป๊อปอัปบนหน้า borrow-details ที่เพิ่งเปิด
+    showAppPopupOn(navigator, message: 'Payment completed');
   }
 
   String _displayDate(String raw) {

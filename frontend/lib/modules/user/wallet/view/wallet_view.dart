@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:frontend/modules/user/wallet/controller/wallet_controller.dart';
 import 'package:frontend/utils/app_colors.dart';
+import 'package:frontend/widgets/app_popup.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -38,18 +39,16 @@ class _WalletScreenState extends State<WalletScreen> {
     final ok = _controller.topUp(amount);
 
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_controller.error ?? 'Top up failed'),
-        ),
+      showAppPopup(
+        context,
+        message: _controller.error ?? 'Top up failed',
+        isSuccess: false,
       );
       return;
     }
 
     _amountController.clear();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Wallet topped up')),
-    );
+    showAppPopup(context, message: 'Wallet topped up');
   }
 
   @override

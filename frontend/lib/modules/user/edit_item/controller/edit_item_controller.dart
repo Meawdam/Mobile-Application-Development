@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:frontend/model/asset/asset_model.dart';
-import 'package:frontend/services/api_helper.dart';
 import 'package:frontend/services/auth_service.dart';
 import 'package:frontend/utils/date_utils.dart';
 
@@ -41,14 +40,19 @@ class EditItemController extends ChangeNotifier {
     asset = null;
 
     try {
-      final headers = await apiHeaders(_authService);
+      final token = await _authService.loadToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty)
+          'Authorization': 'Bearer $token',
+      };
       final response = await _client.get(
-        Uri.parse('$apiBaseUrl/api/assets/$assetId'),
+        Uri.parse('http://localhost:3000/api/assets/$assetId'),
         headers: headers,
       );
 
       if (response.statusCode == 200) {
-        final data = apiData(response);
+        final data = _dataFrom(response);
         if (data is Map<String, dynamic>) {
           // เอาค่าที่ backend ส่งมาใส่ AssetModel (ฟอร์มจะถูกเติมจากตัวนี้)
           asset = AssetModel.fromJson(data);
@@ -57,7 +61,7 @@ class EditItemController extends ChangeNotifier {
           error = 'Item not found';
         }
       } else {
-        error = apiMessage(response, 'Item not found');
+        error = _messageFrom(response, 'Item not found');
       }
     } on Exception {
       error = 'Connection error';
@@ -116,13 +120,18 @@ class EditItemController extends ChangeNotifier {
 
     var result = EditItemResult.failed;
     try {
-      final headers = await apiHeaders(_authService);
-      if (!hasToken(headers)) {
+      final token = await _authService.loadToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty)
+          'Authorization': 'Bearer $token',
+      };
+      if (token == null || token.isEmpty) {
         error = 'Please log in again';
       } else {
         // body: ฟิลด์ตามที่ Swagger PATCH /api/assets/:id กำหนด
         final response = await _client.patch(
-          Uri.parse('$apiBaseUrl/api/assets/${current.id}'),
+          Uri.parse('http://localhost:3000/api/assets/${current.id}'),
           headers: headers,
           body: jsonEncode({
             'name': trimmedName,
@@ -153,7 +162,7 @@ class EditItemController extends ChangeNotifier {
           );
           result = EditItemResult.success;
         } else {
-          error = apiMessage(response, 'Unable to save changes');
+          error = _messageFrom(response, 'Unable to save changes');
         }
       }
     } on Exception {
@@ -163,5 +172,29 @@ class EditItemController extends ChangeNotifier {
     submitting = false;
     notifyListeners();
     return result;
+  }
+
+  /// ดึงข้อความ error จาก body รูปแบบ { "message": "..." } ของ backend
+  String _messageFrom(http.Response response, String fallback) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['message'] is String) {
+        return decoded['message'] as String;
+      }
+    } catch (_) {
+      // body ไม่ใช่ JSON ใช้ข้อความสำรอง
+    }
+    return fallback;
+  }
+
+  /// ดึงฟิลด์ "data" จาก response รูปแบบ { "data": ... }
+  dynamic _dataFrom(http.Response response) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map) return decoded['data'];
+    } catch (_) {
+      // body ไม่ใช่ JSON
+    }
+    return null;
   }
 }

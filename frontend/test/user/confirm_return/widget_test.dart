@@ -3,47 +3,59 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/modules/user/requests_returns/controller/requests_returns_controller.dart';
 import 'package:frontend/modules/user/requests_returns/view/requests_returns.dart';
-import 'package:http/testing.dart';
+import 'package:mocktail/mocktail.dart';
 
+import '../../helpers/mocks.dart';
 import '../../helpers/test_helpers.dart';
 
-Future<void> _pump(
-  WidgetTester tester,
-  List<String> calls, {
+Future<MockHttpClient> _pump(
+  WidgetTester tester, {
   int patchStatus = 200,
   String patchMessage = 'Return confirmed',
 }) async {
   useTallScreen(tester);
-  final controller = RequestsReturnsController(
-    client: MockClient((request) async {
-      calls.add('${request.method} ${request.url.path}');
-      if (request.method == 'PATCH') {
-        return jsonResponse({'message': patchMessage}, patchStatus);
-      }
-      return jsonResponse({
-        'data': [
-          borrowJson(id: 2, assetName: 'Camera', status: 'returned_pending'),
-          borrowJson(id: 3, assetName: 'Tripod', status: 'borrowed'),
-        ],
-      });
+  final client = MockHttpClient();
+  stubGet(
+    client,
+    '/api/borrows/lending',
+    jsonResponse({
+      'data': [
+        borrowJson(id: 2, assetName: 'Camera', status: 'returned_pending'),
+        borrowJson(id: 3, assetName: 'Tripod', status: 'borrowed'),
+      ],
     }),
-    authService: FakeAuthservice(),
+  );
+  stubPatch(
+    client,
+    '/api/borrows/2/confirm-return',
+    jsonResponse({'message': patchMessage}, patchStatus),
+  );
+  final controller = RequestsReturnsController(
+    client: client,
+    authService: mockAuthservice(),
   );
 
   await tester.pumpWidget(
     MaterialApp(home: RequestsReturnsScreen(controller: controller)),
   );
   await tester.pumpAndSettle();
+  return client;
 }
 
 void main() {
+  setUpAll(registerMockFallbacks);
+
   testWidgets('shows waiting returns and borrowed items from the API', (
     tester,
   ) async {
-    final calls = <String>[];
-    await _pump(tester, calls);
+    final client = await _pump(tester);
 
-    expect(calls, contains('GET /api/borrows/lending'));
+    verify(
+      () => client.get(
+        apiUri('/api/borrows/lending'),
+        headers: expectedHeaders(),
+      ),
+    ).called(1);
     expect(find.text('Requests & Returns'), findsOneWidget);
     expect(find.text('Waiting for Response'), findsOneWidget);
     expect(find.text('Camera'), findsOneWidget);
@@ -54,13 +66,17 @@ void main() {
   testWidgets('Confirm return calls PATCH confirm-return and updates the list', (
     tester,
   ) async {
-    final calls = <String>[];
-    await _pump(tester, calls);
+    final client = await _pump(tester);
 
     await tester.tap(find.text('Confirm return'));
     await tester.pumpAndSettle();
 
-    expect(calls, contains('PATCH /api/borrows/2/confirm-return'));
+    verify(
+      () => client.patch(
+        apiUri('/api/borrows/2/confirm-return'),
+        headers: expectedHeaders(),
+      ),
+    ).called(1);
     expect(find.text('Return confirmed'), findsOneWidget);
     expect(find.text('Confirm return'), findsNothing);
   });
@@ -68,10 +84,8 @@ void main() {
   testWidgets('backend refusal shows its message and keeps the button', (
     tester,
   ) async {
-    final calls = <String>[];
     await _pump(
       tester,
-      calls,
       patchStatus: 403,
       patchMessage: 'Forbidden: You are not the owner of this asset',
     );

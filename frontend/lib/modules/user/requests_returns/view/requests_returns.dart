@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/model/borrow/borrow_model.dart';
 import 'package:frontend/modules/user/requests_returns/controller/requests_returns_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
+import 'package:frontend/widgets/app_popup.dart';
 
 class RequestsReturnsScreen extends StatefulWidget {
   /// ใส่ controller จากภายนอกได้ (ใช้ตอนทำ widget test) ถ้าไม่ใส่จะสร้างเอง
@@ -39,8 +40,10 @@ class _RequestsReturnsScreenState extends State<RequestsReturnsScreen> {
   Future<void> _confirmReturn(BorrowModel item) async {
     final err = await _controller.confirmReturn(item.id);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(err ?? 'Return confirmed')),
+    await showAppPopup(
+      context,
+      message: err ?? 'Return confirmed',
+      isSuccess: err == null,
     );
   }
 

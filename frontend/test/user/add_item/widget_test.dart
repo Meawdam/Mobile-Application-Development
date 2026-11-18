@@ -6,8 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/modules/user/add_item/controller/add_item_controller.dart';
 import 'package:frontend/modules/user/add_item/view/add_item.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
+import 'package:mocktail/mocktail.dart';
 
+import '../../helpers/mocks.dart';
 import '../../helpers/test_helpers.dart';
 
 // PNG ขนาด 1x1 พิกเซลที่ถูกต้อง (ใช้เป็นรูปที่ผู้ใช้เลือก)
@@ -15,10 +16,10 @@ final Uint8List _tinyPng = base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
 );
 
-AddItemController _controller(MockClient client) {
+AddItemController _controller(MockHttpClient client) {
   final controller = AddItemController(
     client: client,
-    authService: FakeAuthservice(),
+    authService: mockAuthservice(),
   );
   controller.setPickedImage(_tinyPng, 'camera.png');
   controller.setLendingEndDate(DateTime(2030, 1, 1));
@@ -42,16 +43,17 @@ Future<void> _tapSubmit(WidgetTester tester) async {
 }
 
 void main() {
+  setUpAll(registerMockFallbacks);
+
   testWidgets('shows the form with five text fields and the submit button', (
     tester,
   ) async {
     useTallScreen(tester);
-    final controller = _controller(
-      MockClient((request) async => jsonResponse({}, 201)),
-    );
+    final client = MockHttpClient();
+    stubSend(client, jsonResponse({}, 201));
 
     await tester.pumpWidget(
-      MaterialApp(home: AddItemScreen(controller: controller)),
+      MaterialApp(home: AddItemScreen(controller: _controller(client))),
     );
 
     expect(find.text('Add Borrowing Item'), findsOneWidget);
@@ -63,43 +65,40 @@ void main() {
     tester,
   ) async {
     useTallScreen(tester);
-    var called = false;
-    final controller = _controller(
-      MockClient((request) async {
-        called = true;
-        return jsonResponse({}, 201);
-      }),
-    );
+    final client = MockHttpClient();
+    stubSend(client, jsonResponse({}, 201));
 
     await tester.pumpWidget(
-      MaterialApp(home: AddItemScreen(controller: controller)),
+      MaterialApp(home: AddItemScreen(controller: _controller(client))),
     );
     await _tapSubmit(tester);
 
     expect(find.text('Please complete all fields'), findsOneWidget);
-    expect(called, isFalse);
+    verifyNever(() => client.send(any()));
   });
 
   testWidgets('valid form calls POST /api/assets, shows success and closes', (
     tester,
   ) async {
     useTallScreen(tester);
-    late http.Request captured;
-    final controller = _controller(
-      MockClient((request) async {
-        captured = request;
-        return jsonResponse({'message': 'Asset submitted for admin approval'}, 201);
-      }),
+    final client = MockHttpClient();
+    stubSend(
+      client,
+      jsonResponse({'message': 'Asset submitted for admin approval'}, 201),
     );
 
-    await pumpPushed(tester, AddItemScreen(controller: controller));
+    await pumpPushed(tester, AddItemScreen(controller: _controller(client)));
     await _fillForm(tester);
     await _tapSubmit(tester);
 
-    expect(captured.method, 'POST');
-    expect(captured.url.path, '/api/assets');
-    expect(captured.headers['Authorization'], 'Bearer test-token');
-    expect(captured.body, contains('Camera'));
+    final request =
+        verify(() => client.send(captureAny())).captured.single
+            as http.MultipartRequest;
+    expect(request.method, 'POST');
+    expect(request.url, apiUri('/api/assets'));
+    expect(request.headers['Authorization'], 'Bearer $testToken');
+    expect(request.fields['name'], 'Camera');
+    expect(request.files.single.field, 'image');
     expect(find.text('Item submitted for admin approval'), findsOneWidget);
     expect(find.byType(AddItemScreen), findsNothing);
   });
@@ -108,13 +107,10 @@ void main() {
     tester,
   ) async {
     useTallScreen(tester);
-    final controller = _controller(
-      MockClient(
-        (request) async => jsonResponse({'message': 'Price must be positive'}, 400),
-      ),
-    );
+    final client = MockHttpClient();
+    stubSend(client, jsonResponse({'message': 'Price must be positive'}, 400));
 
-    await pumpPushed(tester, AddItemScreen(controller: controller));
+    await pumpPushed(tester, AddItemScreen(controller: _controller(client)));
     await _fillForm(tester);
     await _tapSubmit(tester);
 

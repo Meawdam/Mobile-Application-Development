@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/modules/user/edit_item/controller/edit_item_controller.dart';
 import 'package:frontend/modules/user/edit_item/view/edit_item.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
+import 'package:mocktail/mocktail.dart';
 
+import '../../helpers/mocks.dart';
 import '../../helpers/test_helpers.dart';
 
-EditItemController _controller(MockClient client) =>
-    EditItemController(client: client, authService: FakeAuthservice());
+EditItemController _controller(MockHttpClient client) =>
+    EditItemController(client: client, authService: mockAuthservice());
 
 Future<void> _tapSave(WidgetTester tester) async {
   final button = find.text('Save changes');
@@ -20,22 +20,23 @@ Future<void> _tapSave(WidgetTester tester) async {
 }
 
 void main() {
+  setUpAll(registerMockFallbacks);
+
   testWidgets('loads the item from the API and fills the form', (tester) async {
     useTallScreen(tester);
-    late http.Request captured;
-    final controller = _controller(
-      MockClient((request) async {
-        captured = request;
-        return jsonResponse({'data': assetJson(id: 1)});
-      }),
-    );
+    final client = MockHttpClient();
+    stubGet(client, '/api/assets/1', jsonResponse({'data': assetJson(id: 1)}));
 
     await tester.pumpWidget(
-      MaterialApp(home: EditItemScreen(assetId: 1, controller: controller)),
+      MaterialApp(
+        home: EditItemScreen(assetId: 1, controller: _controller(client)),
+      ),
     );
     await tester.pumpAndSettle();
 
-    expect(captured.url.path, '/api/assets/1');
+    verify(
+      () => client.get(apiUri('/api/assets/1'), headers: expectedHeaders()),
+    ).called(1);
     expect(find.text('My camera'), findsOneWidget);
     expect(find.text('Digital camera'), findsOneWidget);
     expect(find.text('120'), findsOneWidget);
@@ -47,12 +48,17 @@ void main() {
     tester,
   ) async {
     useTallScreen(tester);
-    final controller = _controller(
-      MockClient((request) async => jsonResponse({'message': 'Asset not found'}, 404)),
+    final client = MockHttpClient();
+    stubGet(
+      client,
+      '/api/assets/99',
+      jsonResponse({'message': 'Asset not found'}, 404),
     );
 
     await tester.pumpWidget(
-      MaterialApp(home: EditItemScreen(assetId: 99, controller: controller)),
+      MaterialApp(
+        home: EditItemScreen(assetId: 99, controller: _controller(client)),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -64,25 +70,32 @@ void main() {
     tester,
   ) async {
     useTallScreen(tester);
-    late http.Request patch;
-    final controller = _controller(
-      MockClient((request) async {
-        if (request.method == 'GET') {
-          return jsonResponse({'data': assetJson(id: 1)});
-        }
-        patch = request;
-        return jsonResponse({'message': 'Asset updated successfully'});
-      }),
+    final client = MockHttpClient();
+    stubGet(client, '/api/assets/1', jsonResponse({'data': assetJson(id: 1)}));
+    stubPatch(
+      client,
+      '/api/assets/1',
+      jsonResponse({'message': 'Asset updated successfully'}),
+      withBody: true,
     );
 
-    await pumpPushed(tester, EditItemScreen(assetId: 1, controller: controller));
+    await pumpPushed(
+      tester,
+      EditItemScreen(assetId: 1, controller: _controller(client)),
+    );
     await tester.enterText(find.byType(TextField).at(0), 'New camera');
     await _tapSave(tester);
 
-    expect(patch.method, 'PATCH');
-    expect(patch.url.path, '/api/assets/1');
-    expect(patch.headers['Authorization'], 'Bearer test-token');
-    expect((jsonDecode(patch.body) as Map<String, dynamic>)['name'], 'New camera');
+    final body =
+        verify(
+              () => client.patch(
+                apiUri('/api/assets/1'),
+                headers: expectedHeaders(),
+                body: captureAny(named: 'body'),
+              ),
+            ).captured.single
+            as String;
+    expect((jsonDecode(body) as Map<String, dynamic>)['name'], 'New camera');
     expect(find.text('Changes saved'), findsOneWidget);
     expect(find.byType(EditItemScreen), findsNothing);
   });
@@ -91,19 +104,21 @@ void main() {
     tester,
   ) async {
     useTallScreen(tester);
-    final controller = _controller(
-      MockClient((request) async {
-        if (request.method == 'GET') {
-          return jsonResponse({'data': assetJson(id: 1)});
-        }
-        return jsonResponse(
-          {'message': 'Cannot edit an asset that is currently borrowed'},
-          400,
-        );
-      }),
+    final client = MockHttpClient();
+    stubGet(client, '/api/assets/1', jsonResponse({'data': assetJson(id: 1)}));
+    stubPatch(
+      client,
+      '/api/assets/1',
+      jsonResponse({
+        'message': 'Cannot edit an asset that is currently borrowed',
+      }, 400),
+      withBody: true,
     );
 
-    await pumpPushed(tester, EditItemScreen(assetId: 1, controller: controller));
+    await pumpPushed(
+      tester,
+      EditItemScreen(assetId: 1, controller: _controller(client)),
+    );
     await _tapSave(tester);
 
     expect(

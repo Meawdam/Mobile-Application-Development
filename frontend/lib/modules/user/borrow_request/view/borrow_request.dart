@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/app_popup.dart';
 
 import 'package:frontend/modules/user/borrow_request/controller/borrow_request_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
@@ -43,13 +44,11 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
     if (!mounted) return;
 
     if (borrow == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _controller.error ??
-                'Choose pickup and return dates within the lender timeframe',
-          ),
-        ),
+      await showAppPopup(
+        context,
+        message: _controller.error ??
+            'Choose pickup and return dates within the lender timeframe',
+        isSuccess: false,
       );
       return;
     }

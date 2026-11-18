@@ -3,12 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/modules/user/my_lending_items/controller/my_lending_controller.dart';
 import 'package:frontend/modules/user/my_lending_items/view/my_lending_items.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
+import 'package:mocktail/mocktail.dart';
 
+import '../../helpers/mocks.dart';
 import '../../helpers/test_helpers.dart';
 
-MyLendingController _controller(MockClient client) =>
-    MyLendingController(client: client, authService: FakeAuthservice());
+MyLendingController _controller(MockHttpClient client) =>
+    MyLendingController(client: client, authService: mockAuthservice());
 
 Future<void> _pump(WidgetTester tester, MyLendingController controller) async {
   useTallScreen(tester);
@@ -19,25 +20,26 @@ Future<void> _pump(WidgetTester tester, MyLendingController controller) async {
 }
 
 void main() {
+  setUpAll(registerMockFallbacks);
+
   testWidgets('lists the items returned by GET /api/assets/mine', (tester) async {
-    late http.Request captured;
-    await _pump(
-      tester,
-      _controller(
-        MockClient((request) async {
-          captured = request;
-          return jsonResponse({
-            'data': [
-              assetJson(id: 1, name: 'My camera'),
-              assetJson(id: 2, name: 'My tripod', approval: 'pending'),
-            ],
-          });
-        }),
-      ),
+    final client = MockHttpClient();
+    stubGet(
+      client,
+      '/api/assets/mine',
+      jsonResponse({
+        'data': [
+          assetJson(id: 1, name: 'My camera'),
+          assetJson(id: 2, name: 'My tripod', approval: 'pending'),
+        ],
+      }),
     );
 
-    expect(captured.url.path, '/api/assets/mine');
-    expect(captured.headers['Authorization'], 'Bearer test-token');
+    await _pump(tester, _controller(client));
+
+    verify(
+      () => client.get(apiUri('/api/assets/mine'), headers: expectedHeaders()),
+    ).called(1);
     expect(find.text('My Lending Items'), findsOneWidget);
     expect(find.text('My camera'), findsOneWidget);
     expect(find.text('My tripod'), findsOneWidget);
@@ -46,21 +48,23 @@ void main() {
   });
 
   testWidgets('shows an empty message when there are no items', (tester) async {
-    await _pump(
-      tester,
-      _controller(MockClient((request) async => jsonResponse({'data': []}))),
-    );
+    final client = MockHttpClient();
+    stubGet(client, '/api/assets/mine', jsonResponse({'data': []}));
+
+    await _pump(tester, _controller(client));
 
     expect(find.text('No items to display'), findsOneWidget);
   });
 
   testWidgets('shows the error text when loading fails', (tester) async {
-    await _pump(
-      tester,
-      _controller(
-        MockClient((request) async => jsonResponse({'message': 'Invalid token'}, 403)),
-      ),
+    final client = MockHttpClient();
+    stubGet(
+      client,
+      '/api/assets/mine',
+      jsonResponse({'message': 'Invalid token'}, 403),
     );
+
+    await _pump(tester, _controller(client));
 
     expect(find.text('Invalid token'), findsOneWidget);
   });
@@ -68,12 +72,10 @@ void main() {
   testWidgets('shows a connection error when the server is unreachable', (
     tester,
   ) async {
-    await _pump(
-      tester,
-      _controller(
-        MockClient((request) async => throw http.ClientException('offline')),
-      ),
-    );
+    final client = MockHttpClient();
+    stubGetThrows(client, http.ClientException('offline'));
+
+    await _pump(tester, _controller(client));
 
     expect(find.text('Connection error'), findsOneWidget);
   });

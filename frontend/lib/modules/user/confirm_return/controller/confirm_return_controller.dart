@@ -1,7 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:frontend/services/api_helper.dart';
 import 'package:frontend/services/auth_service.dart';
 import '../../shared/model/lending_item_model.dart';
 import '../../shared/model/return_request_model.dart';
@@ -70,14 +71,19 @@ class ConfirmReturnController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final headers = await apiHeaders(_authService);
+      final token = await _authService.loadToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty)
+          'Authorization': 'Bearer $token',
+      };
       final response = await _client.get(
-        Uri.parse('$apiBaseUrl/api/borrows/lending'),
+        Uri.parse('http://localhost:3000/api/borrows/lending'),
         headers: headers,
       );
 
       if (response.statusCode == 200) {
-        final data = apiData(response);
+        final data = _dataFrom(response);
         _requests
           ..clear()
           ..addAll(
@@ -92,7 +98,7 @@ class ConfirmReturnController extends ChangeNotifier {
                 : const <ReturnRequest>[],
           );
       } else {
-        error = apiMessage(response, 'Unable to load requests');
+        error = _messageFrom(response, 'Unable to load requests');
       }
     } on Exception {
       error = 'Connection error';
@@ -119,12 +125,17 @@ class ConfirmReturnController extends ChangeNotifier {
     error = null;
     var result = ConfirmReturnResult.failed;
     try {
-      final headers = await apiHeaders(_authService);
-      if (!hasToken(headers)) {
+      final token = await _authService.loadToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty)
+          'Authorization': 'Bearer $token',
+      };
+      if (token == null || token.isEmpty) {
         error = 'Please log in again';
       } else {
         final response = await _client.patch(
-          Uri.parse('$apiBaseUrl/api/borrows/$requestId/confirm-return'),
+          Uri.parse('http://localhost:3000/api/borrows/$requestId/confirm-return'),
           headers: headers,
         );
 
@@ -136,14 +147,14 @@ class ConfirmReturnController extends ChangeNotifier {
           case 404:
             result = ConfirmReturnResult.notFound;
           case 400:
-            final message = apiMessage(response, '');
+            final message = _messageFrom(response, '');
             result = message.toLowerCase().contains('already')
                 ? ConfirmReturnResult.alreadyConfirmed
                 : ConfirmReturnResult.notRequested;
           case 409:
             result = ConfirmReturnResult.notRequested;
           default:
-            error = apiMessage(response, 'Unable to confirm return');
+            error = _messageFrom(response, 'Unable to confirm return');
         }
       }
     } on Exception {
@@ -165,5 +176,29 @@ class ConfirmReturnController extends ChangeNotifier {
     }
     notifyListeners();
     return result;
+  }
+
+  /// ดึงข้อความ error จาก body รูปแบบ { "message": "..." } ของ backend
+  String _messageFrom(http.Response response, String fallback) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['message'] is String) {
+        return decoded['message'] as String;
+      }
+    } catch (_) {
+      // body ไม่ใช่ JSON ใช้ข้อความสำรอง
+    }
+    return fallback;
+  }
+
+  /// ดึงฟิลด์ "data" จาก response รูปแบบ { "data": ... }
+  dynamic _dataFrom(http.Response response) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map) return decoded['data'];
+    } catch (_) {
+      // body ไม่ใช่ JSON
+    }
+    return null;
   }
 }

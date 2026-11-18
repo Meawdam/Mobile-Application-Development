@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/widgets/app_popup.dart';
 
 import 'package:frontend/model/borrow/borrow_model.dart';
 import 'package:frontend/modules/user/my_borrowed_items/controller/my_borrowed_controller.dart';
@@ -35,16 +36,20 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
   Future<void> _cancel(BorrowModel item) async {
     final err = await _controller.cancel(item.id);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(err ?? 'Request cancelled')),
+    await showAppPopup(
+      context,
+      message: err ?? 'Request cancelled',
+      isSuccess: err == null,
     );
   }
 
   Future<void> _requestReturn(BorrowModel item) async {
     final err = await _controller.requestReturn(item.id);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(err ?? 'Return requested')),
+    await showAppPopup(
+      context,
+      message: err ?? 'Return requested',
+      isSuccess: err == null,
     );
   }
 
