@@ -3,7 +3,6 @@ class ApproveItem {
   final String name;
   final String owner;
   final String time;
-  final String category;
   final String description;
 
   const ApproveItem({
@@ -11,7 +10,6 @@ class ApproveItem {
     required this.name,
     required this.owner,
     required this.time,
-    required this.category,
     required this.description,
   });
 
@@ -21,7 +19,6 @@ class ApproveItem {
       name: map['name']?.toString() ?? '',
       owner: map['owner']?.toString() ?? '',
       time: map['time']?.toString() ?? '',
-      category: map['category']?.toString() ?? '',
       description: map['description']?.toString() ?? '',
     );
   }
@@ -32,7 +29,6 @@ class ApproveItem {
       'name': name,
       'owner': owner,
       'time': time,
-      'category': category,
       'description': description,
     };
   }

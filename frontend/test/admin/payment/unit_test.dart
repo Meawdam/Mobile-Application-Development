@@ -3,41 +3,47 @@ import 'package:frontend/modules/admin/payment/controller/payment_controller.dar
 import 'package:frontend/modules/admin/payment/model/payment_model.dart';
 
 void main() {
-  group('PaymentController Tests', () {
-    final sampleTransactions = [
-      PaymentTransaction(
-        title: 'Deposit Refunded - Lab Coat',
-        user: 'Anucha Khetthong',
-        time: '28 Oct. 14:30',
-        amount: '-฿500.00',
-        isIncome: false,
-        isPending: false,
-      ),
-      PaymentTransaction(
-        title: 'Deposit Held - Microscope',
-        user: 'Pimchanok Sriboon',
-        time: '30 Oct. 10:15',
-        amount: '+฿1,500.00',
-        isIncome: true,
-        isPending: true,
-      ),
-    ];
+  late PaymentController controller;
 
-    test('filterTransactions should return only pending refund items', () {
-      final controller = PaymentController();
-      final result = controller.filterTransactions(
-        sampleTransactions,
-        'Pending Refund',
-      );
+  setUp(() => controller = PaymentController());
 
-      expect(result.length, 1);
-      expect(result.first.user, 'Pimchanok Sriboon');
-    });
+  final transactions = [
+    PaymentTransaction(
+      id: 'refund-1',
+      title: 'Deposit refund',
+      user: 'Anucha',
+      time: '2026-11-18',
+      amount: '-฿500.00',
+      isIncome: false,
+      isPending: true,
+      isRefundable: true,
+    ),
+    PaymentTransaction(
+      id: 'payment-1',
+      title: 'Rental payment',
+      user: 'Pimchanok',
+      time: '2026-11-17',
+      amount: '+฿1,500.00',
+      isIncome: true,
+      isPending: false,
+    ),
+  ];
 
-    test('validateAmount should return true for valid amounts', () {
-      final controller = PaymentController();
-      expect(controller.validateAmount(500.0), true);
-      expect(controller.validateAmount(0.0), false);
-    });
+  test('Pending Refund filter returns refundable transactions', () {
+    final result = controller.filterTransactions(transactions, 'Pending Refund');
+
+    expect(result.map((transaction) => transaction.id), ['refund-1']);
+  });
+
+  test('Collected filter returns completed income transactions', () {
+    final result = controller.filterTransactions(transactions, 'Collected');
+
+    expect(result.map((transaction) => transaction.id), ['payment-1']);
+  });
+
+  test('Amount validation only accepts positive values', () {
+    expect(controller.validateAmount(500), isTrue);
+    expect(controller.validateAmount(0), isFalse);
+    expect(controller.validateAmount(-1), isFalse);
   });
 }

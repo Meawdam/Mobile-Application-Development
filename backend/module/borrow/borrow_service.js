@@ -288,9 +288,11 @@ class BorrowService {
 
     if (
       !["requested", "approved"].includes(borrow.status) ||
-      borrow.payment_status !== "unpaid"
+      !["unpaid", "paid"].includes(borrow.payment_status)
     ) {
-      const err = new Error("Only unpaid borrow requests can be cancelled");
+      const err = new Error(
+        "Only unpaid or paid requests awaiting receipt can be cancelled",
+      );
       err.status = 400;
       throw err;
     }
@@ -305,7 +307,22 @@ class BorrowService {
       throw err;
     }
 
-    return { message: "Borrow request cancelled" };
+    const refundAmount = cancelled.refund_amount ?? 0;
+    return {
+      message: cancelled.payment_status === "refunded"
+        ? "Borrow request cancelled and payment refunded to wallet"
+        : "Borrow request cancelled",
+      data: {
+        borrow_id: Number(borrowId),
+        status: "cancelled",
+        payment_status: cancelled.payment_status,
+        refund_amount: refundAmount,
+        ...(cancelled.wallet_balance === null ||
+          cancelled.wallet_balance === undefined
+          ? {}
+          : { wallet_balance: cancelled.wallet_balance }),
+      },
+    };
   }
 
   async approveRequest(borrowId, ownerId) {
@@ -341,7 +358,10 @@ class BorrowService {
     const isEligible = decision === "approve"
       ? borrow.status === "requested"
       : ["requested", "approved"].includes(borrow.status);
-    if (!isEligible || borrow.payment_status !== "unpaid") {
+    if (
+      !isEligible ||
+      !["unpaid", "paid"].includes(borrow.payment_status)
+    ) {
       const err = new Error("Borrow request is no longer awaiting a decision");
       err.status = 400;
       throw err;
@@ -361,7 +381,9 @@ class BorrowService {
     return {
       message: decision === "approve"
         ? "Borrow request approved"
-        : "Borrow request rejected",
+        : result.payment_status === "refunded"
+          ? "Borrow request rejected and payment refunded to wallet"
+          : "Borrow request rejected",
       data: result,
     };
   }

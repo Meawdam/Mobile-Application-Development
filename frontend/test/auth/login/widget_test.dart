@@ -31,6 +31,7 @@ void main() {
     await tester.tap(find.widgetWithText(ElevatedButton, 'Log in'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(Dialog), findsOneWidget);
     expect(find.text('Invalid email or password'), findsOneWidget);
   });
 
@@ -50,7 +51,7 @@ void main() {
     expect(find.text('Invalid email or password'), findsOneWidget);
   });
 
-  testWidgets('Correct login as user should show the user page', (
+  testWidgets('Correct login shows success popup before the user page', (
     WidgetTester tester,
   ) async {
     final controller = MockLoginController();
@@ -66,6 +67,12 @@ void main() {
     await tester.enterText(find.byType(TextField).at(0), 'user@example.com');
     await tester.enterText(find.byType(TextField).at(1), 'password');
     await tester.tap(find.widgetWithText(ElevatedButton, 'Log in'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.text('Login successful'), findsOneWidget);
+    expect(find.text('Welcome back!'), findsOneWidget);
+    await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
 
     expect(find.text('User home'), findsOneWidget);

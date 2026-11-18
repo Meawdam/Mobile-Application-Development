@@ -177,7 +177,8 @@ CREATE TABLE `financial_transactions` (
     'rental_payment',
     'deposit_hold',
     'deposit_forfeiture',
-    'deposit_refund'
+    'deposit_refund',
+    'borrow_refund'
   ) NOT NULL,
   `amount` decimal(12,2) NOT NULL,
   `status` enum('pending','completed','released') NOT NULL DEFAULT 'completed',

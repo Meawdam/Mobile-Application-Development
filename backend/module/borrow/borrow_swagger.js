@@ -329,8 +329,8 @@
  * /api/borrows/{id}/cancel:
  *   patch:
  *     tags: [Borrows]
- *     summary: Cancel an unpaid borrow request
- *     description: The authenticated user must be the borrower. Only requests that have not been paid can be cancelled.
+ *     summary: Cancel a borrow request awaiting receipt
+ *     description: The authenticated borrower may cancel a requested or approved borrow before confirming receipt. If already paid, the full payment is immediately refunded to the borrower's wallet.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -343,7 +343,7 @@
  *       200:
  *         description: Borrow request cancelled
  *       400:
- *         description: Only unpaid borrow requests can be cancelled
+ *         description: The borrow is no longer awaiting receipt or has an invalid payment status
  *       401:
  *         description: Access token is required
  *       403:
@@ -359,8 +359,8 @@
  * /api/borrows/{id}/approve:
  *   patch:
  *     tags: [Borrows]
- *     summary: Approve an unpaid borrow request
- *     description: The authenticated user must own the asset. Borrowers may still pay immediately before this action.
+ *     summary: Approve a borrow request before receipt is confirmed
+ *     description: The authenticated user must own the asset. Approval is allowed before or after payment while the request is awaiting receipt.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -371,7 +371,7 @@
  *           type: integer
  *     responses:
  *       200:
- *         description: Borrow request approved
+ *         description: Borrow request approved; payment status is unchanged
  *       400:
  *         description: Request is no longer awaiting a decision
  *       401:
@@ -389,8 +389,8 @@
  * /api/borrows/{id}/reject:
  *   patch:
  *     tags: [Borrows]
- *     summary: Reject an unpaid borrow request
- *     description: The authenticated user must own the asset; a rejection reason is required.
+ *     summary: Reject a borrow request before receipt is confirmed
+ *     description: The authenticated user must own the asset; a rejection reason is required. If the borrower already paid, the full payment is immediately refunded to their wallet.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -412,7 +412,7 @@
  *                 maxLength: 500
  *     responses:
  *       200:
- *         description: Borrow request rejected
+ *         description: Borrow request rejected; any completed payment was refunded to the borrower
  *       400:
  *         description: Invalid or missing rejection reason
  *       401:

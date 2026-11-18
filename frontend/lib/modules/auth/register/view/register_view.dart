@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/modules/auth/register/controller/register_controller.dart';
+import 'package:frontend/modules/auth/widgets/auth_feedback_dialog.dart';
 
 class RegisterScreen extends StatefulWidget {
   final RegisterController? controller;
@@ -18,6 +19,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   late final _registerController = widget.controller ?? RegisterController();
   bool _submitting = false;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _phoneNumberController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _register() async {
     if (_submitting) return;
@@ -44,8 +55,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     if (validationMessage != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(validationMessage)));
+      await showAuthFeedbackDialog(
+        context,
+        isSuccess: false,
+        title: 'Check your details',
+        message: validationMessage,
+      );
       return;
     }
 
@@ -61,25 +76,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       if (success) {
-        final messenger = ScaffoldMessenger.of(context);
-        Navigator.of(context).pop();
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Account created. You can now log in.')),
+        await showAuthFeedbackDialog(
+          context,
+          isSuccess: true,
+          title: 'Account created',
+          message: 'Your account is ready. You can now log in.',
         );
+        if (!mounted) return;
+        Navigator.of(context).pop();
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
+      await showAuthFeedbackDialog(
+        context,
+        isSuccess: false,
+        title: 'Registration failed',
+        message:
             'Unable to create account. Email or username may already be in use.',
-          ),
-        ),
       );
     } on Exception catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
+      await showAuthFeedbackDialog(
+        context,
+        isSuccess: false,
+        title: 'Connection error',
+        message: error.toString().replaceFirst('Exception: ', ''),
+      );
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -90,73 +112,127 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create account')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          const Text(
-            'Create your account',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: _usernameController,
-            decoration: const InputDecoration(
-              labelText: 'Full name',
-              hintText: 'Enter your full name',
-              border: OutlineInputBorder(),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight - 48,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Icon(
+                        Icons.swap_horizontal_circle,
+                        size: 72,
+                        color: Color(0xFF2F4BFF),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Create account',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Join Borrow to borrow and lend items',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 32),
+                      TextField(
+                        controller: _usernameController,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'Full name',
+                          hintText: 'Enter your full name',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _phoneNumberController,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone number',
+                          hintText: 'Enter your phone number',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.phone_outlined),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          hintText: 'name@university.ac.th',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.email_outlined),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Password',
+                          hintText: 'At least 8 characters',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.lock_outline),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _confirmPasswordController,
+                        obscureText: true,
+                        onSubmitted: (_) => _register(),
+                        decoration: const InputDecoration(
+                          labelText: 'Confirm password',
+                          hintText: 'Re-enter your password',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.lock_outline),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: _submitting ? null : _register,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2F4BFF),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(_submitting ? 'Registering...' : 'Register'),
+                      ),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: _submitting
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF2F4BFF),
+                        ),
+                        child: const Text('Already have an account? Log in'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _phoneNumberController,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
-              labelText: 'Phone number',
-              hintText: 'Enter your phone number',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              hintText: 'example@email.com',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _passwordController,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Password',
-              hintText: 'At least 8 characters',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _confirmPasswordController,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Confirm password',
-              hintText: 'Re-enter password',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 28),
-          ElevatedButton(
-            onPressed: _submitting ? null : _register,
-            child: Text(_submitting ? 'Registering...' : 'Register'),
-          ),
-          TextButton(
-            onPressed: _submitting ? null : () => Navigator.of(context).pop(),
-            child: const Text('Already have an account? Log in'),
-          ),
-        ],
+        ),
       ),
     );
   }

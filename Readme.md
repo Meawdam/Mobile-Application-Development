@@ -222,6 +222,11 @@ and nullable `received_at` timestamp.
 `POST /api/borrows/:id/pay` deducts `total_amount` from the wallet; the borrower
 must then confirm receipt through `PATCH /api/borrows/:id/confirm-received`
 before the borrow becomes active.
+Before confirming receipt, a borrower may cancel a requested or approved borrow.
+If payment was already made, cancellation immediately refunds the full amount
+to the borrower's wallet and records the refund in the transaction history.
+The canonical `backend/borrow.sql` schema includes the `borrow_refund`
+transaction type.
 After the day in `planned_return_date` passes, any borrow that is not confirmed
 returned has its full deposit automatically transferred to the asset owner's
 wallet. This also applies while a return request is waiting for owner
