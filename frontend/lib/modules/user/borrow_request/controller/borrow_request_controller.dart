@@ -1,18 +1,29 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/model/borrow/borrow_model.dart';
+import 'package:frontend/services/auth_service.dart';
 import 'package:frontend/utils/date_utils.dart';
 
+// Controller หน้า Borrow Request (ฝั่งผู้ยืม)
+//
+// API ที่เชื่อม (ทั้งหมดมีใน backend แล้ว ต้องล็อกอินก่อน เพราะใช้ token จาก Authservice):
+//   GET  /api/assets/{id}  ดึงข้อมูลสินค้ามาแสดง -> load()
+//   POST /api/borrows      กด Continue to payment -> สร้างคำขอยืม -> submitRequest()
+//                          body: {"asset_id", "pickup_date", "return_date"} (รูปแบบ YYYY-MM-DD)
+//
+// ข้อสังเกตเรื่อง backend:
+//   - backend คำนวณค่าเช่าและยอดรวมเองตอนสร้างคำขอ (ราคา x จำนวนวันแบบนับวันแรกและวันสุดท้าย)
+//     ค่าที่หน้าจอคำนวณเป็นแค่ตัวอย่างให้ผู้ใช้เห็นก่อนกดยืนยัน
+//   - การจ่ายเงิน (POST /api/borrows/{id}/pay) เป็นหน้า Payment ซึ่งสมาชิกอื่นทำ
 class BorrowRequestController extends ChangeNotifier {
-  BorrowRequestController({
-    List<AssetModel>? assets,
-    List<BorrowModel>? borrows,
-  })  : _assets = assets ?? <AssetModel>[],
-        _borrows = borrows ?? <BorrowModel>[];
+  BorrowRequestController({Authservice? service})
+    : authService = service ?? Authservice();
 
-  final List<AssetModel> _assets;
-  final List<BorrowModel> _borrows;
+  final Authservice authService;
   AssetModel? _asset;
   bool _loading = false;
   bool _submitting = false;
@@ -26,7 +37,6 @@ class BorrowRequestController extends ChangeNotifier {
   String? get error => _error;
   DateTime? get pickupDate => _pickupDate;
   DateTime? get returnDate => _returnDate;
-  List<BorrowModel> get borrows => List.unmodifiable(_borrows);
 
   DateTime? get lendingEndDate =>
       AppDateUtils.tryParseYmd(_asset?.returnBefore);
@@ -65,31 +75,75 @@ class BorrowRequestController extends ChangeNotifier {
 
   num get total => rentalSubtotal + deposit;
 
+  // ส่ง request พร้อม token (รูปแบบเดียวกับ LoginController: เรียก http ตรงๆ)
+  Future<http.Response> _send(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    final token = await authService.loadToken();
+    final headers = {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+    final uri = Uri.parse('http://localhost:3000$path');
+
+    try {
+      if (method == 'GET') return await http.get(uri, headers: headers);
+      return await http.post(uri, headers: headers, body: jsonEncode(body));
+    } on Exception {
+      throw Exception('Connection error');
+    }
+  }
+
+  // อ่านข้อความ error จาก response ของ backend ({ "message": "..." })
+  String _messageOf(http.Response response) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['message'] is String) {
+        return decoded['message'] as String;
+      }
+    } on FormatException {
+      // ใช้ข้อความมาตรฐานด้านล่างแทน
+    }
+    return 'Request failed (${response.statusCode})';
+  }
+
+  // โหลดข้อมูลสินค้า: GET /api/assets/{id}
   Future<void> load(int assetId) async {
     _loading = true;
     _error = null;
-    notifyListeners();
-
     _asset = null;
-    for (final item in _assets) {
-      if (item.id == assetId) {
-        _asset = item;
-        break;
-      }
-    }
     _pickupDate = null;
     _returnDate = null;
-    if (_asset == null) {
-      _error = 'Item not found';
-    } else if ((_asset!.status != 'available' && _asset!.status != 'ready') ||
-        _asset!.approval != 'approved') {
-      _error = 'Item is not available for borrowing';
-    } else {
-      final end = lendingEndDate;
-      if (end == null || end.isBefore(earliestPickup)) {
-        _error = 'This item has no valid lending end date';
+    notifyListeners();
+
+    try {
+      final response = await _send('GET', '/api/assets/$assetId');
+      if (response.statusCode != 200) {
+        _error = _messageOf(response);
+      } else {
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map<String, dynamic> ||
+            decoded['data'] is! Map<String, dynamic>) {
+          throw const FormatException('Invalid asset response');
+        }
+        _asset = AssetModel.fromJson(decoded['data'] as Map<String, dynamic>);
+
+        if ((_asset!.status != 'available' && _asset!.status != 'ready') ||
+            _asset!.approval != 'approved') {
+          _error = 'Item is not available for borrowing';
+        } else {
+          final end = lendingEndDate;
+          if (end == null || end.isBefore(earliestPickup)) {
+            _error = 'This item has no valid lending end date';
+          }
+        }
       }
+    } on Exception catch (e) {
+      _error = e.toString().replaceFirst('Exception: ', '');
     }
+
     _loading = false;
     notifyListeners();
   }
@@ -134,8 +188,10 @@ class BorrowRequestController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // กด Continue to payment: POST /api/borrows แล้วคืน BorrowModel ของคำขอที่สร้าง (null ถ้าไม่สำเร็จ)
   Future<BorrowModel?> submitRequest() async {
-    if (!datesValid || _asset == null) {
+    final asset = _asset;
+    if (!datesValid || asset == null) {
       _error = 'Choose pickup and return dates within the lender timeframe';
       notifyListeners();
       return null;
@@ -145,33 +201,51 @@ class BorrowRequestController extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    final asset = _asset!;
-    final nextId = _borrows.fold<int>(
-          0,
-          (maxId, item) => item.id > maxId ? item.id : maxId,
-        ) +
-        1;
-    final borrow = BorrowModel(
-      id: nextId,
-      assetId: asset.id,
-      assetName: asset.name,
-      ownerName: asset.ownerUsername,
-      borrowerName: 'Guest',
-      pickupPoint: asset.pickupPoint,
-      pickupDate: AppDateUtils.formatYmd(_pickupDate!),
-      plannedReturnDate: AppDateUtils.formatYmd(_returnDate!),
-      rentalDays: rentalDayCount,
-      lendingEndDate: asset.returnBefore,
-      pricePerDay: asset.price,
-      rentalSubtotal: rentalSubtotal,
-      deposit: deposit,
-      totalAmount: total,
-      status: 'requested',
-      paymentStatus: 'unpaid',
-    );
-    _borrows.add(borrow);
+    BorrowModel? created;
+    try {
+      final response = await _send(
+        'POST',
+        '/api/borrows',
+        body: {
+          'asset_id': asset.id,
+          'pickup_date': AppDateUtils.formatYmd(_pickupDate!),
+          'return_date': AppDateUtils.formatYmd(_returnDate!),
+        },
+      );
+      if (response.statusCode != 201) {
+        _error = _messageOf(response);
+      } else {
+        final decoded = jsonDecode(response.body);
+        if (decoded is! Map<String, dynamic> ||
+            decoded['data'] is! Map<String, dynamic>) {
+          throw const FormatException('Invalid borrow response');
+        }
+        final data = BorrowModel.fromJson(decoded['data'] as Map<String, dynamic>);
+        // response ของ POST ไม่มีชื่อสินค้า/เจ้าของ จึงเติมจากข้อมูลสินค้าที่โหลดไว้
+        created = BorrowModel(
+          id: data.id,
+          assetId: data.assetId,
+          assetName: asset.name,
+          ownerName: asset.ownerUsername,
+          pickupPoint: asset.pickupPoint,
+          pickupDate: data.pickupDate,
+          plannedReturnDate: data.plannedReturnDate,
+          rentalDays: data.rentalDays,
+          lendingEndDate: data.lendingEndDate,
+          pricePerDay: data.pricePerDay,
+          rentalSubtotal: data.rentalSubtotal,
+          deposit: data.deposit,
+          totalAmount: data.totalAmount,
+          status: data.status,
+          paymentStatus: data.paymentStatus,
+        );
+      }
+    } on Exception catch (e) {
+      _error = e.toString().replaceFirst('Exception: ', '');
+    }
+
     _submitting = false;
     notifyListeners();
-    return borrow;
+    return created;
   }
 }
