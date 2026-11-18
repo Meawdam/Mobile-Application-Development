@@ -1,17 +1,18 @@
 class WalletModel {
-  final int balance;
+  final num balance;
 
   const WalletModel({required this.balance});
 
   factory WalletModel.fromJson(Map<String, dynamic> json) {
     final balance = json['balance'];
-    if (balance is int) {
+    if (balance is num) {
       return WalletModel(balance: balance);
     }
-    if (balance is num) {
-      return WalletModel(balance: balance.toInt());
+    final parsed = num.tryParse(balance?.toString() ?? '');
+    if (parsed == null) {
+      throw const FormatException('Invalid wallet balance');
     }
-    return WalletModel(balance: int.tryParse(balance?.toString() ?? '') ?? 0);
+    return WalletModel(balance: parsed);
   }
 
   Map<String, dynamic> toJson() => {'balance': balance};

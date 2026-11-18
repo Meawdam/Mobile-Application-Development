@@ -2,16 +2,22 @@ import 'package:flutter/material.dart';
 
 import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/modules/user/home/controller/home_controller.dart';
+import 'package:frontend/modules/user/home/service/home_api_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.apiService});
+
+  final HomeApiService? apiService;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final HomeController _controller = HomeController();
+  late final HomeApiService _apiService = widget.apiService ?? HomeApiService();
+  late final HomeController _controller = HomeController(
+    apiService: _apiService,
+  );
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -29,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _controller.removeListener(_onControllerUpdate);
     _controller.dispose();
+    if (widget.apiService == null) _apiService.dispose();
     _searchController.dispose();
     super.dispose();
   }
