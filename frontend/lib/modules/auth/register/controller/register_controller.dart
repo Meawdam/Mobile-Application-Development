@@ -1,28 +1,14 @@
-import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/auth_api.dart';
+import 'dart:convert';
 
-enum RegisterResult {
-  success,
-  missingFields,
-  passwordTooShort,
-  passwordMismatch,
-  emailAlreadyExists,
-  usernameAlreadyExists,
-  failed,
-}
+import 'package:http/http.dart' as http;
 
 class RegisterController {
-  RegisterController({AuthApi? authApi}) : _authApi = authApi ?? AuthApi();
-
-  final AuthApi _authApi;
-
-  Future<RegisterResult> register({
-    required String username,
-    required String phoneNumber,
-    required String email,
-    required String password,
-    required String confirmPassword,
-  }) async {
+  Future<bool> register(
+    String username,
+    String phoneNumber,
+    String email,
+    String password,
+  ) async {
     final trimmedUsername = username.trim();
     final trimmedPhoneNumber = phoneNumber.trim();
     final normalizedEmail = email.trim().toLowerCase();
@@ -30,36 +16,26 @@ class RegisterController {
     if (trimmedUsername.isEmpty ||
         trimmedPhoneNumber.isEmpty ||
         normalizedEmail.isEmpty ||
-        password.isEmpty ||
-        confirmPassword.isEmpty) {
-      return RegisterResult.missingFields;
+        password.isEmpty) {
+      return false;
     }
 
-    if (password.length < 8) {
-      return RegisterResult.passwordTooShort;
-    }
-
-    if (password != confirmPassword) {
-      return RegisterResult.passwordMismatch;
-    }
-
+    late final http.Response response;
     try {
-      await _authApi.register(
-        username: trimmedUsername,
-        email: normalizedEmail,
-        password: password,
-        phoneNum: trimmedPhoneNumber,
+      response = await http.post(
+        Uri.parse('http://localhost:3000/api/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'username': trimmedUsername,
+          'phone_num': trimmedPhoneNumber,
+          'email': normalizedEmail,
+          'password': password,
+        }),
       );
-      return RegisterResult.success;
-    } on ApiException catch (error) {
-      final message = error.message.toLowerCase();
-      if (message.contains('email')) {
-        return RegisterResult.emailAlreadyExists;
-      }
-      if (message.contains('username')) {
-        return RegisterResult.usernameAlreadyExists;
-      }
-      return RegisterResult.failed;
+    } on Exception {
+      throw Exception('Connection error');
     }
+
+    return response.statusCode == 201;
   }
 }

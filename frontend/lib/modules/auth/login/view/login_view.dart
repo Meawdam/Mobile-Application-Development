@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/modules/auth/login/controller/login_controller.dart';
+import 'package:frontend/modules/auth/widgets/auth_feedback_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final LoginController? controller;
+
+  const LoginScreen({super.key, this.controller});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -11,7 +14,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _loginController = LoginController();
+  late final _loginController = widget.controller ?? LoginController();
   bool _submitting = false;
 
   Future<void> _login() async {
@@ -19,48 +22,68 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _submitting = true);
     try {
-      final user = await _loginController.login(
+      final role = await _loginController.login(
         _emailController.text,
         _passwordController.text,
       );
 
       if (!mounted) return;
 
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid email or password')),
+      if (role == null) {
+        await showAuthFeedbackDialog(
+          context,
+          isSuccess: false,
+          title: 'Login failed',
+          message: 'Invalid email or password',
         );
         return;
       }
 
-      final route = switch (user.role) {
+      final route = switch (role) {
         'admin' => '/admin',
         'user' => '/home',
         _ => null,
       };
 
       if (route == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('This account has an unsupported role'),
-          ),
+        await showAuthFeedbackDialog(
+          context,
+          isSuccess: false,
+          title: 'Login failed',
+          message: 'This account has an unsupported role',
         );
         return;
       }
 
+      await showAuthFeedbackDialog(
+        context,
+        isSuccess: true,
+        title: 'Login successful',
+        message: 'Welcome back!',
+      );
+      if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(route, (_) => false);
+    } on AccountSuspendedException catch (error) {
+      if (!mounted) return;
+      await showAuthFeedbackDialog(
+        context,
+        isSuccess: false,
+        title: 'Account suspended',
+        message: 'This account is suspended. Reason: ${error.reason}',
+      );
+    } on Exception catch (error) {
+      if (!mounted) return;
+      await showAuthFeedbackDialog(
+        context,
+        isSuccess: false,
+        title: 'Connection error',
+        message: error.toString().replaceFirst('Exception: ', ''),
+      );
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
       }
     }
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 
   @override
@@ -116,6 +139,14 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _submitting ? null : _login,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2F4BFF),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 child: Text(_submitting ? 'Signing in...' : 'Log in'),
               ),
               const SizedBox(height: 16),
@@ -123,6 +154,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: _submitting
                     ? null
                     : () => Navigator.pushNamed(context, '/register'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF2F4BFF),
+                ),
                 child: const Text('Create an account'),
               ),
             ],

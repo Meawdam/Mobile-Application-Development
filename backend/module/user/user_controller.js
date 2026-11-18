@@ -17,6 +17,34 @@ class UserController {
             next(error);
         }
     }
+    async setSuspension(req, res, next) {
+        try {
+            const result = await userService.setSuspension(
+                req.params.id,
+                req.user.id,
+                req.body,
+            );
+            res.status(200).json({
+                message: result.is_suspended
+                    ? "User account suspended"
+                    : "User account reactivated",
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+    async getUserActivities(req, res, next) {
+        try {
+            const activities = await userService.getUserActivities(
+                req.params.id,
+                req.query,
+            );
+            res.status(200).json({ data: activities });
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 module.exports = new UserController();

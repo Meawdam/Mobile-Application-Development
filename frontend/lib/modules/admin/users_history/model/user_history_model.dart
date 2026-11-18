@@ -3,12 +3,14 @@ class UserHistoryActivity {
   final String category;
   final String title;
   final String performedBy;
+  final String? rentalRole;
 
   const UserHistoryActivity({
     required this.date,
     required this.category,
     required this.title,
     required this.performedBy,
+    this.rentalRole,
   });
 
   factory UserHistoryActivity.fromMap(Map<String, dynamic> map) {
@@ -17,6 +19,7 @@ class UserHistoryActivity {
       category: map['category']?.toString() ?? '',
       title: map['title']?.toString() ?? '',
       performedBy: map['performedBy']?.toString() ?? '',
+      rentalRole: map['rentalRole']?.toString(),
     );
   }
 
@@ -26,6 +29,7 @@ class UserHistoryActivity {
       'category': category,
       'title': title,
       'performedBy': performedBy,
+      'rentalRole': rentalRole,
     };
   }
 }
@@ -50,7 +54,16 @@ class UserHistoryUser {
   });
 
   factory UserHistoryUser.fromMap(Map<String, dynamic> map) {
-    final activityList = map['activities'] as List? ?? [];
+    final rawActivities = map['activities'] as List? ?? [];
+
+    final activities = rawActivities
+        .whereType<Map>()
+        .map(
+          (activity) => UserHistoryActivity.fromMap(
+            Map<String, dynamic>.from(activity),
+          ),
+        )
+        .toList();
 
     return UserHistoryUser(
       id: map['id']?.toString() ?? '',
@@ -59,13 +72,7 @@ class UserHistoryUser {
       total: (map['total'] as num?)?.toInt() ?? 0,
       lending: (map['lending'] as num?)?.toInt() ?? 0,
       overdue: (map['overdue'] as num?)?.toInt() ?? 0,
-      activities: activityList
-          .map(
-            (activity) => UserHistoryActivity.fromMap(
-              Map<String, dynamic>.from(activity),
-            ),
-          )
-          .toList(),
+      activities: activities,
     );
   }
 

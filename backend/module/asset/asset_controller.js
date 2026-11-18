@@ -34,7 +34,7 @@ class AssetsController {
 
   async getAssetById(req, res, next) {
     try {
-      const asset = await assetService.getAssetById(req.params.id);
+      const asset = await assetService.getAssetById(req.params.id, req.user);
       return res.status(200).json({ data: asset });
     } catch (error) {
       next(error);
@@ -109,7 +109,7 @@ class AssetsController {
         });
       }
 
-      const result = await assetService.approveAsset(req.params.id, {
+      const result = await assetService.approveAsset(req.params.id, req.user.id, {
         approval,
         approval_message,
       });

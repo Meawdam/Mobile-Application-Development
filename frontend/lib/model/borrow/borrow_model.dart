@@ -37,6 +37,28 @@ class BorrowModel {
     required this.paymentStatus,
   });
 
+  BorrowModel copyWith({String? status, String? paymentStatus}) {
+    return BorrowModel(
+      id: id,
+      assetId: assetId,
+      assetName: assetName,
+      ownerName: ownerName,
+      borrowerName: borrowerName,
+      pickupPoint: pickupPoint,
+      pickupDate: pickupDate,
+      plannedReturnDate: plannedReturnDate,
+      rentalDays: rentalDays,
+      lendingEndDate: lendingEndDate,
+      pricePerDay: pricePerDay,
+      rentalSubtotal: rentalSubtotal,
+      deposit: deposit,
+      totalAmount: totalAmount,
+      fineAmount: fineAmount,
+      status: status ?? this.status,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+    );
+  }
+
   factory BorrowModel.fromJson(Map<String, dynamic> json) {
     return BorrowModel(
       id: _asInt(json['id']),

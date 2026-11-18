@@ -2,24 +2,15 @@ import 'package:flutter/foundation.dart';
 
 import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/model/user/user_model.dart';
-import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/asset_api.dart';
-import 'package:frontend/services/auth_api.dart';
-import 'package:frontend/services/auth_session.dart';
 
 class HomeController extends ChangeNotifier {
   HomeController({
-    AssetApi? assetApi,
-    AuthApi? authApi,
-    AuthSession? session,
-  })  : _assetApi = assetApi ?? AssetApi(),
-        _authApi = authApi ?? AuthApi(),
-        _session = session ?? AuthSession.instance;
+    List<AssetModel>? availableItems,
+    UserModel? initialUser,
+  })  : _availableItems = availableItems ?? <AssetModel>[],
+        _user = initialUser;
 
-  final AssetApi _assetApi;
-  final AuthApi _authApi;
-  final AuthSession _session;
-
+  final List<AssetModel> _availableItems;
   List<AssetModel> _items = const [];
   UserModel? _user;
   bool _loading = false;
@@ -33,8 +24,12 @@ class HomeController extends ChangeNotifier {
   String get query => _query;
 
   Future<void> initialize() async {
-    _user = await _session.getUser();
-    notifyListeners();
+    _user ??= const UserModel(
+      username: 'Guest',
+      phoneNumber: '',
+      email: '',
+      role: 'user',
+    );
     await loadItems();
   }
 
@@ -44,23 +39,21 @@ class HomeController extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    try {
-      _items = await _assetApi.getAvailableAssets(
-        query: _query.isEmpty ? null : _query,
-      );
-    } on ApiException catch (error) {
-      _items = const [];
-      _error = error.message;
-    } catch (_) {
-      _items = const [];
-      _error = 'Unable to load items';
-    } finally {
-      _loading = false;
-      notifyListeners();
-    }
+    final normalizedQuery = _query.toLowerCase();
+    _items = _availableItems.where((asset) {
+      final available =
+          (asset.status == 'available' || asset.status == 'ready') &&
+              asset.approval == 'approved';
+      final matchesQuery = normalizedQuery.isEmpty ||
+          asset.name.toLowerCase().contains(normalizedQuery) ||
+          asset.description.toLowerCase().contains(normalizedQuery);
+      return available && matchesQuery;
+    }).toList();
+    _loading = false;
+    notifyListeners();
   }
 
   Future<void> search(String value) => loadItems(query: value);
 
-  Future<void> logout() => _authApi.logout();
+  Future<void> logout() async {}
 }

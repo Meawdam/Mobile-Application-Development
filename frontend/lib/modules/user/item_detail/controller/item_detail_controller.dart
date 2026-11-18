@@ -1,15 +1,12 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:frontend/model/asset/asset_model.dart';
-import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/asset_api.dart';
 
 class ItemDetailController extends ChangeNotifier {
-  ItemDetailController({AssetApi? assetApi})
-      : _assetApi = assetApi ?? AssetApi();
+  ItemDetailController({List<AssetModel>? items})
+      : _items = items ?? <AssetModel>[];
 
-  final AssetApi _assetApi;
-
+  final List<AssetModel> _items;
   AssetModel? _asset;
   bool _loading = false;
   String? _error;
@@ -23,17 +20,15 @@ class ItemDetailController extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    try {
-      _asset = await _assetApi.getAssetById(assetId);
-    } on ApiException catch (error) {
-      _asset = null;
-      _error = error.message;
-    } catch (_) {
-      _asset = null;
-      _error = 'Unable to load item details';
-    } finally {
-      _loading = false;
-      notifyListeners();
+    _asset = null;
+    for (final item in _items) {
+      if (item.id == assetId) {
+        _asset = item;
+        break;
+      }
     }
+    if (_asset == null) _error = 'Item not found';
+    _loading = false;
+    notifyListeners();
   }
 }

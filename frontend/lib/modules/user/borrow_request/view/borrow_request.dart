@@ -120,6 +120,13 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                               isThreeLine: true,
                             ),
                           ),
+                          if (_controller.error != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              _controller.error!,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          ],
                           const SizedBox(height: 20),
                           const Text(
                             'Select dates',

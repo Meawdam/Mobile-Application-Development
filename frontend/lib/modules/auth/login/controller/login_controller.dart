@@ -1,26 +1,81 @@
-import 'package:frontend/model/user/user_model.dart';
-import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/auth_api.dart';
+import 'dart:convert';
+
+import 'package:frontend/services/auth_service.dart';
+import 'package:http/http.dart' as http;
+
+class AccountSuspendedException implements Exception {
+  final String reason;
+  const AccountSuspendedException(this.reason);
+}
 
 class LoginController {
-  LoginController({AuthApi? authApi}) : _authApi = authApi ?? AuthApi();
+  Authservice authService = Authservice();
 
-  final AuthApi _authApi;
+  LoginController({Authservice? service}) {
+    if(service == null) {
+      // real
+      authService = Authservice();
+    } else {
+      // mocked: unit test
+      authService = service;
+    }
+  }
 
-  Future<UserModel?> login(String email, String password) async {
+  Future<String?> login(String email, String password) async {
     final normalizedEmail = email.trim().toLowerCase();
     if (normalizedEmail.isEmpty || password.isEmpty) {
       return null;
     }
 
+    late final http.Response response;
     try {
-      final result = await _authApi.login(
-        email: normalizedEmail,
-        password: password,
+      response = await http.post(
+        Uri.parse('http://localhost:3000/api/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': normalizedEmail, 'password': password}),
       );
-      return result.user;
-    } on ApiException {
+    } on Exception {
+      throw Exception('Connection error');
+    }
+
+    if (response.statusCode != 200) {
+      if (response.statusCode == 403) {
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map) {
+            final reason = decoded['reason']?.toString().trim();
+            final message = decoded['message']?.toString().trim();
+            throw AccountSuspendedException(
+              reason == null || reason.isEmpty
+                  ? (message != null && message.isNotEmpty
+                      ? message
+                      : 'No reason was provided.')
+                  : reason,
+            );
+          }
+        } on AccountSuspendedException {
+          rethrow;
+        } catch (_) {
+          // Keep the normal login failure below if the response isn't JSON.
+        }
+      }
       return null;
     }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic> ||
+        decoded['user'] is! Map<String, dynamic> ||
+        decoded['token'] is! String) {
+      throw const FormatException('Invalid login response');
+    }
+
+    final user = decoded['user'] as Map<String, dynamic>;
+    final role = user['role'];
+    if (role is! String) {
+      throw const FormatException('Login response is missing the user role');
+    }
+
+    await authService.saveToken(decoded['token'] as String);
+    return role;
   }
 }

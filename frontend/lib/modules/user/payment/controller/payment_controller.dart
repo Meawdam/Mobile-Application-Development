@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:frontend/services/api_client.dart';
-import 'package:frontend/services/borrow_api.dart';
-import 'package:frontend/services/wallet_api.dart';
+import 'package:frontend/model/borrow/borrow_model.dart';
 
 class PaymentResult {
   final int borrowId;
@@ -12,16 +10,11 @@ class PaymentResult {
 }
 
 class PaymentController extends ChangeNotifier {
-  PaymentController({
-    WalletApi? walletApi,
-    BorrowApi? borrowApi,
-  })  : _walletApi = walletApi ?? WalletApi(),
-        _borrowApi = borrowApi ?? BorrowApi();
+  PaymentController({this.walletBalance = 0, List<BorrowModel>? borrows})
+    : _borrows = borrows ?? <BorrowModel>[];
 
-  final WalletApi _walletApi;
-  final BorrowApi _borrowApi;
-
-  int walletBalance = 0;
+  final List<BorrowModel> _borrows;
+  int walletBalance;
   bool loading = false;
   bool paying = false;
   String? error;
@@ -30,27 +23,38 @@ class PaymentController extends ChangeNotifier {
     loading = true;
     error = null;
     notifyListeners();
-    try {
-      final wallet = await _walletApi.getWallet();
-      walletBalance = wallet.balance;
-    } on ApiException catch (e) {
-      error = e.message;
-    } catch (_) {
-      error = 'Unable to load wallet balance';
-    } finally {
-      loading = false;
-      notifyListeners();
-    }
+    loading = false;
+    notifyListeners();
   }
 
-  bool canPay(num total) => walletBalance >= total;
+  bool canPay(num total) => total >= 0 && walletBalance >= total;
 
   Future<PaymentResult?> confirmPayment({
     required int borrowId,
     required num total,
   }) async {
+    final index = _borrows.indexWhere((item) => item.id == borrowId);
+    if (index == -1) {
+      error = 'Borrow not found';
+      notifyListeners();
+      return null;
+    }
+    final borrow = _borrows[index];
+
+    if (total < 0) {
+      error = 'Invalid payment amount';
+      notifyListeners();
+      return null;
+    }
+
     if (!canPay(total)) {
       error = 'Insufficient wallet balance';
+      notifyListeners();
+      return null;
+    }
+
+    if (borrow.paymentStatus == 'paid') {
+      error = 'Borrow is already paid';
       notifyListeners();
       return null;
     }
@@ -59,29 +63,13 @@ class PaymentController extends ChangeNotifier {
     error = null;
     notifyListeners();
 
-    try {
-      final paid = await _borrowApi.pay(borrowId);
-      if (paid.walletBalance != null) {
-        walletBalance = paid.walletBalance!;
-      } else {
-        await loadWallet();
-      }
-      return PaymentResult(
-        borrowId: borrowId,
-        walletBalance: walletBalance,
-      );
-    } on ApiException catch (e) {
-      error = e.message;
-      try {
-        walletBalance = (await _walletApi.getWallet()).balance;
-      } catch (_) {}
-      return null;
-    } catch (_) {
-      error = 'Unable to complete payment';
-      return null;
-    } finally {
-      paying = false;
-      notifyListeners();
-    }
+    walletBalance -= total.ceil();
+    _borrows[index] = borrow.copyWith(
+      status: 'borrowed',
+      paymentStatus: 'paid',
+    );
+    paying = false;
+    notifyListeners();
+    return PaymentResult(borrowId: borrowId, walletBalance: walletBalance);
   }
 }

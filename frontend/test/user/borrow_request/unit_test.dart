@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/model/asset/asset_model.dart';
+import 'package:frontend/model/borrow/borrow_model.dart';
 import 'package:frontend/modules/user/borrow_request/controller/borrow_request_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
 
-import '../../helpers/test_fakes.dart';
-
 void main() {
-  late FakeAssetApi assetApi;
-  late FakeBorrowApi borrowApi;
+  late List<AssetModel> assets;
+  late List<BorrowModel> borrows;
   late BorrowRequestController controller;
   late DateTime today;
   late DateTime end;
@@ -14,22 +14,26 @@ void main() {
   setUp(() {
     today = AppDateUtils.today();
     end = today.add(const Duration(days: 10));
-    assetApi = FakeAssetApi(
-      byId: sampleAsset(
-        id: 5,
-        price: 100,
-        downPayment: 500,
-        returnBefore: AppDateUtils.formatYmd(end),
-      ),
-    );
-    borrowApi = FakeBorrowApi();
-    controller = BorrowRequestController(
-      assetApi: assetApi,
-      borrowApi: borrowApi,
-    );
+    assets = [
+      AssetModel(
+          id: 5,
+          ownerId: 2,
+          ownerUsername: 'Lender',
+          name: 'Camera',
+          description: 'Digital camera',
+          status: 'available',
+          approval: 'approved',
+          downPayment: 500,
+          returnBefore: AppDateUtils.formatYmd(end),
+          price: 100,
+          pickupPoint: 'Canteen',
+        ),
+    ];
+    borrows = [];
+    controller = BorrowRequestController(assets: assets, borrows: borrows);
   });
 
-  test('1. load sets asset and clears previous dates', () async {
+  test('load sets asset and clears previous dates', () async {
     await controller.load(5);
 
     expect(controller.asset?.id, 5);
@@ -38,7 +42,7 @@ void main() {
     expect(controller.lendingEndDate, end);
   });
 
-  test('2. valid dates compute rental days and totals', () async {
+  test('valid dates compute rental days and totals', () async {
     await controller.load(5);
     controller.setPickupDate(today);
     controller.setReturnDate(today.add(const Duration(days: 2)));
@@ -50,7 +54,7 @@ void main() {
     expect(controller.total, 800);
   });
 
-  test('3. rejects return dates outside the lending window', () async {
+  test('rejects return dates outside the lending window', () async {
     await controller.load(5);
     controller.setPickupDate(today);
     controller.setReturnDate(end.add(const Duration(days: 1)));
@@ -59,7 +63,7 @@ void main() {
     expect(controller.datesValid, isFalse);
   });
 
-  test('4. submitRequest creates a borrow when dates are valid', () async {
+  test('submitRequest creates a local borrow when dates are valid', () async {
     await controller.load(5);
     controller.setPickupDate(today);
     controller.setReturnDate(today.add(const Duration(days: 1)));
@@ -69,10 +73,11 @@ void main() {
     expect(borrow, isNotNull);
     expect(borrow!.assetId, 5);
     expect(borrow.status, 'requested');
+    expect(borrows.single, same(borrow));
     expect(controller.submitting, isFalse);
   });
 
-  test('5. submitRequest fails without dates', () async {
+  test('submitRequest fails without dates', () async {
     await controller.load(5);
 
     final borrow = await controller.submitRequest();
