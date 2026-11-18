@@ -1,103 +1,203 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/model/borrow/borrow_model.dart';
 import 'package:frontend/modules/user/requests_returns/controller/requests_returns_controller.dart';
+import 'package:frontend/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mocktail/mocktail.dart';
 
-import '../../helpers/test_helpers.dart';
-
-RequestsReturnsController makeController(MockClient client) =>
-    RequestsReturnsController(client: client, authService: FakeAuthservice());
+class MockAuthService extends Mock implements Authservice {}
 
 void main() {
-  test('load calls GET /api/borrows/lending and separates the lists', () async {
-    late http.Request captured;
-    final controller = makeController(
-      MockClient((request) async {
-        captured = request;
-        return jsonResponse({
-          'data': [
-            borrowJson(id: 1, status: 'requested', paymentStatus: 'unpaid'),
-            borrowJson(id: 2, status: 'returned_pending'),
-            borrowJson(id: 3, status: 'borrowed'),
-          ],
-        });
+  MockAuthService makeService() {
+    final service = MockAuthService();
+    when(() => service.loadToken()).thenAnswer((_) async => 'test-token');
+    return service;
+  }
+
+  // รันโค้ดโดยให้ http ตอบจาก routes (key = "METHOD /path") แทน server จริง
+  Future<T> run<T>(
+    Map<String, http.Response> routes,
+    List<http.Request> log,
+    Future<T> Function() body,
+  ) {
+    return http.runWithClient(
+      body,
+      () => MockClient((request) async {
+        log.add(request);
+        return routes['${request.method} ${request.url.path}'] ??
+            http.Response('{}', 404);
       }),
     );
+  }
 
-    await controller.load();
+  http.Response json(Object body, [int status = 200]) =>
+      http.Response(jsonEncode(body), status);
 
-    expect(captured.method, 'GET');
-    expect(captured.url.path, '/api/borrows/lending');
-    expect(captured.headers['Authorization'], 'Bearer test-token');
-    expect(controller.waitingForResponse.map((b) => b.id), [1, 2]);
-    expect(controller.borrowedItems.map((b) => b.id), [3]);
+  Map<String, dynamic> record(int id, String status) => {
+        'id': id,
+        'asset_id': id + 100,
+        'asset_name': 'Item $id',
+        'borrower_name': 'borrower$id',
+        'status': status,
+        'payment_status': status == 'requested' ? 'unpaid' : 'paid',
+        'rental_days': 1,
+        'planned_return_date': '2026-11-20',
+      };
+
+  final records = [
+    record(1, 'requested'),
+    record(2, 'cancelled'),
+    record(3, 'borrowed'),
+    record(4, 'returned_pending'),
+    record(5, 'returned_confirmed'),
+    record(6, 'approved'),
+  ];
+
+  RequestsReturnsController makeController() => RequestsReturnsController(
+        service: makeService(),
+        initialItems: records.map(BorrowModel.fromJson).toList(),
+      );
+
+  group('sections', () {
+    test('Waiting for Response has requests and cancelled requests', () {
+      expect(makeController().waitingForResponse.map((b) => b.id), [1, 2]);
+    });
+
+    test('Borrowed Items has borrowed and return-pending items', () {
+      expect(makeController().borrowedItems.map((b) => b.id), [3, 4]);
+    });
   });
 
-  test('load shows the backend message on failure', () async {
-    final controller = makeController(
-      MockClient((request) async => jsonResponse({'message': 'Invalid token'}, 403)),
-    );
+  group('load', () {
+    test('calls GET /api/borrows/owner with the token and fills items', () async {
+      final log = <http.Request>[];
+      final controller = RequestsReturnsController(service: makeService());
 
-    await controller.load();
+      await run({
+        'GET /api/borrows/owner': json({'data': records}),
+      }, log, controller.load);
 
-    expect(controller.error, 'Invalid token');
+      expect(log.single.headers['Authorization'], 'Bearer test-token');
+      expect(controller.items.length, 6);
+      expect(controller.error, isNull);
+    });
+
+    test('shows the backend error message', () async {
+      final controller = RequestsReturnsController(service: makeService());
+
+      await run({
+        'GET /api/borrows/owner': json({'message': 'Invalid or expired token'}, 403),
+      }, [], controller.load);
+
+      expect(controller.error, 'Invalid or expired token');
+    });
+
+    test('shows Connection error when the server is unreachable', () async {
+      final controller = RequestsReturnsController(service: makeService());
+
+      await http.runWithClient(
+        controller.load,
+        () => MockClient((_) async => throw http.ClientException('down')),
+      );
+
+      expect(controller.error, 'Connection error');
+    });
   });
 
-  test('confirmReturn calls PATCH and updates the local status', () async {
-    late http.Request patch;
-    final controller = makeController(
-      MockClient((request) async {
-        if (request.method == 'PATCH') {
-          patch = request;
-          return jsonResponse({'message': 'Return confirmed'});
-        }
-        return jsonResponse({
-          'data': [borrowJson(id: 2, status: 'returned_pending')],
-        });
-      }),
-    );
-    await controller.load();
+  group('actions', () {
+    final reload = json({'data': <Object>[]});
 
-    final error = await controller.confirmReturn(2);
+    test('approve calls PATCH /approve then reloads', () async {
+      final log = <http.Request>[];
+      final controller = makeController();
 
-    expect(error, isNull);
-    expect(patch.url.path, '/api/borrows/2/confirm-return');
-    expect(controller.items.single.status, 'returned_confirmed');
-  });
+      final err = await run({
+        'PATCH /api/borrows/1/approve': json({'message': 'ok'}),
+        'GET /api/borrows/owner': reload,
+      }, log, () => controller.approve(1));
 
-  test('confirmReturn returns the backend message on failure', () async {
-    final controller = makeController(
-      MockClient((request) async {
-        if (request.method == 'PATCH') {
-          return jsonResponse(
-            {'message': 'The borrower has not requested to return this item'},
-            400,
-          );
-        }
-        return jsonResponse({
-          'data': [borrowJson(id: 2, status: 'returned_pending')],
-        });
-      }),
-    );
-    await controller.load();
+      expect(err, isNull);
+      expect(log.map((r) => '${r.method} ${r.url.path}'), [
+        'PATCH /api/borrows/1/approve',
+        'GET /api/borrows/owner',
+      ]);
+    });
 
-    final error = await controller.confirmReturn(2);
+    test('approve returns the backend message when it fails', () async {
+      final controller = makeController();
 
-    expect(error, 'The borrower has not requested to return this item');
-    expect(controller.items.single.status, 'returned_pending');
-  });
+      final err = await run({
+        'PATCH /api/borrows/1/approve': json(
+          {'message': 'Borrow request is no longer awaiting a decision'},
+          400,
+        ),
+      }, [], () => controller.approve(1));
 
-  test('confirmReturn rejects unknown or non-pending borrows locally', () async {
-    final controller = makeController(
-      MockClient((request) async {
-        return jsonResponse({
-          'data': [borrowJson(id: 3, status: 'borrowed')],
-        });
-      }),
-    );
-    await controller.load();
+      expect(err, 'Borrow request is no longer awaiting a decision');
+    });
 
-    expect(await controller.confirmReturn(99), 'Borrow not found');
-    expect(await controller.confirmReturn(3), 'Return has not been requested');
+    test('approve only works for requests waiting for a response', () async {
+      final log = <http.Request>[];
+      final controller = makeController();
+
+      expect(await run({}, log, () => controller.approve(3)),
+          'Request is no longer waiting for a response');
+      expect(await run({}, log, () => controller.approve(99)), 'Borrow not found');
+      expect(log, isEmpty);
+    });
+
+    test('reject sends the reason in the request body', () async {
+      final log = <http.Request>[];
+      final controller = makeController();
+
+      final err = await run({
+        'PATCH /api/borrows/1/reject': json({'message': 'ok'}),
+        'GET /api/borrows/owner': reload,
+      }, log, () => controller.reject(1, '  Item is broken  '));
+
+      expect(err, isNull);
+      expect(jsonDecode(log.first.body), {'reason': 'Item is broken'});
+    });
+
+    test('reject needs a reason and does not call the API without one', () async {
+      final log = <http.Request>[];
+      final controller = makeController();
+
+      final err = await run({}, log, () => controller.reject(1, '   '));
+
+      expect(err, 'A reason is required to reject a request');
+      expect(log, isEmpty);
+    });
+
+    test('reject rejects a reason longer than 500 characters', () async {
+      final controller = makeController();
+
+      final err = await run({}, [], () => controller.reject(1, 'a' * 501));
+
+      expect(err, 'Reason must not exceed 500 characters');
+    });
+
+    test('confirmReturn calls PATCH /confirm-return then reloads', () async {
+      final log = <http.Request>[];
+      final controller = makeController();
+
+      final err = await run({
+        'PATCH /api/borrows/4/confirm-return': json({'message': 'ok'}),
+        'GET /api/borrows/owner': reload,
+      }, log, () => controller.confirmReturn(4));
+
+      expect(err, isNull);
+      expect(log.first.url.path, '/api/borrows/4/confirm-return');
+    });
+
+    test('confirmReturn needs a pending return', () async {
+      final controller = makeController();
+
+      expect(await run({}, [], () => controller.confirmReturn(3)),
+          'Return has not been requested');
+    });
   });
 }
