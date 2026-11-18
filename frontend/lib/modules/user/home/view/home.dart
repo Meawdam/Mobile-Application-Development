@@ -36,6 +36,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD92D20)),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     await _controller.logout();
     if (!mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
@@ -107,8 +126,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     tooltip: 'Log out',
                     onPressed: _logout,
                     style: IconButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF667085),
+                      backgroundColor: const Color(0xFFFFE4E2),
+                      foregroundColor: const Color(0xFFD92D20),
                     ),
                     icon: const Icon(Icons.logout_rounded),
                   ),
@@ -140,6 +159,41 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: const Color(0xFF718096),
                 ),
               ),
+              if (_controller.query.isNotEmpty || _controller.loading) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF0FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      if (_controller.loading)
+                        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      else
+                        const Icon(Icons.check_circle_outline, size: 18, color: Color(0xFF3156D8)),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          _controller.loading
+                              ? 'Searching${_controller.query.isEmpty ? ' all items' : ' for “${_controller.query}”'}…'
+                              : 'Results for “${_controller.query}”',
+                          style: const TextStyle(color: Color(0xFF263B91), fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      if (_controller.query.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            _search();
+                          },
+                          child: const Text('Clear'),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 22),
               _WalletShortcut(
                 onTap: () => Navigator.pushNamed(context, '/wallet'),
@@ -232,7 +286,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   TextButton.icon(
                     onPressed: _addItem,
                     icon: const Icon(Icons.add_rounded, size: 19),
-                    label: const Text('List an item'),
+                    label: const Text('เพิ่มของให้ยืม'),
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF3156D8),
                     ),
@@ -267,7 +321,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ? 'Check back soon or list something for your community.'
                       : 'Try a different search or clear your filters.',
                   actionLabel: _controller.query.isEmpty
-                      ? 'List an item'
+                      ? 'เพิ่มของให้ยืม'
                       : 'Clear search',
                   onAction: _controller.query.isEmpty
                       ? _addItem
@@ -277,13 +331,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         },
                 )
               else
-                ...items.map(
-                  (asset) => Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _AssetCard(
-                      asset: asset,
-                      onTap: () => _openItem(asset),
-                    ),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: items.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.68,
+                  ),
+                  itemBuilder: (context, index) => _AssetCard(
+                    asset: items[index],
+                    onTap: () => _openItem(items[index]),
                   ),
                 ),
             ],
@@ -473,19 +533,19 @@ class _AssetCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: const Color(0xFFE7EAF1)),
           ),
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(13),
                 child: SizedBox(
-                  width: 92,
-                  height: 100,
+                  width: double.infinity,
+                  height: 120,
                   child: asset.imageUrl.isEmpty
                       ? const _ImagePlaceholder()
                       : Image.network(
@@ -496,11 +556,9 @@ class _AssetCard extends StatelessWidget {
                         ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(height: 9),
               Expanded(
-                child: SizedBox(
-                  height: 100,
-                  child: Column(
+                child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
@@ -565,7 +623,6 @@ class _AssetCard extends StatelessWidget {
                     ],
                   ),
                 ),
-              ),
             ],
           ),
         ),
