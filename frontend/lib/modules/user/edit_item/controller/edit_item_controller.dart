@@ -1,6 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:frontend/model/asset/asset_model.dart';
+import 'package:frontend/services/api_helper.dart';
+import 'package:frontend/services/auth_service.dart';
 import 'package:frontend/utils/date_utils.dart';
 
 enum EditItemResult {
@@ -12,11 +17,17 @@ enum EditItemResult {
   failed,
 }
 
+/// หน้า Edit Item
+/// - โหลดข้อมูล: GET   /api/assets/:id
+/// - บันทึก:     PATCH /api/assets/:id (JSON, ต้องมี token และเป็นเจ้าของ)
 class EditItemController extends ChangeNotifier {
-  EditItemController({List<AssetModel>? items})
-      : _items = items ?? <AssetModel>[];
+  EditItemController({http.Client? client, Authservice? authService})
+    : _client = client ?? http.Client(),
+      _authService = authService ?? Authservice();
 
-  final List<AssetModel> _items;
+  final http.Client _client;
+  final Authservice _authService;
+
   AssetModel? asset;
   DateTime? lendingEndDate;
   bool loading = false;
@@ -28,14 +39,30 @@ class EditItemController extends ChangeNotifier {
     error = null;
     notifyListeners();
     asset = null;
-    for (final item in _items) {
-      if (item.id == assetId) {
-        asset = item;
-        break;
+
+    try {
+      final headers = await apiHeaders(_authService);
+      final response = await _client.get(
+        Uri.parse('$apiBaseUrl/api/assets/$assetId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = apiData(response);
+        if (data is Map<String, dynamic>) {
+          // เอาค่าที่ backend ส่งมาใส่ AssetModel (ฟอร์มจะถูกเติมจากตัวนี้)
+          asset = AssetModel.fromJson(data);
+          lendingEndDate = AppDateUtils.tryParseYmd(asset!.returnBefore);
+        } else {
+          error = 'Item not found';
+        }
+      } else {
+        error = apiMessage(response, 'Item not found');
       }
+    } on Exception {
+      error = 'Connection error';
     }
-    lendingEndDate = AppDateUtils.tryParseYmd(asset?.returnBefore);
-    if (asset == null) error = 'Item not found';
+
     loading = false;
     notifyListeners();
   }
@@ -52,8 +79,8 @@ class EditItemController extends ChangeNotifier {
     required String deposit,
     required String pickupPoint,
   }) async {
-    final id = asset?.id;
-    if (id == null) return EditItemResult.failed;
+    final current = asset;
+    if (current == null) return EditItemResult.failed;
 
     final trimmedName = name.trim();
     final trimmedDescription = description.trim();
@@ -68,13 +95,12 @@ class EditItemController extends ChangeNotifier {
         trimmedDeposit.isEmpty) {
       return EditItemResult.missingFields;
     }
-    if (lendingEndDate == null) {
+    final endDate = lendingEndDate;
+    if (endDate == null) {
       return EditItemResult.missingLendingEndDate;
     }
     final parsedPrice = int.tryParse(trimmedPrice);
-    if (parsedPrice == null ||
-        parsedPrice < 0 ||
-        parsedPrice > 2147483647) {
+    if (parsedPrice == null || parsedPrice < 0 || parsedPrice > 2147483647) {
       return EditItemResult.invalidPrice;
     }
     final parsedDeposit = num.tryParse(trimmedDeposit);
@@ -87,34 +113,55 @@ class EditItemController extends ChangeNotifier {
     submitting = true;
     error = null;
     notifyListeners();
-    final current = asset!;
-    final updated = AssetModel(
-      id: current.id,
-      ownerId: current.ownerId,
-      ownerUsername: current.ownerUsername,
-      image: current.image,
-      name: trimmedName,
-      description: trimmedDescription,
-      status: current.status,
-      approval: current.approval,
-      approvalMessage: current.approvalMessage,
-      downPayment: parsedDeposit,
-      returnBefore: AppDateUtils.formatYmd(lendingEndDate!),
-      price: parsedPrice,
-      pickupPoint: trimmedPickup,
-    );
-    final index = _items.indexWhere((item) => item.id == id);
-    if (index == -1) {
-      error = 'Item not found';
-      submitting = false;
-      notifyListeners();
-      return EditItemResult.failed;
+
+    var result = EditItemResult.failed;
+    try {
+      final headers = await apiHeaders(_authService);
+      if (!hasToken(headers)) {
+        error = 'Please log in again';
+      } else {
+        // body: ฟิลด์ตามที่ Swagger PATCH /api/assets/:id กำหนด
+        final response = await _client.patch(
+          Uri.parse('$apiBaseUrl/api/assets/${current.id}'),
+          headers: headers,
+          body: jsonEncode({
+            'name': trimmedName,
+            'description': trimmedDescription,
+            'down_payment': parsedDeposit,
+            'price': parsedPrice,
+            'pickup_point': trimmedPickup,
+            'return_before': AppDateUtils.formatYmd(endDate),
+          }),
+        );
+
+        if (response.statusCode == 200) {
+          // เอาค่าที่บันทึกไปใส่ asset ปัจจุบัน
+          asset = AssetModel(
+            id: current.id,
+            ownerId: current.ownerId,
+            ownerUsername: current.ownerUsername,
+            image: current.image,
+            name: trimmedName,
+            description: trimmedDescription,
+            status: current.status,
+            approval: current.approval,
+            approvalMessage: current.approvalMessage,
+            downPayment: parsedDeposit,
+            returnBefore: AppDateUtils.formatYmd(endDate),
+            price: parsedPrice,
+            pickupPoint: trimmedPickup,
+          );
+          result = EditItemResult.success;
+        } else {
+          error = apiMessage(response, 'Unable to save changes');
+        }
+      }
+    } on Exception {
+      error = 'Connection error';
     }
 
-    _items[index] = updated;
-    asset = updated;
     submitting = false;
     notifyListeners();
-    return EditItemResult.success;
+    return result;
   }
 }

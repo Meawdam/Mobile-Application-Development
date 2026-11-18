@@ -6,14 +6,18 @@ import 'package:frontend/utils/date_utils.dart';
 import 'package:frontend/widgets/date_picker_field.dart';
 
 class AddItemScreen extends StatefulWidget {
-  const AddItemScreen({super.key});
+  /// ใส่ controller จากภายนอกได้ (ใช้ตอนทำ widget test) ถ้าไม่ใส่จะสร้างเอง
+  final AddItemController? controller;
+
+  const AddItemScreen({super.key, this.controller});
 
   @override
   State<AddItemScreen> createState() => _AddItemScreenState();
 }
 
 class _AddItemScreenState extends State<AddItemScreen> {
-  final _controller = AddItemController();
+  late final AddItemController _controller =
+      widget.controller ?? AddItemController();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();

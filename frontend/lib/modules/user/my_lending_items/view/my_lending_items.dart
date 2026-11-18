@@ -6,14 +6,18 @@ import 'package:frontend/utils/date_utils.dart';
 import 'package:frontend/utils/app_colors.dart';
 
 class MyLendingItemsScreen extends StatefulWidget {
-  const MyLendingItemsScreen({super.key});
+  /// ใส่ controller จากภายนอกได้ (ใช้ตอนทำ widget test) ถ้าไม่ใส่จะสร้างเอง
+  final MyLendingController? controller;
+
+  const MyLendingItemsScreen({super.key, this.controller});
 
   @override
   State<MyLendingItemsScreen> createState() => _MyLendingItemsScreenState();
 }
 
 class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
-  final _controller = MyLendingController();
+  late final MyLendingController _controller =
+      widget.controller ?? MyLendingController();
 
   @override
   void initState() {

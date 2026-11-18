@@ -5,14 +5,18 @@ import 'package:frontend/modules/user/requests_returns/controller/requests_retur
 import 'package:frontend/utils/date_utils.dart';
 
 class RequestsReturnsScreen extends StatefulWidget {
-  const RequestsReturnsScreen({super.key});
+  /// ใส่ controller จากภายนอกได้ (ใช้ตอนทำ widget test) ถ้าไม่ใส่จะสร้างเอง
+  final RequestsReturnsController? controller;
+
+  const RequestsReturnsScreen({super.key, this.controller});
 
   @override
   State<RequestsReturnsScreen> createState() => _RequestsReturnsScreenState();
 }
 
 class _RequestsReturnsScreenState extends State<RequestsReturnsScreen> {
-  final _controller = RequestsReturnsController();
+  late final RequestsReturnsController _controller =
+      widget.controller ?? RequestsReturnsController();
 
   @override
   void initState() {
