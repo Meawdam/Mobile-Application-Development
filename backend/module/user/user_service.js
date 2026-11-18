@@ -27,6 +27,11 @@ class UserService {
             err.status = 400;
             throw err;
         }
+        if (is_suspended && Number(actorId) === userId) {
+            const err = new Error("You cannot suspend your own account");
+            err.status = 403;
+            throw err;
+        }
 
         let normalizedReason = null;
         if (is_suspended) {

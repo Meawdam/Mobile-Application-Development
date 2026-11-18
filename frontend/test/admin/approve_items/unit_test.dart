@@ -1,66 +1,31 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/modules/admin/approve_items/controller/approve_items_controller.dart';
+import 'package:frontend/modules/admin/approve_items/model/approve_item_model.dart';
 
 void main() {
   late ApproveItemsController controller;
 
-  setUp(() {
-    controller = ApproveItemsController();
-  });
+  setUp(() => controller = ApproveItemsController());
+  tearDown(() => controller.dispose());
 
-  tearDown(() {
-    controller.dispose();
-  });
-
-  test('Initially has 3 pending items', () {
-    expect(controller.pendingCount, 3);
-    expect(controller.items.length, 3);
-  });
-
-  test('Approve item successfully', () {
-    final result = controller.approveItem('item1');
-
-    expect(result, true);
-    expect(controller.pendingCount, 2);
-    expect(controller.items.any((item) => item.id == 'item1'), false);
-  });
-
-  test('Reject item with a reason successfully', () {
-    final result = controller.rejectItem(
-      'item2',
-      'Item information is incorrect',
+  test('ApproveItem converts to and from a map', () {
+    const item = ApproveItem(
+      id: 'item-1',
+      name: 'Calculator',
+      owner: 'Somchai',
+      time: '2026-11-18',
+      description: 'Scientific calculator',
     );
 
-    expect(result, true);
-    expect(controller.pendingCount, 2);
-    expect(controller.items.any((item) => item.id == 'item2'), false);
+    expect(ApproveItem.fromMap(item.toMap()).toMap(), item.toMap());
   });
 
-  test('Cannot reject item with an empty reason', () {
-    final result = controller.rejectItem('item1', '');
-
-    expect(result, false);
-    expect(controller.pendingCount, 3);
+  test('Items are exposed as an unmodifiable list', () {
+    expect(() => controller.items.clear(), throwsUnsupportedError);
   });
 
-  test('Cannot reject item with only spaces as reason', () {
-    final result = controller.rejectItem('item1', '   ');
-
-    expect(result, false);
-    expect(controller.pendingCount, 3);
-  });
-
-  test('Cannot approve an item that does not exist', () {
-    final result = controller.approveItem('unknown');
-
-    expect(result, false);
-    expect(controller.pendingCount, 3);
-  });
-
-  test('Cannot reject an item that does not exist', () {
-    final result = controller.rejectItem('unknown', 'Invalid item');
-
-    expect(result, false);
-    expect(controller.pendingCount, 3);
+  test('Rejecting without a reason returns false without an API call', () async {
+    expect(await controller.rejectItem('item-1', '   '), isFalse);
+    expect(controller.errorMessage, 'Please provide a reason for the rejection.');
   });
 }

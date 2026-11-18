@@ -64,6 +64,14 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(route, (_) => false);
+    } on AccountSuspendedException catch (error) {
+      if (!mounted) return;
+      await showAuthFeedbackDialog(
+        context,
+        isSuccess: false,
+        title: 'Account suspended',
+        message: 'This account is suspended. Reason: ${error.reason}',
+      );
     } on Exception catch (error) {
       if (!mounted) return;
       await showAuthFeedbackDialog(

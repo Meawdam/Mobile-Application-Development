@@ -548,7 +548,8 @@ class BorrowRepository {
     try {
       await connection.beginTransaction();
       const [borrows] = await connection.query(
-        `SELECT b.id, b.borrower_id, b.status, b.payment_status, a.owner_id
+        `SELECT b.id, b.borrower_id, b.status, b.payment_status,
+          b.total_amount, a.owner_id
          FROM borrow b
          JOIN asset a ON a.id = b.asset_id
          WHERE b.id = ? AND a.owner_id = ?
@@ -563,18 +564,83 @@ class BorrowRepository {
       const eligibleStatus = decision === "approve"
         ? borrow.status === "requested"
         : ["requested", "approved"].includes(borrow.status);
-      if (!eligibleStatus || borrow.payment_status !== "unpaid") {
+      if (
+        !eligibleStatus ||
+        !["unpaid", "paid"].includes(borrow.payment_status)
+      ) {
         await connection.rollback();
         return false;
       }
 
+      let refundAmount = 0;
+      let walletBalance = null;
+      const shouldRefund =
+        decision === "reject" && borrow.payment_status === "paid";
+      if (shouldRefund) {
+        const refundCents = parseAmountCents(borrow.total_amount);
+        if (refundCents === null || refundCents > MAX_STORED_AMOUNT_CENTS) {
+          throw new Error(`Invalid refund amount for borrow ${id}`);
+        }
+        const [users] = await connection.query(
+          "SELECT wallet_balance FROM users WHERE id = ? FOR UPDATE",
+          [borrow.borrower_id],
+        );
+        if (users.length === 0) {
+          const err = new Error("Refund recipient no longer exists");
+          err.status = 409;
+          throw err;
+        }
+        const balanceCents = parseAmountCents(users[0].wallet_balance);
+        if (
+          balanceCents === null ||
+          balanceCents + refundCents > MAX_STORED_AMOUNT_CENTS
+        ) {
+          const err = new Error(
+            "Refund recipient wallet balance exceeds the supported range",
+          );
+          err.status = 409;
+          throw err;
+        }
+        refundAmount = formatAmountCents(refundCents);
+        walletBalance = amountCentsToNumber(balanceCents + refundCents);
+        await connection.query(
+          "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?",
+          [refundAmount, borrow.borrower_id],
+        );
+      }
+
       const nextStatus = decision === "approve" ? "approved" : "rejected";
-      await connection.query(
-        `UPDATE borrow SET status = ?
+      const nextPaymentStatus = shouldRefund
+        ? "refunded"
+        : borrow.payment_status;
+      const [updatedBorrow] = await connection.query(
+        `UPDATE borrow
+         SET status = ?, payment_status = ?
          WHERE id = ? AND status IN ('requested', 'approved')
-           AND payment_status = 'unpaid'`,
-        [nextStatus, id],
+           AND payment_status IN ('unpaid', 'paid')`,
+        [nextStatus, nextPaymentStatus, id],
       );
+      if (updatedBorrow.affectedRows === 0) {
+        await connection.rollback();
+        return false;
+      }
+      if (shouldRefund) {
+        await connection.query(
+          `UPDATE financial_transactions
+           SET status = 'released', processed_at = NOW()
+           WHERE borrow_id = ? AND transaction_type = 'deposit_hold'
+             AND status = 'pending'`,
+          [id],
+        );
+        await connection.query(
+          `INSERT INTO financial_transactions
+            (user_id, actor_id, borrow_id, transaction_type, amount, status,
+             description, processed_at)
+           VALUES (?, ?, ?, 'borrow_refund', ?, 'completed',
+             'Borrow rejection refund', NOW())`,
+          [borrow.borrower_id, ownerId, id, refundAmount],
+        );
+      }
       await logActivities(
         borrowActivityEntries({
           borrowerId: Number(borrow.borrower_id),
@@ -583,14 +649,30 @@ class BorrowRepository {
           action: decision === "approve" ? "borrow_approved" : "borrow_rejected",
           message: decision === "approve"
             ? "Borrow request approved"
-            : "Borrow request rejected",
+            : shouldRefund
+              ? "Paid borrow request rejected and refunded"
+              : "Borrow request rejected",
           borrowId: id,
-          details: decision === "reject" ? { reason } : undefined,
+          details: decision === "reject"
+            ? {
+                reason,
+                ...(shouldRefund
+                  ? { refund_amount: Number(refundAmount) }
+                  : {}),
+              }
+            : undefined,
         }),
         connection,
       );
       await connection.commit();
-      return { id: Number(id), status: nextStatus };
+      return {
+        id: Number(id),
+        status: nextStatus,
+        payment_status: nextPaymentStatus,
+        ...(shouldRefund
+          ? { refund_amount: Number(refundAmount), wallet_balance: walletBalance }
+          : {}),
+      };
     } catch (error) {
       await connection.rollback();
       throw error;
