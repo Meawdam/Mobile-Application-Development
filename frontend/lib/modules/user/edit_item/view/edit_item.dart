@@ -5,6 +5,7 @@ import 'package:frontend/modules/user/edit_item/controller/edit_item_controller.
 import 'package:frontend/utils/date_utils.dart';
 import 'package:frontend/widgets/app_popup.dart';
 import 'package:frontend/widgets/date_picker_field.dart';
+import 'package:frontend/widgets/user_app_bar.dart';
 
 class EditItemScreen extends StatefulWidget {
   final int? assetId;
@@ -76,7 +77,8 @@ class _EditItemScreenState extends State<EditItemScreen> {
     final message = switch (result) {
       EditItemResult.success => 'Changes saved',
       EditItemResult.missingFields => 'Please complete all fields',
-      EditItemResult.missingLendingEndDate => 'Please choose a lending end date',
+      EditItemResult.missingLendingEndDate =>
+        'Please choose a lending end date',
       EditItemResult.invalidPrice => 'Price must be a whole number',
       EditItemResult.invalidDeposit => 'Deposit must be a valid number',
       EditItemResult.failed => _controller.error ?? 'Unable to save changes',
@@ -99,118 +101,112 @@ class _EditItemScreenState extends State<EditItemScreen> {
     final lastSelectable = today.add(const Duration(days: 365 * 2));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Item')),
+      appBar: const UserAppBar(title: 'Edit Item'),
       body: widget.assetId == null
           ? const Center(child: Text('No item selected'))
           : _controller.loading && _controller.asset == null
-              ? const Center(child: CircularProgressIndicator())
-              : _controller.error != null && _controller.asset == null
-                  ? Center(child: Text(_controller.error!))
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: SizedBox(
-                              height: 160,
-                              width: double.infinity,
-                              child: _controller.asset?.imageUrl.isNotEmpty == true
-                                  ? Image.network(
-                                      _imageSrc(_controller.asset!.imageUrl),
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          const ColoredBox(
-                                        color: Color(0xFFE8ECF4),
-                                        child: Icon(Icons.broken_image_outlined),
-                                      ),
-                                    )
-                                  : const ColoredBox(
-                                      color: Color(0xFFE8ECF4),
-                                      child: Icon(Icons.image, size: 48),
-                                    ),
+          ? const Center(child: CircularProgressIndicator())
+          : _controller.error != null && _controller.asset == null
+          ? Center(child: Text(_controller.error!))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      height: 160,
+                      width: double.infinity,
+                      child: _controller.asset?.imageUrl.isNotEmpty == true
+                          ? Image.network(
+                              _imageSrc(_controller.asset!.imageUrl),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const ColoredBox(
+                                    color: Color(0xFFE8ECF4),
+                                    child: Icon(Icons.broken_image_outlined),
+                                  ),
+                            )
+                          : const ColoredBox(
+                              color: Color(0xFFE8ECF4),
+                              child: Icon(Icons.image, size: 48),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _nameController,
-                            decoration: const InputDecoration(
-                              labelText: 'Item Name',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _descriptionController,
-                            maxLines: 3,
-                            decoration: const InputDecoration(
-                              labelText: 'Item Details & Condition',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _priceController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'Price (Baht / Day)',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _depositController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'Deposit (Baht)',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _pickupController,
-                            maxLines: 2,
-                            decoration: const InputDecoration(
-                              labelText: 'Pickup & return location',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          DatePickerField(
-                            label: 'Lending end date',
-                            value: _controller.lendingEndDate,
-                            firstDate: today,
-                            lastDate: lastSelectable,
-                            showCalendarIcon: true,
-                            enabled: !_controller.submitting,
-                            onPicked: _controller.setLendingEndDate,
-                          ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed:
-                                  _controller.submitting ? null : _save,
-                              child: Text(
-                                _controller.submitting
-                                    ? 'Saving...'
-                                    : 'Save changes',
-                              ),
-                            ),
-                          ),
-                        ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _nameController,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Item Name',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _descriptionController,
+                    readOnly: true,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Item Details & Condition',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _priceController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: 'Price (Baht / Day)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _depositController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: 'Deposit (Baht)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _pickupController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Pickup & return location',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  DatePickerField(
+                    label: 'Lending end date',
+                    value: _controller.lendingEndDate,
+                    firstDate: today,
+                    lastDate: lastSelectable,
+                    showCalendarIcon: true,
+                    enabled: !_controller.submitting,
+                    onPicked: _controller.setLendingEndDate,
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _controller.submitting ? null : _save,
+                      child: Text(
+                        _controller.submitting ? 'Saving...' : 'Save changes',
                       ),
                     ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }
-
 
 /// Backend stores images as relative paths (e.g. /uploads/xxx.jpg);
 /// build the full URL here so the image loads directly from the server.

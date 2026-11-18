@@ -22,7 +22,9 @@ Future<void> _pump(WidgetTester tester, MyLendingController controller) async {
 void main() {
   setUpAll(registerMockFallbacks);
 
-  testWidgets('lists the items returned by GET /api/assets/mine', (tester) async {
+  testWidgets('lists the items returned by GET /api/assets/mine', (
+    tester,
+  ) async {
     final client = MockHttpClient();
     stubGet(
       client,
@@ -43,6 +45,7 @@ void main() {
     expect(find.text('My Lending Items'), findsOneWidget);
     expect(find.text('My camera'), findsOneWidget);
     expect(find.text('My tripod'), findsOneWidget);
+    expect(find.textContaining('Waiting for admin approval'), findsOneWidget);
     expect(find.byIcon(Icons.delete_outline), findsNWidgets(2));
     expect(find.text('Add Item'), findsOneWidget);
   });

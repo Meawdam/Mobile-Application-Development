@@ -5,6 +5,7 @@ import 'package:frontend/modules/user/add_item/controller/add_item_controller.da
 import 'package:frontend/utils/date_utils.dart';
 import 'package:frontend/widgets/app_popup.dart';
 import 'package:frontend/widgets/date_picker_field.dart';
+import 'package:frontend/widgets/user_app_bar.dart';
 
 class AddItemScreen extends StatefulWidget {
   /// ใส่ controller จากภายนอกได้ (ใช้ตอนทำ widget test) ถ้าไม่ใส่จะสร้างเอง
@@ -59,16 +60,13 @@ class _AddItemScreenState extends State<AddItemScreen> {
     if (!mounted) return;
 
     final message = switch (result) {
-      AddItemResult.success =>
-        'Item submitted for admin approval',
+      AddItemResult.success => 'Item submitted for admin approval',
       AddItemResult.missingFields => 'Please complete all fields',
       AddItemResult.missingImage => 'Please add a photo',
-      AddItemResult.missingLendingEndDate =>
-        'Please choose a lending end date',
+      AddItemResult.missingLendingEndDate => 'Please choose a lending end date',
       AddItemResult.invalidPrice => 'Price must be a whole number',
       AddItemResult.invalidDeposit => 'Deposit must be a valid number',
-      AddItemResult.failed =>
-        _controller.error ?? 'Unable to submit item',
+      AddItemResult.failed => _controller.error ?? 'Unable to submit item',
     };
 
     if (result == AddItemResult.success) {
@@ -88,7 +86,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     final lastSelectable = today.add(const Duration(days: 365 * 2));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Borrowing Item')),
+      appBar: const UserAppBar(title: 'Add Borrowing Item'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -149,9 +147,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   child: TextField(
                     controller: _priceController,
                     keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: const InputDecoration(
                       labelText: 'Price (Baht / Day)',
                       hintText: 'e.g. 120',
@@ -164,9 +160,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                   child: TextField(
                     controller: _depositController,
                     keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: const InputDecoration(
                       labelText: 'Deposit (Baht)',
                       hintText: 'e.g. 1500',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/modules/user/home/controller/home_controller.dart';
+import 'package:frontend/widgets/user_app_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.controller});
@@ -47,7 +48,9 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD92D20)),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFD92D20),
+            ),
             onPressed: () => Navigator.pop(dialogContext, true),
             child: const Text('Log out'),
           ),
@@ -81,62 +84,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
+      appBar: UserAppBar(
+        title: 'BORROW',
+        actions: [
+          IconButton(
+            tooltip: 'Wallet',
+            onPressed: () => Navigator.pushNamed(context, '/wallet'),
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+          ),
+          IconButton(
+            tooltip: 'Log out',
+            onPressed: _logout,
+            style: IconButton.styleFrom(foregroundColor: Color(0xFFD92D20)),
+            icon: const Icon(Icons.logout_rounded),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => _controller.loadItems(),
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE6ECFF),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.swap_horiz_rounded,
-                      color: Color(0xFF3156D8),
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'BORROW',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.6,
-                      color: const Color(0xFF263B91),
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: 'Wallet',
-                    onPressed: () => Navigator.pushNamed(context, '/wallet'),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF263B91),
-                    ),
-                    icon: const Icon(Icons.account_balance_wallet_outlined),
-                  ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    tooltip: 'Log out',
-                    onPressed: _logout,
-                    style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFE4E2),
-                      foregroundColor: const Color(0xFFD92D20),
-                    ),
-                    icon: const Icon(Icons.logout_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 26),
+              const SizedBox(height: 14),
               Text(
                 greetingName == null || greetingName.isEmpty
-                    ? 'Hello there 👋'
+                    ? 'Hello'
                     : 'Hello, $greetingName 👋',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: const Color(0xFF667085),
@@ -162,7 +136,10 @@ class _HomeScreenState extends State<HomeScreen> {
               if (_controller.query.isNotEmpty || _controller.loading) ...[
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 13,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFEAF0FF),
                     borderRadius: BorderRadius.circular(12),
@@ -170,16 +147,27 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     children: [
                       if (_controller.loading)
-                        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       else
-                        const Icon(Icons.check_circle_outline, size: 18, color: Color(0xFF3156D8)),
+                        const Icon(
+                          Icons.check_circle_outline,
+                          size: 18,
+                          color: Color(0xFF3156D8),
+                        ),
                       const SizedBox(width: 9),
                       Expanded(
                         child: Text(
                           _controller.loading
                               ? 'Searching${_controller.query.isEmpty ? ' all items' : ' for “${_controller.query}”'}…'
                               : 'Results for “${_controller.query}”',
-                          style: const TextStyle(color: Color(0xFF263B91), fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            color: Color(0xFF263B91),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       if (_controller.query.isNotEmpty)
@@ -559,70 +547,70 @@ class _AssetCard extends StatelessWidget {
               const SizedBox(height: 9),
               Expanded(
                 child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              asset.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF17233C),
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16,
-                              ),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            asset.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF17233C),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
                             ),
                           ),
-                          const Icon(
-                            Icons.chevron_right_rounded,
-                            color: Color(0xFF98A2B3),
-                          ),
-                        ],
+                        ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Color(0xFF98A2B3),
+                        ),
+                      ],
+                    ),
+                    if (asset.description.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        asset.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF667085),
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
                       ),
-                      if (asset.description.isNotEmpty) ...[
-                        const SizedBox(height: 5),
+                    ],
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            owner == null || owner.isEmpty
+                                ? 'Community item'
+                                : 'By $owner',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF718096),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
                         Text(
-                          asset.description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                          '฿${asset.price}/day',
                           style: const TextStyle(
-                            color: Color(0xFF667085),
-                            fontSize: 12,
-                            height: 1.3,
+                            color: Color(0xFF3156D8),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
                           ),
                         ),
                       ],
-                      const Spacer(),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              owner == null || owner.isEmpty
-                                  ? 'Community item'
-                                  : 'By $owner',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF718096),
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '฿${asset.price}/day',
-                            style: const TextStyle(
-                              color: Color(0xFF3156D8),
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
             ],
           ),
         ),

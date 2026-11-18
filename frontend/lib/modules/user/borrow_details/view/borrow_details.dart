@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/model/borrow/borrow_model.dart';
 import 'package:frontend/modules/user/borrow_details/controller/borrow_details_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
+import 'package:frontend/widgets/user_app_bar.dart';
 
 class BorrowDetailsScreen extends StatefulWidget {
   final int? borrowId;
@@ -46,9 +47,8 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
   // แสดง SnackBar หลังกดปุ่ม: err เป็น null แปลว่าสำเร็จ
   void _showResult(String? err, String successMessage) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(err ?? successMessage)),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(err ?? successMessage)));
   }
 
   @override
@@ -56,33 +56,32 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
     final borrow = _controller.borrow;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Borrow Details')),
+      appBar: const UserAppBar(title: 'Borrow Details'),
       body: widget.borrowId == null
           ? const Center(child: Text('No borrow selected'))
           : _controller.loading && borrow == null
-              ? const Center(child: CircularProgressIndicator())
-              : borrow == null
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _controller.error ?? 'Borrow not found',
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 12),
-                            OutlinedButton(
-                              onPressed: () =>
-                                  _controller.load(widget.borrowId!),
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : _buildContent(borrow),
+          ? const Center(child: CircularProgressIndicator())
+          : borrow == null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _controller.error ?? 'Borrow not found',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: () => _controller.load(widget.borrowId!),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : _buildContent(borrow),
     );
   }
 
@@ -152,7 +151,9 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
                 ),
               ),
               Chip(
-                label: Text(borrow.status.isNotEmpty ? borrow.status : 'Status'),
+                label: Text(
+                  borrow.status.isNotEmpty ? borrow.status : 'Status',
+                ),
               ),
             ],
           ),
@@ -239,10 +240,9 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
-                '/home',
-                (_) => false,
-              ),
+              onPressed: () =>
+                  Navigator.of(context)
+                      .pushNamedAndRemoveUntil('/home', (_) => false),
               child: const Text('Back to Home'),
             ),
           ),

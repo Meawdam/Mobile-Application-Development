@@ -42,13 +42,38 @@ class HomeController extends ChangeNotifier {
   String get query => _query;
 
   Future<void> initialize() async {
-    _user ??= const UserModel(
-      username: 'Guest',
-      phoneNumber: '',
-      email: '',
-      role: 'user',
-    );
+    if (_user == null) {
+      _user =
+          (_useFixtures ? null : await _readUserFromToken()) ??
+          const UserModel(
+            username: '',
+            phoneNumber: '',
+            email: '',
+            role: 'user',
+          );
+    }
     await loadItems();
+  }
+
+  Future<UserModel?> _readUserFromToken() async {
+    final token = await _authService.loadToken();
+    if (token == null) return null;
+    try {
+      final segments = token.split('.');
+      if (segments.length != 3) return null;
+      final payload = jsonDecode(
+        utf8.decode(base64Url.decode(base64Url.normalize(segments[1]))),
+      );
+      if (payload is! Map<String, dynamic>) return null;
+      return UserModel(
+        username: payload['username']?.toString() ?? '',
+        phoneNumber: payload['phone_num']?.toString() ?? '',
+        email: payload['email']?.toString() ?? '',
+        role: payload['role']?.toString() ?? 'user',
+      );
+    } on FormatException {
+      return null;
+    }
   }
 
   Future<void> loadItems({String? query}) async {

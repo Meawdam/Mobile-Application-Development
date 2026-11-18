@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:frontend/modules/user/wallet/controller/wallet_controller.dart';
+import 'package:frontend/widgets/user_app_bar.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key, this.controller});
@@ -73,9 +74,8 @@ class _WalletScreenState extends State<WalletScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
-      appBar: AppBar(
-        title: const Text('My wallet'),
-        backgroundColor: const Color(0xFFF5F7FB),
+      appBar: UserAppBar(
+        title: 'My wallet',
         actions: [
           IconButton(
             tooltip: 'Refresh balance',

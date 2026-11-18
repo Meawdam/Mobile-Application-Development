@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:frontend/modules/user/item_detail/controller/item_detail_controller.dart';
+import 'package:frontend/widgets/user_app_bar.dart';
 
 class ItemDetailScreen extends StatefulWidget {
   final int? assetId;
@@ -49,10 +50,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
-      appBar: AppBar(
-        title: const Text('Item details'),
-        backgroundColor: const Color(0xFFF6F7FB),
-      ),
+      appBar: const UserAppBar(title: 'Item details'),
       body: widget.assetId == null
           ? const _MessageState(
               icon: Icons.inventory_2_outlined,

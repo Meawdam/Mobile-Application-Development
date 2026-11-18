@@ -54,7 +54,7 @@ void main() {
 
       await controller.initialize();
 
-      expect(controller.user?.username, 'Guest');
+      expect(controller.user?.username, '');
       expect(controller.items.map((item) => item.name), ['Camera']);
 
       await controller.search('digital');

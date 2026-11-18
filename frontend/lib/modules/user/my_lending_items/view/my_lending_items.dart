@@ -5,6 +5,7 @@ import 'package:frontend/modules/user/my_lending_items/controller/my_lending_con
 import 'package:frontend/utils/date_utils.dart';
 import 'package:frontend/utils/app_colors.dart';
 import 'package:frontend/widgets/app_popup.dart';
+import 'package:frontend/widgets/user_app_bar.dart';
 
 class MyLendingItemsScreen extends StatefulWidget {
   /// ใส่ controller จากภายนอกได้ (ใช้ตอนทำ widget test) ถ้าไม่ใส่จะสร้างเอง
@@ -59,8 +60,8 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Lending Items'),
+      appBar: UserAppBar(
+        title: 'My Lending Items',
         actions: [
           IconButton(
             onPressed: _controller.load,
@@ -78,8 +79,7 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
               child: ListTile(
                 title: const Text('Requests & Returns'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () =>
-                    Navigator.pushNamed(context, '/requests-returns'),
+                onTap: () => Navigator.pushNamed(context, '/requests-returns'),
               ),
             ),
             const SizedBox(height: 16),
@@ -120,7 +120,7 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
                             ),
                       title: Text(asset.name),
                       subtitle: Text(
-                        'Status: ${asset.status} · ${asset.approval}\n'
+                        'Status: ${asset.status} · ${asset.approval == 'pending' ? 'Waiting for admin approval' : asset.approval}\n'
                         'Until: ${end == null ? asset.returnBefore : AppDateUtils.formatDisplay(end)}\n'
                         '${asset.price} Baht / day',
                       ),
@@ -136,7 +136,10 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
                       trailing: IconButton(
                         tooltip: 'Delete',
                         onPressed: () => _showDeleteSheet(asset),
-                        icon: const Icon(Icons.delete_outline, color: AppColors.blue),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: AppColors.blue,
+                        ),
                       ),
                     ),
                   ),
@@ -160,7 +163,6 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
     );
   }
 }
-
 
 /// Backend stores images as relative paths (e.g. /uploads/xxx.jpg);
 /// build the full URL here so the image loads directly from the server.

@@ -66,7 +66,7 @@ void main() {
     expect(find.text('Save changes'), findsNothing);
   });
 
-  testWidgets('editing and saving calls PATCH, shows success and closes', (
+  testWidgets('keeps listing identity read-only while saving editable fields', (
     tester,
   ) async {
     useTallScreen(tester);
@@ -83,7 +83,12 @@ void main() {
       tester,
       EditItemScreen(assetId: 1, controller: _controller(client)),
     );
-    await tester.enterText(find.byType(TextField).at(0), 'New camera');
+    final fields = tester
+        .widgetList<TextField>(find.byType(TextField))
+        .toList();
+    expect(fields[0].readOnly, isTrue);
+    expect(fields[1].readOnly, isTrue);
+    await tester.enterText(find.byType(TextField).at(2), '150');
     await _tapSave(tester);
 
     final body =
@@ -95,7 +100,10 @@ void main() {
               ),
             ).captured.single
             as String;
-    expect((jsonDecode(body) as Map<String, dynamic>)['name'], 'New camera');
+    final saved = jsonDecode(body) as Map<String, dynamic>;
+    expect(saved['name'], 'My camera');
+    expect(saved['description'], 'Digital camera');
+    expect(saved['price'], 150);
     expect(find.text('Changes saved'), findsOneWidget);
     expect(find.byType(EditItemScreen), findsNothing);
   });

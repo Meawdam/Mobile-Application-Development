@@ -44,6 +44,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Find what you need.'), findsOneWidget);
+    expect(find.textContaining('Hello, Alex'), findsOneWidget);
     expect(find.text('Camera'), findsOneWidget);
     expect(find.text('฿50/day'), findsOneWidget);
 
@@ -55,5 +56,10 @@ void main() {
 
 class _TestAuthService extends Authservice {
   @override
-  Future<String?> loadToken() async => 'test-token';
+  Future<String?> loadToken() async {
+    final payload = base64Url
+        .encode(utf8.encode(jsonEncode({'username': 'Alex', 'role': 'user'})))
+        .replaceAll('=', '');
+    return 'header.$payload.signature';
+  }
 }

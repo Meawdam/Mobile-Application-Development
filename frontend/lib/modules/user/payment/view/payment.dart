@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/model/borrow/borrow_model.dart';
 import 'package:frontend/modules/user/payment/controller/payment_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
+import 'package:frontend/widgets/user_app_bar.dart';
 
 class PaymentScreen extends StatefulWidget {
   final Map<String, dynamic>? args;
@@ -111,10 +112,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
-      appBar: AppBar(
-        title: const Text('Payment'),
-        backgroundColor: const Color(0xFFF6F7FB),
-      ),
+      appBar: const UserAppBar(title: 'Payment'),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
         children: [

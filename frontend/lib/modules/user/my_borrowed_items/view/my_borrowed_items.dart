@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/model/borrow/borrow_model.dart';
 import 'package:frontend/modules/user/my_borrowed_items/controller/my_borrowed_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
+import 'package:frontend/widgets/user_app_bar.dart';
 
 const _blue = Color(0xFF2F4BFF);
 const _red = Color.fromARGB(255, 223, 42, 42);
@@ -40,7 +41,9 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(err ?? 'Request cancelled. Your payment was refunded to your wallet'),
+        content: Text(
+          err ?? 'Request cancelled. Your payment was refunded to your wallet',
+        ),
       ),
     );
   }
@@ -74,9 +77,8 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
 
     final err = await _controller.requestReturn(item.id);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(err ?? 'Return requested')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(err ?? 'Return requested')));
   }
 
   void _openDetails(BorrowModel item) {
@@ -88,8 +90,8 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('My Borrowed Items'),
+        appBar: UserAppBar(
+          title: 'My Borrowed Items',
           actions: [
             IconButton(
               onPressed: _controller.load,
@@ -126,46 +128,45 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
               child: _controller.loading
                   ? const Center(child: CircularProgressIndicator())
                   : _controller.error != null
-                      ? Center(child: Text(_controller.error!))
-                      : TabBarView(
-                          children: [
-                            // Borrowing: วันคืนอยู่ด้านขวาของกล่อง + ปุ่ม Request return สีน้ำเงิน
-                            _BorrowList(
-                              items: _controller.borrowing,
-                              dateSide: _DateSide.right,
-                              onOpen: _openDetails,
-                              buttonBuilder: (item) =>
-                                  item.status == 'borrowed'
-                                      ? _ActionButton(
-                                          label: 'Request return',
-                                          color: _blue,
-                                          onPressed: () => _requestReturn(item),
-                                        )
-                                      : Text(
-                                          item.status == 'approved'
-                                              ? 'Approved - open details to confirm receipt'
-                                              : 'Waiting for owner to confirm return',
-                                        ),
-                            ),
-                            // Pending: วันคืนอยู่ด้านซ้ายของกล่อง + ปุ่ม Cancel สีแดง
-                            _BorrowList(
-                              items: _controller.pending,
-                              dateSide: _DateSide.left,
-                              onOpen: _openDetails,
-                              buttonBuilder: (item) => _ActionButton(
-                                label: 'Cancel',
-                                color: _red,
-                                onPressed: () => _cancel(item),
-                              ),
-                            ),
-                            // Returned: วันคืนอยู่ด้านขวาของกล่อง
-                            _BorrowList(
-                              items: _controller.returned,
-                              dateSide: _DateSide.right,
-                              onOpen: _openDetails,
-                            ),
-                          ],
+                  ? Center(child: Text(_controller.error!))
+                  : TabBarView(
+                      children: [
+                        // Borrowing: วันคืนอยู่ด้านขวาของกล่อง + ปุ่ม Request return สีน้ำเงิน
+                        _BorrowList(
+                          items: _controller.borrowing,
+                          dateSide: _DateSide.right,
+                          onOpen: _openDetails,
+                          buttonBuilder: (item) => item.status == 'borrowed'
+                              ? _ActionButton(
+                                  label: 'Request return',
+                                  color: _blue,
+                                  onPressed: () => _requestReturn(item),
+                                )
+                              : Text(
+                                  item.status == 'approved'
+                                      ? 'Approved - open details to confirm receipt'
+                                      : 'Waiting for owner to confirm return',
+                                ),
                         ),
+                        // Pending: วันคืนอยู่ด้านซ้ายของกล่อง + ปุ่ม Cancel สีแดง
+                        _BorrowList(
+                          items: _controller.pending,
+                          dateSide: _DateSide.left,
+                          onOpen: _openDetails,
+                          buttonBuilder: (item) => _ActionButton(
+                            label: 'Cancel',
+                            color: _red,
+                            onPressed: () => _cancel(item),
+                          ),
+                        ),
+                        // Returned: วันคืนอยู่ด้านขวาของกล่อง
+                        _BorrowList(
+                          items: _controller.returned,
+                          dateSide: _DateSide.right,
+                          onOpen: _openDetails,
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
