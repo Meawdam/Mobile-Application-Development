@@ -286,7 +286,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   TextButton.icon(
                     onPressed: _addItem,
                     icon: const Icon(Icons.add_rounded, size: 19),
-                    label: const Text('เพิ่มของให้ยืม'),
+                    label: const Text('Add item'),
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF3156D8),
                     ),

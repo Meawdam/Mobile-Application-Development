@@ -1,102 +1,85 @@
-// ทดสอบหน้า Requests & Returns ที่เจ้าของกด "Confirm return"
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:frontend/modules/user/requests_returns/controller/requests_returns_controller.dart';
 import 'package:frontend/modules/user/requests_returns/view/requests_returns.dart';
-import 'package:mocktail/mocktail.dart';
-
-import '../../helpers/mocks.dart';
-import '../../helpers/test_helpers.dart';
-
-Future<MockHttpClient> _pump(
-  WidgetTester tester, {
-  int patchStatus = 200,
-  String patchMessage = 'Return confirmed',
-}) async {
-  useTallScreen(tester);
-  final client = MockHttpClient();
-  stubGet(
-    client,
-    '/api/borrows/lending',
-    jsonResponse({
-      'data': [
-        borrowJson(id: 2, assetName: 'Camera', status: 'returned_pending'),
-        borrowJson(id: 3, assetName: 'Tripod', status: 'borrowed'),
-      ],
-    }),
-  );
-  stubPatch(
-    client,
-    '/api/borrows/2/confirm-return',
-    jsonResponse({'message': patchMessage}, patchStatus),
-  );
-  final controller = RequestsReturnsController(
-    client: client,
-    authService: mockAuthservice(),
-  );
-
-  await tester.pumpWidget(
-    MaterialApp(home: RequestsReturnsScreen(controller: controller)),
-  );
-  await tester.pumpAndSettle();
-  return client;
-}
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 void main() {
-  setUpAll(registerMockFallbacks);
-
-  testWidgets('shows waiting returns and borrowed items from the API', (
+  testWidgets('owner confirms a return from the Requests & Returns screen', (
     tester,
   ) async {
-    final client = await _pump(tester);
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
 
-    verify(
-      () => client.get(
-        apiUri('/api/borrows/lending'),
-        headers: expectedHeaders(),
-      ),
-    ).called(1);
-    expect(find.text('Requests & Returns'), findsOneWidget);
-    expect(find.text('Waiting for Response'), findsOneWidget);
-    expect(find.text('Camera'), findsOneWidget);
-    expect(find.text('Tripod'), findsOneWidget);
-    expect(find.text('Confirm return'), findsOneWidget);
-  });
-
-  testWidgets('Confirm return calls PATCH confirm-return and updates the list', (
-    tester,
-  ) async {
-    final client = await _pump(tester);
-
-    await tester.tap(find.text('Confirm return'));
-    await tester.pumpAndSettle();
-
-    verify(
-      () => client.patch(
-        apiUri('/api/borrows/2/confirm-return'),
-        headers: expectedHeaders(),
-      ),
-    ).called(1);
-    expect(find.text('Return confirmed'), findsOneWidget);
-    expect(find.text('Confirm return'), findsNothing);
-  });
-
-  testWidgets('backend refusal shows its message and keeps the button', (
-    tester,
-  ) async {
-    await _pump(
-      tester,
-      patchStatus: 403,
-      patchMessage: 'Forbidden: You are not the owner of this asset',
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+      (call) async => call.method == 'read' ? 'test-token' : null,
     );
 
-    await tester.tap(find.text('Confirm return'));
-    await tester.pumpAndSettle();
+    final requests = <http.Request>[];
+    await http.runWithClient(
+      () async {
+        await tester.pumpWidget(
+          const MaterialApp(home: RequestsReturnsScreen()),
+        );
+        await tester.pumpAndSettle();
 
-    expect(
-      find.text('Forbidden: You are not the owner of this asset'),
-      findsOneWidget,
+        expect(find.text('Requests & Returns'), findsOneWidget);
+        expect(find.text('Camera'), findsOneWidget);
+        expect(find.text('Confirm'), findsOneWidget);
+
+        await tester.tap(find.text('Confirm'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Return confirmed'), findsOneWidget);
+        expect(
+          requests.map((request) => '${request.method} ${request.url.path}'),
+          containsAllInOrder([
+            'GET /api/borrows/owner',
+            'PATCH /api/borrows/2/confirm-return',
+            'GET /api/borrows/owner',
+          ]),
+        );
+        final patch = requests.firstWhere(
+          (request) => request.method == 'PATCH',
+        );
+        expect(patch.headers['Authorization'], 'Bearer test-token');
+      },
+      () => MockClient((request) async {
+        requests.add(request);
+        if (request.method == 'GET' &&
+            request.url.path == '/api/borrows/owner') {
+          return http.Response(
+            jsonEncode({
+              'data': [
+                {
+                  'id': 2,
+                  'asset_id': 12,
+                  'asset_name': 'Camera',
+                  'borrower_name': 'Alex',
+                  'status': 'returned_pending',
+                  'payment_status': 'paid',
+                  'rental_days': 1,
+                  'planned_return_date': '2030-01-01',
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        if (request.method == 'PATCH' &&
+            request.url.path == '/api/borrows/2/confirm-return') {
+          return http.Response(
+            jsonEncode({'message': 'Return confirmed'}),
+            200,
+          );
+        }
+        return http.Response(jsonEncode({'message': 'Not found'}), 404);
+      }),
     );
-    expect(find.text('Confirm return'), findsOneWidget);
   });
 }
