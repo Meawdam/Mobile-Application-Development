@@ -136,20 +136,32 @@ class _EditItemScreenState extends State<EditItemScreen> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: _nameController,
-                    readOnly: true,
+                    enabled: false,
                     decoration: const InputDecoration(
                       labelText: 'Item Name',
+                      filled: true,
+                      fillColor: Color(0xFFF1F3F5),
+                      labelStyle: TextStyle(color: Color(0xFF667085)),
                       border: OutlineInputBorder(),
+                      disabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFD9DEE7)),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _descriptionController,
-                    readOnly: true,
+                    enabled: false,
                     maxLines: 3,
                     decoration: const InputDecoration(
                       labelText: 'Item Details & Condition',
+                      filled: true,
+                      fillColor: Color(0xFFF1F3F5),
+                      labelStyle: TextStyle(color: Color(0xFF667085)),
                       border: OutlineInputBorder(),
+                      disabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFD9DEE7)),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

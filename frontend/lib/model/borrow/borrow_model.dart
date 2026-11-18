@@ -2,6 +2,7 @@ class BorrowModel {
   final int id;
   final int assetId;
   final String? assetName;
+  final String? assetImageUrl;
   final String? ownerName;
   final String? borrowerName;
   final String? pickupPoint;
@@ -21,6 +22,7 @@ class BorrowModel {
     required this.id,
     required this.assetId,
     this.assetName,
+    this.assetImageUrl,
     this.ownerName,
     this.borrowerName,
     this.pickupPoint,
@@ -42,6 +44,7 @@ class BorrowModel {
       id: id,
       assetId: assetId,
       assetName: assetName,
+      assetImageUrl: assetImageUrl,
       ownerName: ownerName,
       borrowerName: borrowerName,
       pickupPoint: pickupPoint,
@@ -64,6 +67,7 @@ class BorrowModel {
       id: _asInt(json['id']),
       assetId: _asInt(json['asset_id']),
       assetName: json['asset_name']?.toString(),
+      assetImageUrl: json['asset_image']?.toString(),
       ownerName: json['owner_name']?.toString(),
       borrowerName: json['borrower_name']?.toString(),
       pickupPoint: json['pickup_point']?.toString(),

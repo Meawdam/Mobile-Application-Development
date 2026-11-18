@@ -355,7 +355,7 @@ class BorrowRepository {
 
       const borrow = borrows[0];
       if (
-        !["requested", "approved"].includes(borrow.status) ||
+        borrow.status !== "approved" ||
         borrow.payment_status !== "paid" ||
         borrow.asset_status !== "ready"
       ) {
@@ -368,7 +368,7 @@ class BorrowRepository {
          SET status = 'borrowed',
              borrow_date = COALESCE(pickup_date, CURRENT_DATE()),
              received_at = NOW()
-         WHERE id = ? AND borrower_id = ? AND status IN ('requested', 'approved')
+         WHERE id = ? AND borrower_id = ? AND status = 'approved'
            AND payment_status = 'paid'`,
         [id, borrowerId],
       );

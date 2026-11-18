@@ -224,7 +224,16 @@ class _BorrowList extends StatelessWidget {
           child: Column(
             children: [
               ListTile(
-                leading: dateSide == _DateSide.left ? _dateBox(item) : null,
+                leading: dateSide == _DateSide.left
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _BorrowImage(imageUrl: item.assetImageUrl),
+                          const SizedBox(height: 4),
+                          _dateBox(item),
+                        ],
+                      )
+                    : _BorrowImage(imageUrl: item.assetImageUrl),
                 title: Text(item.assetName ?? 'Item #${item.assetId}'),
                 subtitle: Text(
                   'Status: ${item.status}\n'
@@ -251,6 +260,37 @@ class _BorrowList extends StatelessWidget {
 }
 
 // ปุ่มพื้นสีทึบ ข้อความสีขาว
+class _BorrowImage extends StatelessWidget {
+  const _BorrowImage({required this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final path = imageUrl?.trim() ?? '';
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 64,
+        height: 64,
+        child: path.isEmpty
+            ? const ColoredBox(
+                color: Color(0xFFE8ECF4),
+                child: Icon(Icons.inventory_2_outlined),
+              )
+            : Image.network(
+                path.startsWith('http') ? path : 'http://localhost:3000$path',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const ColoredBox(
+                  color: Color(0xFFE8ECF4),
+                  child: Icon(Icons.broken_image_outlined),
+                ),
+              ),
+      ),
+    );
+  }
+}
+
 class _ActionButton extends StatelessWidget {
   final String label;
   final Color color;

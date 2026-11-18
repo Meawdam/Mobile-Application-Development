@@ -246,11 +246,10 @@ class BorrowService {
       throw err;
     }
 
-    if (
-      !["requested", "approved"].includes(borrow.status) ||
-      borrow.payment_status !== "paid"
-    ) {
-      const err = new Error("Only paid borrow requests awaiting receipt can be confirmed");
+    if (borrow.status !== "approved" || borrow.payment_status !== "paid") {
+      const err = new Error(
+        "Only paid and owner-approved borrow requests can be confirmed",
+      );
       err.status = 400;
       throw err;
     }

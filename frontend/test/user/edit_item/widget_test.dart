@@ -86,8 +86,9 @@ void main() {
     final fields = tester
         .widgetList<TextField>(find.byType(TextField))
         .toList();
-    expect(fields[0].readOnly, isTrue);
-    expect(fields[1].readOnly, isTrue);
+    expect(fields[0].enabled, isFalse);
+    expect(fields[1].enabled, isFalse);
+    expect(fields[0].decoration?.fillColor, const Color(0xFFF1F3F5));
     await tester.enterText(find.byType(TextField).at(2), '150');
     await _tapSave(tester);
 

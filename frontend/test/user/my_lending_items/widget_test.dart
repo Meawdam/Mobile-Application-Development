@@ -59,6 +59,43 @@ void main() {
     expect(find.text('No items to display'), findsOneWidget);
   });
 
+  testWidgets('colors statuses and blocks rejected items with reason', (
+    tester,
+  ) async {
+    final client = MockHttpClient();
+    stubGet(
+      client,
+      '/api/assets/mine',
+      jsonResponse({
+        'data': [
+          assetJson(id: 1, name: 'Ready lamp'),
+          assetJson(
+            id: 2,
+            name: 'Rejected kettle',
+            approval: 'not approve',
+            approvalMessage: 'Please upload a clearer photo.',
+          ),
+        ],
+      }),
+    );
+
+    await _pump(tester, _controller(client));
+
+    expect(find.text('Ready to lend'), findsOneWidget);
+    expect(find.text('Not approved'), findsOneWidget);
+    expect(
+      find.text('Admin reason: Please upload a clearer photo.'),
+      findsOneWidget,
+    );
+    final rejectedTile = tester.widget<ListTile>(
+      find.ancestor(
+        of: find.text('Rejected kettle'),
+        matching: find.byType(ListTile),
+      ),
+    );
+    expect(rejectedTile.onTap, isNull);
+  });
+
   testWidgets('shows the error text when loading fails', (tester) async {
     final client = MockHttpClient();
     stubGet(

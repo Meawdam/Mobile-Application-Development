@@ -24,6 +24,11 @@ class AssetRepository {
        LEFT JOIN users u ON u.id = a.owner_id
        WHERE a.approval = 'approved' AND a.status = 'ready'
          AND a.return_before >= CURRENT_DATE()${ownerFilter}${searchFilter}
+         AND NOT EXISTS (
+           SELECT 1 FROM borrow b
+           WHERE b.asset_id = a.id
+             AND b.status IN ('requested', 'approved', 'borrowed', 'returned_pending')
+         )
        ORDER BY a.id DESC`,
       params,
     );

@@ -31,6 +31,7 @@ Map<String, dynamic> assetJson({
   String name = 'My camera',
   String status = 'ready',
   String approval = 'approved',
+  String? approvalMessage,
 }) {
   return {
     'id': id,
@@ -41,7 +42,7 @@ Map<String, dynamic> assetJson({
     'description': 'Digital camera',
     'status': status,
     'approval': approval,
-    'approval_message': null,
+    'approval_message': approvalMessage,
     'down_payment': 500,
     'return_before': '2030-01-01',
     'price': 120,
@@ -86,9 +87,9 @@ Future<void> pumpPushed(WidgetTester tester, Widget screen) async {
         builder: (context) => Scaffold(
           body: Center(
             child: ElevatedButton(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => screen),
-              ),
+              onPressed: () =>
+                  Navigator.of(context)
+                      .push(MaterialPageRoute<void>(builder: (_) => screen)),
               child: const Text('open'),
             ),
           ),

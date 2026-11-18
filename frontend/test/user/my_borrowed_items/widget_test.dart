@@ -24,15 +24,18 @@ Future<void> runApp(
     const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
     (call) async => call.method == 'read' ? 'test-token' : null,
   );
-  await http.runWithClient(() async {
-    await tester.pumpWidget(MaterialApp(home: screen));
-    await tester.pumpAndSettle();
-    await body();
-  }, () => MockClient((request) async {
-        log.add(request);
-        return routes['${request.method} ${request.url.path}'] ??
-            http.Response('{}', 404);
-      }));
+  await http.runWithClient(
+    () async {
+      await tester.pumpWidget(MaterialApp(home: screen));
+      await tester.pumpAndSettle();
+      await body();
+    },
+    () => MockClient((request) async {
+      log.add(request);
+      return routes['${request.method} ${request.url.path}'] ??
+          http.Response('{}', 404);
+    }),
+  );
 }
 
 http.Response json(Object body, [int status = 200]) =>
@@ -48,16 +51,17 @@ List<String> calls(List<http.Request> log) =>
     log.map((r) => '${r.method} ${r.url.path}').toList();
 
 Map<String, dynamic> record(int id, String status, String payment) => {
-      'id': id,
-      'asset_id': id + 100,
-      'asset_name': 'Item $id',
-      'status': status,
-      'payment_status': payment,
-      'rental_days': 2,
-      'deposit_amount': 200,
-      'planned_return_date': '2026-11-20',
-      'total_amount': 300,
-    };
+  'id': id,
+  'asset_id': id + 100,
+  'asset_name': 'Item $id',
+  'asset_image': '/uploads/item-$id.jpg',
+  'status': status,
+  'payment_status': payment,
+  'rental_days': 2,
+  'deposit_amount': 200,
+  'planned_return_date': '2026-11-20',
+  'total_amount': 300,
+};
 
 void main() {
   final list = json({
@@ -68,64 +72,104 @@ void main() {
     ],
   });
 
-  testWidgets('Borrowing tab: blue Request return button asks to confirm', (tester) async {
+  testWidgets('Borrowing tab: blue Request return button asks to confirm', (
+    tester,
+  ) async {
     final log = <http.Request>[];
-    await runApp(tester, {
-      'GET /api/borrows/my': list,
-      'PATCH /api/borrows/1/return': json({'message': 'ok'}),
-    }, log, const MyBorrowedItemsScreen(), () async {
-      expect(find.text('Item 1'), findsOneWidget);
-      expect(find.text('Return by'), findsOneWidget);
-      expect(bg(tester, 'Request return'), const Color(0xFF2F4BFF));
+    await runApp(
+      tester,
+      {
+        'GET /api/borrows/my': list,
+        'PATCH /api/borrows/1/return': json({'message': 'ok'}),
+      },
+      log,
+      const MyBorrowedItemsScreen(),
+      () async {
+        expect(find.text('Item 1'), findsOneWidget);
+        expect(find.byType(Image), findsOneWidget);
+        final image = tester.widget<Image>(find.byType(Image).first);
+        expect(image.image, isA<NetworkImage>());
+        expect(find.text('Return by'), findsOneWidget);
+        expect(bg(tester, 'Request return'), const Color(0xFF2F4BFF));
 
-      await tester.tap(find.text('Request return'));
-      await tester.pumpAndSettle();
-      expect(find.text('Confirm return'), findsOneWidget);
-      expect(calls(log).contains('PATCH /api/borrows/1/return'), isFalse);
+        await tester.tap(find.text('Request return'));
+        await tester.pumpAndSettle();
+        expect(find.text('Confirm return'), findsOneWidget);
+        expect(calls(log).contains('PATCH /api/borrows/1/return'), isFalse);
 
-      await tester.tap(find.text('Confirm'));
-      await tester.pumpAndSettle();
-      expect(calls(log).contains('PATCH /api/borrows/1/return'), isTrue);
-    });
+        await tester.tap(find.text('Confirm'));
+        await tester.pumpAndSettle();
+        expect(calls(log).contains('PATCH /api/borrows/1/return'), isTrue);
+      },
+    );
   });
 
-  testWidgets('Pending tab: red Cancel button cancels a paid request and refunds', (tester) async {
-    final log = <http.Request>[];
-    await runApp(tester, {
-      'GET /api/borrows/my': list,
-      'PATCH /api/borrows/2/cancel': json({
-        'message': 'Borrow request cancelled and payment refunded to wallet',
-      }),
-    }, log, const MyBorrowedItemsScreen(), () async {
-      await tester.tap(find.text('Pending'));
-      await tester.pumpAndSettle();
+  testWidgets(
+    'Pending tab: red Cancel button cancels a paid request and refunds',
+    (tester) async {
+      final log = <http.Request>[];
+      await runApp(
+        tester,
+        {
+          'GET /api/borrows/my': list,
+          'PATCH /api/borrows/2/cancel': json({
+            'message':
+                'Borrow request cancelled and payment refunded to wallet',
+          }),
+        },
+        log,
+        const MyBorrowedItemsScreen(),
+        () async {
+          await tester.tap(find.text('Pending'));
+          await tester.pumpAndSettle();
 
-      expect(find.text('Item 2'), findsOneWidget);
-      expect(bg(tester, 'Cancel'), const Color.fromARGB(255, 223, 42, 42));
+          expect(find.text('Item 2'), findsOneWidget);
+          expect(bg(tester, 'Cancel'), const Color.fromARGB(255, 223, 42, 42));
 
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
+          await tester.tap(find.text('Cancel'));
+          await tester.pumpAndSettle();
 
-      expect(calls(log).contains('PATCH /api/borrows/2/cancel'), isTrue);
-      expect(find.textContaining('refunded to your wallet'), findsOneWidget);
-    });
-  });
+          expect(calls(log).contains('PATCH /api/borrows/2/cancel'), isTrue);
+          expect(
+            find.textContaining('refunded to your wallet'),
+            findsOneWidget,
+          );
+        },
+      );
+    },
+  );
 
-  testWidgets('Returned tab lists returned items without buttons', (tester) async {
-    await runApp(tester, {'GET /api/borrows/my': list}, [], const MyBorrowedItemsScreen(), () async {
-      await tester.tap(find.text('Returned'));
-      await tester.pumpAndSettle();
+  testWidgets('Returned tab lists returned items without buttons', (
+    tester,
+  ) async {
+    await runApp(
+      tester,
+      {'GET /api/borrows/my': list},
+      [],
+      const MyBorrowedItemsScreen(),
+      () async {
+        await tester.tap(find.text('Returned'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Item 3'), findsOneWidget);
-      expect(find.byType(ElevatedButton), findsNothing);
-    });
+        expect(find.text('Item 3'), findsOneWidget);
+        expect(find.byType(ElevatedButton), findsNothing);
+      },
+    );
   });
 
   testWidgets('shows the backend error message', (tester) async {
-    await runApp(tester, {
-      'GET /api/borrows/my': json({'message': 'Invalid or expired token'}, 403),
-    }, [], const MyBorrowedItemsScreen(), () async {
-      expect(find.text('Invalid or expired token'), findsOneWidget);
-    });
+    await runApp(
+      tester,
+      {
+        'GET /api/borrows/my': json({
+          'message': 'Invalid or expired token',
+        }, 403),
+      },
+      [],
+      const MyBorrowedItemsScreen(),
+      () async {
+        expect(find.text('Invalid or expired token'), findsOneWidget);
+      },
+    );
   });
 }
