@@ -15,13 +15,13 @@ void main() {
     LoginController loginController = LoginController(service: mockAuthService);
     // TodoController todoController = TodoController();
     String? result = await loginController.login(
-      'user@example.com',
-      '12345678',
+      'meawdamxza@gmail.com',
+      '03082005',
     );
     expect(result, isNotNull);
     expect(result, 'user');
     // admin
-    result = await loginController.login('admin@example.com', '12345678');
+    result = await loginController.login('admin@gmail.com', '1234567890');
     expect(result, 'admin');
   });
 

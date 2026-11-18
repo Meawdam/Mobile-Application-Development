@@ -6,7 +6,9 @@ import 'package:frontend/modules/admin/users_history/model/user_history_model.da
 import '../../admin_time.dart';
 
 class UsersHistoryPage extends StatefulWidget {
-  const UsersHistoryPage({super.key});
+  final UsersHistoryController? controller;
+
+  const UsersHistoryPage({super.key, this.controller});
 
   @override
   State<UsersHistoryPage> createState() => _UsersHistoryPageState();
@@ -34,7 +36,7 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
   @override
   void initState() {
     super.initState();
-    controller = UsersHistoryController();
+    controller = widget.controller ?? UsersHistoryController();
     controller.addListener(_refresh);
     _loadUsers();
   }
@@ -54,7 +56,7 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
   @override
   void dispose() {
     controller.removeListener(_refresh);
-    controller.dispose();
+    if (widget.controller == null) controller.dispose();
     userSearchController.dispose();
     activitySearchController.dispose();
     super.dispose();

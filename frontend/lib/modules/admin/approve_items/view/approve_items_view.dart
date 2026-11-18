@@ -5,7 +5,9 @@ import 'package:frontend/modules/admin/approve_items/controller/approve_items_co
 import 'package:frontend/modules/admin/approve_items/model/approve_item_model.dart';
 
 class ApproveItemsPage extends StatefulWidget {
-  const ApproveItemsPage({super.key});
+  final ApproveItemsController? controller;
+
+  const ApproveItemsPage({super.key, this.controller});
 
   @override
   State<ApproveItemsPage> createState() => _ApproveItemsPageState();
@@ -30,7 +32,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
   @override
   void initState() {
     super.initState();
-    controller = ApproveItemsController();
+    controller = widget.controller ?? ApproveItemsController();
     controller.addListener(_refresh);
     _loadItems();
   }
@@ -53,7 +55,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
   void dispose() {
     noteController.dispose();
     controller.removeListener(_refresh);
-    controller.dispose();
+    if (widget.controller == null) controller.dispose();
     super.dispose();
   }
 
