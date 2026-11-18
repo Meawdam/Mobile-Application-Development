@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/modules/user/wallet/controller/wallet_controller.dart';
 import 'package:frontend/modules/user/wallet/service/wallet_api_service.dart';
 import 'package:frontend/modules/user/wallet/view/wallet_view.dart';
 import 'package:frontend/services/auth_service.dart';
@@ -36,8 +37,9 @@ void main() {
       }),
     );
 
+    final controller = WalletController(apiService: service);
     await tester.pumpWidget(
-      MaterialApp(home: WalletScreen(apiService: service)),
+      MaterialApp(home: WalletScreen(controller: controller)),
     );
     await tester.pumpAndSettle();
     expect(find.text('฿250.75'), findsOneWidget);
@@ -51,6 +53,7 @@ void main() {
     expect(find.text('Your wallet has been topped up.'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
+    controller.dispose();
     service.dispose();
   });
 }

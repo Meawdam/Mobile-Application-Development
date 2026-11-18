@@ -5,9 +5,10 @@ import 'package:frontend/modules/user/home/controller/home_controller.dart';
 import 'package:frontend/modules/user/home/service/home_api_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.apiService});
+  const HomeScreen({super.key, this.apiService, this.controller});
 
   final HomeApiService? apiService;
+  final HomeController? controller;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -15,9 +16,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final HomeApiService _apiService = widget.apiService ?? HomeApiService();
-  late final HomeController _controller = HomeController(
-    apiService: _apiService,
-  );
+  late final HomeController _controller =
+      widget.controller ?? HomeController(apiService: _apiService);
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -34,8 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _controller.removeListener(_onControllerUpdate);
-    _controller.dispose();
-    if (widget.apiService == null) _apiService.dispose();
+    if (widget.controller == null) _controller.dispose();
+    if (widget.apiService == null && widget.controller == null) {
+      _apiService.dispose();
+    }
     _searchController.dispose();
     super.dispose();
   }

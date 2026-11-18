@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/modules/user/home/controller/home_controller.dart';
 import 'package:frontend/modules/user/home/service/home_api_service.dart';
 import 'package:frontend/modules/user/home/view/home.dart';
 import 'package:frontend/services/auth_service.dart';
@@ -37,7 +38,10 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(MaterialApp(home: HomeScreen(apiService: service)));
+    final controller = HomeController(apiService: service);
+    await tester.pumpWidget(
+      MaterialApp(home: HomeScreen(controller: controller)),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Find what you need.'), findsOneWidget);
@@ -45,6 +49,7 @@ void main() {
     expect(find.text('฿50/day'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
+    controller.dispose();
     service.dispose();
   });
 }

@@ -5,9 +5,10 @@ import 'package:frontend/modules/user/wallet/controller/wallet_controller.dart';
 import 'package:frontend/modules/user/wallet/service/wallet_api_service.dart';
 
 class WalletScreen extends StatefulWidget {
-  const WalletScreen({super.key, this.apiService});
+  const WalletScreen({super.key, this.apiService, this.controller});
 
   final WalletApiService? apiService;
+  final WalletController? controller;
 
   @override
   State<WalletScreen> createState() => _WalletScreenState();
@@ -16,7 +17,8 @@ class WalletScreen extends StatefulWidget {
 class _WalletScreenState extends State<WalletScreen> {
   late final WalletApiService _apiService =
       widget.apiService ?? WalletApiService();
-  late final _controller = WalletController(apiService: _apiService);
+  late final _controller =
+      widget.controller ?? WalletController(apiService: _apiService);
   final _amountController = TextEditingController();
   String? _amountError;
 
@@ -36,8 +38,10 @@ class _WalletScreenState extends State<WalletScreen> {
   @override
   void dispose() {
     _controller.removeListener(_onUpdate);
-    _controller.dispose();
-    if (widget.apiService == null) _apiService.dispose();
+    if (widget.controller == null) _controller.dispose();
+    if (widget.apiService == null && widget.controller == null) {
+      _apiService.dispose();
+    }
     _amountController.dispose();
     super.dispose();
   }
