@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/model/asset/asset_model.dart';
 import 'package:frontend/modules/user/my_lending_items/controller/my_lending_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class MyLendingItemsScreen extends StatefulWidget {
   const MyLendingItemsScreen({super.key});
@@ -55,7 +56,7 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
+                    backgroundColor: AppColors.blue,
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () => Navigator.pop(context, true),
@@ -134,7 +135,7 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
                           : ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Image.network(
-                                asset.imageUrl,
+                                _imageSrc(asset.imageUrl),
                                 width: 48,
                                 height: 48,
                                 fit: BoxFit.cover,
@@ -160,7 +161,7 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
                       trailing: IconButton(
                         tooltip: 'Delete',
                         onPressed: () => _showDeleteSheet(asset),
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        icon: const Icon(Icons.delete_outline, color: AppColors.blue),
                       ),
                     ),
                   ),
@@ -184,3 +185,9 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
     );
   }
 }
+
+
+/// Backend stores images as relative paths (e.g. /uploads/xxx.jpg);
+/// build the full URL here so the image loads directly from the server.
+String _imageSrc(String path) =>
+    path.startsWith('http') ? path : 'http://localhost:3000$path';

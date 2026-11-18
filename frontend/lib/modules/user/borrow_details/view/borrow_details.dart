@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:frontend/modules/user/borrow_details/controller/borrow_details_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class BorrowDetailsScreen extends StatefulWidget {
   final int? borrowId;
@@ -107,7 +108,7 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
                           ),
                           const SizedBox(height: 16),
                           Card(
-                            color: const Color(0xFFFFF9C4),
+                            color: AppColors.yellow.withOpacity(0.35),
                             child: ListTile(
                               leading: const Icon(Icons.event_repeat),
                               title: const Text('Return date'),
@@ -280,7 +281,7 @@ class _TimelineStep extends StatelessWidget {
         children: [
           Icon(
             active ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: active ? Colors.green : Colors.grey,
+            color: active ? AppColors.green : Colors.grey,
           ),
           const SizedBox(height: 4),
           Text(label, style: const TextStyle(fontSize: 11)),

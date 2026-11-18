@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../approve_items/view/approve_items_view.dart';
 import '../../payment/view/payment_view.dart';
 import 'dashboard_requests_view.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class BorrowAdminApp extends StatelessWidget {
   const BorrowAdminApp({super.key});
@@ -13,7 +14,7 @@ class BorrowAdminApp extends StatelessWidget {
       title: 'Admin Dashboard',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.blue),
         scaffoldBackgroundColor: const Color(0xFFF3F4F6),
         fontFamily: 'Roboto',
       ),
@@ -75,7 +76,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     MaterialPageRoute(
                       builder: (context) => Scaffold(
                         appBar: AppBar(
-                          backgroundColor: const Color(0xFF1800A8),
+                          backgroundColor: AppColors.blue,
                           foregroundColor: Colors.white,
                           centerTitle: false,
                           iconTheme: const IconThemeData(color: Colors.white),
@@ -109,19 +110,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 'Approved',
                 '1,248',
                 Icons.check_circle_outline,
-                Colors.green,
+                AppColors.green,
               ),
               _buildStatCard(
                 'Pending',
                 '$pendingRequestsCount',
                 Icons.hourglass_top_outlined,
-                Colors.orange,
+                AppColors.yellow,
               ),
               _buildStatCard(
                 'Borrowed',
                 '96',
                 Icons.inventory_2_outlined,
-                Colors.indigo,
+                AppColors.blue,
               ),
             ],
           ),
@@ -253,7 +254,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           width: 14,
           height: height,
           decoration: BoxDecoration(
-            color: const Color(0xFF0000A0),
+            color: AppColors.blue,
             borderRadius: BorderRadius.circular(6),
           ),
         ),

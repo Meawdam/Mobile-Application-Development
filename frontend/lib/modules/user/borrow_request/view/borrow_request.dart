@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/modules/user/borrow_request/controller/borrow_request_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
 import 'package:frontend/widgets/date_picker_field.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class BorrowRequestScreen extends StatefulWidget {
   final int? assetId;
@@ -124,7 +125,7 @@ class _BorrowRequestScreenState extends State<BorrowRequestScreen> {
                             const SizedBox(height: 8),
                             Text(
                               _controller.error!,
-                              style: const TextStyle(color: Colors.red),
+                              style: const TextStyle(color: AppColors.red),
                             ),
                           ],
                           const SizedBox(height: 20),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:frontend/modules/user/wallet/controller/wallet_controller.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -63,7 +64,7 @@ class _WalletScreenState extends State<WalletScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFF2F4BFF),
+                color: AppColors.blue,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -107,7 +108,7 @@ class _WalletScreenState extends State<WalletScreen> {
               const SizedBox(height: 12),
               Text(
                 _controller.error!,
-                style: const TextStyle(color: Colors.red),
+                style: const TextStyle(color: AppColors.red),
               ),
             ],
           ],

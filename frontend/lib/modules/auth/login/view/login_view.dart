@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/modules/auth/login/controller/login_controller.dart';
 import 'package:frontend/modules/auth/widgets/auth_feedback_dialog.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
   final LoginController? controller;
@@ -92,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const Icon(
                 Icons.swap_horizontal_circle,
                 size: 72,
-                color: Color(0xFF2F4BFF),
+                color: AppColors.blue,
               ),
               const SizedBox(height: 16),
               const Text(

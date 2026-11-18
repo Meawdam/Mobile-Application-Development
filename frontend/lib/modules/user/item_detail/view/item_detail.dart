@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:frontend/modules/user/item_detail/controller/item_detail_controller.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class ItemDetailScreen extends StatefulWidget {
   final int? assetId;
@@ -87,7 +88,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                                             child: Icon(Icons.image, size: 64),
                                           )
                                         : Image.network(
-                                            asset.imageUrl,
+                                            _imageSrc(asset.imageUrl),
                                             fit: BoxFit.cover,
                                             errorBuilder: (context, error, stackTrace) =>
                                                 const ColoredBox(
@@ -105,7 +106,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                                   children: [
                                     Chip(
                                       label: Text(_statusLabel(asset.status)),
-                                      backgroundColor: const Color(0xFFE6F4EA),
+                                      backgroundColor: AppColors.green.withOpacity(0.2),
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
@@ -225,3 +226,9 @@ class _DetailCard extends StatelessWidget {
     );
   }
 }
+
+
+/// Backend stores images as relative paths (e.g. /uploads/xxx.jpg);
+/// build the full URL here so the image loads directly from the server.
+String _imageSrc(String path) =>
+    path.startsWith('http') ? path : 'http://localhost:3000$path';

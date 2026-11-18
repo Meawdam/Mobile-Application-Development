@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../all_transactions/view/all_transactions_view.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class PaymentScreen extends StatelessWidget {
   const PaymentScreen({super.key});
@@ -39,7 +40,7 @@ class PaymentScreen extends StatelessWidget {
               ),
               Icon(
                 Icons.account_balance_wallet_outlined,
-                color: Color(0xFF0000A0),
+                color: AppColors.blue,
                 size: 20,
               ),
             ],
@@ -62,10 +63,10 @@ class PaymentScreen extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             childAspectRatio: 1.9,
             children: [
-              _buildStatCard('Collected Revenue', 'à¸¿12,350', Colors.green),
-              _buildStatCard('Held Deposits', 'à¸¿84,500', Colors.indigo),
-              _buildStatCard('Pending Fines', 'à¸¿450', Colors.orange),
-              _buildStatCard('Processed Refunds', 'à¸¿3,200', Colors.blue),
+              _buildStatCard('Collected Revenue', 'à¸¿12,350', AppColors.green),
+              _buildStatCard('Held Deposits', 'à¸¿84,500', AppColors.blue),
+              _buildStatCard('Pending Fines', 'à¸¿450', AppColors.yellow),
+              _buildStatCard('Processed Refunds', 'à¸¿3,200', AppColors.blue),
             ],
           ),
           const SizedBox(height: 20),
@@ -95,7 +96,7 @@ class PaymentScreen extends StatelessWidget {
                   'View All',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF2563EB),
+                    color: AppColors.blue,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -206,13 +207,13 @@ class PaymentScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: isIncome
-                      ? Colors.green.withOpacity(0.1)
-                      : Colors.red.withOpacity(0.1),
+                      ? AppColors.green.withOpacity(0.1)
+                      : AppColors.red.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   isIncome ? Icons.arrow_downward : Icons.arrow_upward,
-                  color: isIncome ? Colors.green : Colors.red,
+                  color: isIncome ? AppColors.green : AppColors.red,
                   size: 16,
                 ),
               ),
@@ -284,13 +285,13 @@ class PaymentScreen extends StatelessWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('Refund processed successfully!'),
-                              backgroundColor: Colors.green,
+                              backgroundColor: AppColors.green,
                               duration: Duration(seconds: 2),
                             ),
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
+                          backgroundColor: AppColors.blue,
                           foregroundColor: Colors.white,
                         ),
                         child: const Text('Confirm Refund'),
@@ -301,7 +302,7 @@ class PaymentScreen extends StatelessWidget {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
+              backgroundColor: AppColors.blue,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               minimumSize: const Size(0, 30),
@@ -321,7 +322,7 @@ class PaymentScreen extends StatelessWidget {
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 12,
-              color: isIncome ? Colors.green : Colors.red,
+              color: isIncome ? AppColors.green : AppColors.red,
             ),
           ),
       ],

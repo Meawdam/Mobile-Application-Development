@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class UsersHistoryPage extends StatefulWidget {
   const UsersHistoryPage({super.key});
@@ -8,8 +9,8 @@ class UsersHistoryPage extends StatefulWidget {
 }
 
 class _UsersHistoryPageState extends State<UsersHistoryPage> {
-  final Color backgroundColor = const Color(0xFFF2EFF3);
-  final Color primaryColor = const Color(0xFF2100B5);
+  final Color backgroundColor = AppColors.blueSurface;
+  final Color primaryColor = AppColors.blue;
 
   String selectedUserId = 'user1';
   String selectedFilter = 'All';
@@ -354,7 +355,7 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
                                 )
                               : null,
                           filled: true,
-                          fillColor: const Color(0xFFF3F1F5),
+                          fillColor: AppColors.blueSurface,
                           contentPadding: const EdgeInsets.symmetric(
                             vertical: 12,
                           ),
@@ -419,7 +420,7 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
                                       if (isSelected)
                                         const Icon(
                                           Icons.check_circle,
-                                          color: Colors.green,
+                                          color: AppColors.green,
                                         )
                                       else
                                         const Icon(
@@ -452,7 +453,7 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(17),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8F3FA),
+                  color: AppColors.blueSurface,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
@@ -496,7 +497,7 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
                                     : 'Active account',
                                 style: TextStyle(
                                   color: isSuspended
-                                      ? Colors.red
+                                      ? AppColors.red
                                       : Colors.grey.shade600,
                                 ),
                               ),
@@ -525,7 +526,7 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
                         _statCard(
                           'Overdue',
                           user['overdue'].toString(),
-                          const Color(0xFFFFCDD2),
+                          AppColors.red.withOpacity(0.15),
                         ),
                       ],
                     ),
@@ -541,13 +542,13 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
                           isSuspended
                               ? Icons.check_circle_outline
                               : Icons.block,
-                          color: isSuspended ? Colors.green : Colors.red,
+                          color: AppColors.blue,
                           size: 19,
                         ),
                         label: Text(
                           isSuspended ? 'Activate Account' : 'Suspend Account',
                           style: TextStyle(
-                            color: isSuspended ? Colors.green : Colors.red,
+                            color: AppColors.blue,
                             fontSize: 15,
                           ),
                         ),
@@ -570,7 +571,7 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(17),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8F3FA),
+                  color: AppColors.blueSurface,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Column(
@@ -604,12 +605,12 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
                         onPressed: resetFilters,
                         icon: const Icon(
                           Icons.refresh,
-                          color: Color(0xFF7655B5),
+                          color: AppColors.blue,
                         ),
                         label: const Text(
                           'Reset filters',
                           style: TextStyle(
-                            color: Color(0xFF7655B5),
+                            color: AppColors.blue,
                             fontSize: 15,
                           ),
                         ),
@@ -683,13 +684,13 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
           selectedFilter = filter;
         });
       },
-      selectedColor: const Color(0xFFE9DDF8),
-      backgroundColor: const Color(0xFFF8F3FA),
+      selectedColor: AppColors.blueLight,
+      backgroundColor: AppColors.blueSurface,
       labelStyle: TextStyle(
-        color: selected ? const Color(0xFF51416B) : const Color(0xFF514B57),
+        color: selected ? AppColors.blue : const Color(0xFF514B57),
       ),
       side: BorderSide(
-        color: selected ? const Color(0xFFE9DDF8) : Colors.grey.shade400,
+        color: selected ? AppColors.blueLight : Colors.grey.shade400,
       ),
     );
   }
@@ -726,14 +727,14 @@ class _UsersHistoryPageState extends State<UsersHistoryPage> {
                 ),
                 decoration: BoxDecoration(
                   color: isFinance
-                      ? const Color(0xFFE1F1E4)
-                      : const Color(0xFFE0EDFA),
+                      ? AppColors.green.withOpacity(0.2)
+                      : AppColors.blueLight,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   activity['category'],
                   style: TextStyle(
-                    color: isFinance ? Colors.green : Colors.blue,
+                    color: isFinance ? AppColors.green : AppColors.blue,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

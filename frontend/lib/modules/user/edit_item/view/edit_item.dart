@@ -107,7 +107,7 @@ class _EditItemScreenState extends State<EditItemScreen> {
                               width: double.infinity,
                               child: _controller.asset?.imageUrl.isNotEmpty == true
                                   ? Image.network(
-                                      _controller.asset!.imageUrl,
+                                      _imageSrc(_controller.asset!.imageUrl),
                                       fit: BoxFit.cover,
                                       errorBuilder: (context, error, stackTrace) =>
                                           const ColoredBox(
@@ -200,3 +200,9 @@ class _EditItemScreenState extends State<EditItemScreen> {
     );
   }
 }
+
+
+/// Backend stores images as relative paths (e.g. /uploads/xxx.jpg);
+/// build the full URL here so the image loads directly from the server.
+String _imageSrc(String path) =>
+    path.startsWith('http') ? path : 'http://localhost:3000$path';

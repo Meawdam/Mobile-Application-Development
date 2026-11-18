@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class ApproveItemsPage extends StatefulWidget {
   const ApproveItemsPage({super.key});
@@ -106,7 +107,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                         child: OutlinedButton(
                           onPressed: () => _decide(index, false, sheetContext),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
+                            foregroundColor: AppColors.blue,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           child: const Text('Reject'),
@@ -117,7 +118,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                         child: ElevatedButton(
                           onPressed: () => _decide(index, true, sheetContext),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
+                            backgroundColor: AppColors.blue,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
@@ -150,7 +151,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
             child: const Icon(
               Icons.inventory_2_outlined,
               size: 55,
-              color: Color(0xFF1260C5),
+              color: AppColors.blue,
             ),
           ),
         ),
@@ -230,7 +231,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: approve ? Colors.green : Colors.red,
+              backgroundColor: AppColors.blue,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -257,7 +258,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
               ? 'Item approved successfully!'
               : 'Item rejected successfully!',
         ),
-        backgroundColor: approve ? Colors.green : Colors.red,
+        backgroundColor: approve ? AppColors.green : AppColors.red,
       ),
     );
   }
@@ -305,7 +306,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.pending_actions, color: Colors.orange),
+                  const Icon(Icons.pending_actions, color: AppColors.yellow),
                   const SizedBox(width: 10),
                   const Text(
                     'Pending',
@@ -314,11 +315,11 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                   const Spacer(),
                   CircleAvatar(
                     radius: 13,
-                    backgroundColor: Colors.orange.shade100,
+                    backgroundColor: AppColors.yellow.withOpacity(0.4),
                     child: Text(
                       '${items.length}',
                       style: const TextStyle(
-                        color: Colors.deepOrange,
+                        color: AppColors.yellow,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -336,7 +337,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                         Icon(
                           Icons.check_circle_outline,
                           size: 55,
-                          color: Colors.green,
+                          color: AppColors.green,
                         ),
                         SizedBox(height: 12),
                         Text(
@@ -365,7 +366,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                             backgroundColor: Colors.blue.shade50,
                             child: const Icon(
                               Icons.inventory_2_outlined,
-                              color: Color(0xFF1260C5),
+                              color: AppColors.blue,
                             ),
                           ),
                           title: Text(

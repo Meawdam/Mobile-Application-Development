@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:frontend/modules/user/payment/controller/payment_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class PaymentScreen extends StatefulWidget {
   final Map<String, dynamic>? args;
@@ -97,7 +98,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFF2F4BFF),
+                color: AppColors.blue,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -146,14 +147,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         : 'Wallet balance: ${_controller.walletBalance} Baht',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: canAfford ? Colors.black87 : Colors.red,
+                      color: canAfford ? Colors.black87 : AppColors.red,
                     ),
                   ),
                   if (!canAfford && !_controller.loading) ...[
                     const SizedBox(height: 6),
                     const Text(
                       'Insufficient balance. Top up your wallet first.',
-                      style: TextStyle(color: Colors.red),
+                      style: TextStyle(color: AppColors.red),
                     ),
                     TextButton(
                       onPressed: () async {

@@ -217,7 +217,7 @@ class _AssetCard extends StatelessWidget {
                           child: Icon(Icons.image, size: 32),
                         )
                       : Image.network(
-                          asset.imageUrl,
+                          _imageSrc(asset.imageUrl),
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               const ColoredBox(
@@ -261,3 +261,9 @@ class _AssetCard extends StatelessWidget {
     );
   }
 }
+
+
+/// Backend stores images as relative paths (e.g. /uploads/xxx.jpg);
+/// build the full URL here so the image loads directly from the server.
+String _imageSrc(String path) =>
+    path.startsWith('http') ? path : 'http://localhost:3000$path';

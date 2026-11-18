@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class AllTransactionsScreen extends StatefulWidget {
   const AllTransactionsScreen({super.key});
@@ -76,7 +77,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('All Transactions History'),
-        backgroundColor: const Color(0xFF0000A0),
+        backgroundColor: AppColors.blue,
         foregroundColor: Colors.white,
         centerTitle: false,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -172,15 +173,15 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
                               color: isIncome
-                                  ? Colors.green.withOpacity(0.1)
-                                  : Colors.red.withOpacity(0.1),
+                                  ? AppColors.green.withOpacity(0.1)
+                                  : AppColors.red.withOpacity(0.1),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
                               isIncome
                                   ? Icons.arrow_downward
                                   : Icons.arrow_upward,
-                              color: isIncome ? Colors.green : Colors.red,
+                              color: isIncome ? AppColors.green : AppColors.red,
                               size: 18,
                             ),
                           ),
@@ -206,12 +207,12 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                                         content: Text(
                                           'Refund processed for ${tx['user']}!',
                                         ),
-                                        backgroundColor: Colors.green,
+                                        backgroundColor: AppColors.green,
                                       ),
                                     );
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF2563EB),
+                                    backgroundColor: AppColors.blue,
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 12,
@@ -228,7 +229,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                                   tx['amount']?.toString() ?? '',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: isIncome ? Colors.green : Colors.red,
+                                    color: isIncome ? AppColors.green : AppColors.red,
                                   ),
                                 ),
                         ),
@@ -248,11 +249,11 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0000A0) : Colors.white,
+          color: isSelected ? AppColors.blue : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF0000A0)
+                ? AppColors.blue
                 : const Color(0xFFE5E7EB),
           ),
         ),
