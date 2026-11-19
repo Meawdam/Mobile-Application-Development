@@ -5,6 +5,9 @@ const db = mysql.createPool({
   user: "borrow",
   password: "oHhautd1nsLtvNRw",
   database: "borrow",
+  // Keep MySQL DATE columns as calendar dates. Returning them as JS Date
+  // objects serializes midnight in the server timezone as a shifted UTC date.
+  dateStrings: ["DATE"],
 });
 
 

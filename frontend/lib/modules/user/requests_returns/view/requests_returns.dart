@@ -210,7 +210,7 @@ class _BorrowSection extends StatelessWidget {
                   title: Text(item.assetName ?? 'Item #${item.assetId}'),
                   subtitle: Text(
                     'Borrower: ${item.borrowerName ?? '—'}\n'
-                    'Status: ${item.status}\n'
+                    'Status: ${item.statusLabel}\n'
                     'Return: ${parsed == null ? (item.plannedReturnDate ?? '—') : AppDateUtils.formatDisplay(parsed)}',
                   ),
                   isThreeLine: true,

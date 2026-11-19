@@ -72,8 +72,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _controller.search(_searchController.text);
   }
 
-  void _openItem(AssetModel asset) {
-    Navigator.pushNamed(context, '/item-detail', arguments: asset.id);
+  Future<void> _openItem(AssetModel asset) async {
+    await Navigator.pushNamed(context, '/item-detail', arguments: asset.id);
+    if (mounted) await _controller.loadItems();
   }
 
   @override
@@ -327,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisCount: 2,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 0.68,
+                    mainAxisExtent: 256,
                   ),
                   itemBuilder: (context, index) => _AssetCard(
                     asset: items[index],

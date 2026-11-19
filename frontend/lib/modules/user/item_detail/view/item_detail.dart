@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:frontend/modules/user/item_detail/controller/item_detail_controller.dart';
+import 'package:frontend/utils/date_utils.dart';
 import 'package:frontend/widgets/user_app_bar.dart';
 
 class ItemDetailScreen extends StatefulWidget {
@@ -43,6 +44,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final asset = _controller.asset;
+    final lendingEndDate = AppDateUtils.tryParseYmd(asset?.returnBefore);
     final isAvailable =
         asset != null &&
         (asset.status == 'ready' || asset.status == 'available') &&
@@ -139,7 +141,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                               child: Text(
                                 asset.returnBefore.isEmpty
                                     ? 'End date not set'
-                                    : 'Until ${asset.returnBefore}',
+                                    : 'Until ${lendingEndDate == null ? asset.returnBefore : AppDateUtils.formatDisplay(lendingEndDate)}',
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Color(0xFF667085),

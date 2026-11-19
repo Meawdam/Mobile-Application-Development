@@ -42,16 +42,9 @@ class HomeController extends ChangeNotifier {
   String get query => _query;
 
   Future<void> initialize() async {
-    if (_user == null) {
-      _user =
-          (_useFixtures ? null : await _readUserFromToken()) ??
-          const UserModel(
-            username: '',
-            phoneNumber: '',
-            email: '',
-            role: 'user',
-          );
-    }
+    _user ??=
+        (_useFixtures ? null : await _readUserFromToken()) ??
+        const UserModel(username: '', phoneNumber: '', email: '', role: 'user');
     await loadItems();
   }
 
@@ -167,7 +160,7 @@ class HomeController extends ChangeNotifier {
 
   Future<void> search(String value) => loadItems(query: value);
 
-  Future<void> logout() async {}
+  Future<void> logout() => _authService.deleteToken();
 
   @override
   void dispose() {

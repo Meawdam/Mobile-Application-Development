@@ -1,3 +1,5 @@
+import 'package:frontend/utils/date_utils.dart';
+
 class AssetModel {
   final int id;
   final int ownerId;
@@ -10,7 +12,7 @@ class AssetModel {
   final String? approvalMessage;
   final num downPayment;
   final String returnBefore;
-  final int price;
+  final num price;
   final String pickupPoint;
 
   const AssetModel({
@@ -44,7 +46,7 @@ class AssetModel {
       approvalMessage: json['approval_message']?.toString(),
       downPayment: _asNum(json['down_payment']),
       returnBefore: _formatDate(json['return_before']),
-      price: _asInt(json['price']),
+      price: _asNum(json['price']),
       pickupPoint: json['pickup_point']?.toString() ?? '',
     );
   }
@@ -63,9 +65,7 @@ class AssetModel {
   static String _formatDate(dynamic value) {
     if (value == null) return '';
     final raw = value.toString();
-    if (raw.length >= 10) {
-      return raw.substring(0, 10);
-    }
-    return raw;
+    final date = AppDateUtils.tryParseYmd(raw);
+    return date == null ? raw : AppDateUtils.formatYmd(date);
   }
 }

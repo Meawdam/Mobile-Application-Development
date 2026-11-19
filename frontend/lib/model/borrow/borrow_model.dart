@@ -1,3 +1,5 @@
+import 'package:frontend/utils/date_utils.dart';
+
 class BorrowModel {
   final int id;
   final int assetId;
@@ -38,6 +40,22 @@ class BorrowModel {
     required this.status,
     required this.paymentStatus,
   });
+
+  String get statusLabel => switch (status) {
+    'requested' => 'Awaiting owner approval',
+    'approved' => 'Approved',
+    'borrowed' => 'Borrowed',
+    'returned_pending' => 'Return requested',
+    'returned_confirmed' => 'Returned',
+    'rejected' => 'Request declined',
+    'cancelled' => 'Cancelled',
+    _ =>
+      status
+          .split('_')
+          .where((word) => word.isNotEmpty)
+          .map((word) => '${word[0].toUpperCase()}${word.substring(1)}')
+          .join(' '),
+  };
 
   BorrowModel copyWith({String? status, String? paymentStatus}) {
     return BorrowModel(
@@ -106,7 +124,7 @@ class BorrowModel {
   static String? _asDate(dynamic value) {
     if (value == null) return null;
     final raw = value.toString();
-    if (raw.length >= 10) return raw.substring(0, 10);
-    return raw;
+    final date = AppDateUtils.tryParseYmd(raw);
+    return date == null ? raw : AppDateUtils.formatYmd(date);
   }
 }

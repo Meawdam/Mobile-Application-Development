@@ -134,7 +134,6 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
                         // Borrowing: วันคืนอยู่ด้านขวาของกล่อง + ปุ่ม Request return สีน้ำเงิน
                         _BorrowList(
                           items: _controller.borrowing,
-                          dateSide: _DateSide.right,
                           onOpen: _openDetails,
                           buttonBuilder: (item) => item.status == 'borrowed'
                               ? _ActionButton(
@@ -151,7 +150,6 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
                         // Pending: วันคืนอยู่ด้านซ้ายของกล่อง + ปุ่ม Cancel สีแดง
                         _BorrowList(
                           items: _controller.pending,
-                          dateSide: _DateSide.left,
                           onOpen: _openDetails,
                           buttonBuilder: (item) => _ActionButton(
                             label: 'Cancel',
@@ -162,7 +160,6 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
                         // Returned: วันคืนอยู่ด้านขวาของกล่อง
                         _BorrowList(
                           items: _controller.returned,
-                          dateSide: _DateSide.right,
                           onOpen: _openDetails,
                         ),
                       ],
@@ -175,17 +172,13 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
   }
 }
 
-enum _DateSide { left, right }
-
 class _BorrowList extends StatelessWidget {
   final List<BorrowModel> items;
-  final _DateSide dateSide;
   final void Function(BorrowModel item) onOpen;
   final Widget Function(BorrowModel item)? buttonBuilder;
 
   const _BorrowList({
     required this.items,
-    required this.dateSide,
     required this.onOpen,
     this.buttonBuilder,
   });
@@ -224,23 +217,14 @@ class _BorrowList extends StatelessWidget {
           child: Column(
             children: [
               ListTile(
-                leading: dateSide == _DateSide.left
-                    ? Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _BorrowImage(imageUrl: item.assetImageUrl),
-                          const SizedBox(height: 4),
-                          _dateBox(item),
-                        ],
-                      )
-                    : _BorrowImage(imageUrl: item.assetImageUrl),
+                leading: _BorrowImage(imageUrl: item.assetImageUrl),
                 title: Text(item.assetName ?? 'Item #${item.assetId}'),
                 subtitle: Text(
-                  'Status: ${item.status}\n'
+                  'Status: ${item.statusLabel}\n'
                   'Total: ${item.totalAmount ?? '—'} Baht',
                 ),
                 isThreeLine: true,
-                trailing: dateSide == _DateSide.right ? _dateBox(item) : null,
+                trailing: _dateBox(item),
                 onTap: () => onOpen(item),
               ),
               if (button != null)
