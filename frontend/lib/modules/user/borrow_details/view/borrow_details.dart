@@ -152,7 +152,7 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
               ),
               Chip(
                 label: Text(
-                  borrow.status.isNotEmpty ? borrow.status : 'Status',
+                  borrow.statusLabel.isNotEmpty ? borrow.statusLabel : 'Status',
                 ),
               ),
             ],

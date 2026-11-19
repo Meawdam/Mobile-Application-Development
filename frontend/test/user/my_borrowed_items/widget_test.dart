@@ -15,8 +15,9 @@ Future<void> runApp(
   Map<String, http.Response> routes,
   List<http.Request> log,
   Widget screen,
-  Future<void> Function() body,
-) async {
+  Future<void> Function() body, {
+  Route<dynamic>? Function(RouteSettings)? onGenerateRoute,
+}) async {
   tester.view.physicalSize = const Size(800, 1600);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -26,7 +27,9 @@ Future<void> runApp(
   );
   await http.runWithClient(
     () async {
-      await tester.pumpWidget(MaterialApp(home: screen));
+      await tester.pumpWidget(
+        MaterialApp(home: screen, onGenerateRoute: onGenerateRoute),
+      );
       await tester.pumpAndSettle();
       await body();
     },
@@ -101,6 +104,52 @@ void main() {
         await tester.pumpAndSettle();
         expect(calls(log).contains('PATCH /api/borrows/1/return'), isTrue);
       },
+    );
+  });
+
+  testWidgets('returning from borrow details refreshes the borrow status', (
+    tester,
+  ) async {
+    final log = <http.Request>[];
+    final routes = <String, http.Response>{
+      'GET /api/borrows/my': json({
+        'data': [record(1, 'approved', 'paid')],
+      }),
+    };
+
+    await runApp(
+      tester,
+      routes,
+      log,
+      const MyBorrowedItemsScreen(),
+      () async {
+        expect(
+          find.text('Approved - open details to confirm receipt'),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('Item 1'));
+        await tester.pumpAndSettle();
+
+        routes['GET /api/borrows/my'] = json({
+          'data': [record(1, 'borrowed', 'paid')],
+        });
+        await tester.tap(find.text('Back to borrowed items'));
+        await tester.pumpAndSettle();
+
+        expect(
+          calls(log).where((call) => call == 'GET /api/borrows/my').length,
+          2,
+        );
+        expect(find.text('Request return'), findsOneWidget);
+      },
+      onGenerateRoute: (settings) => MaterialPageRoute<void>(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Back to borrowed items'),
+          ),
+        ),
+      ),
     );
   });
 

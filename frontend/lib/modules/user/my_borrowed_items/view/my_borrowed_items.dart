@@ -81,8 +81,9 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
         .showSnackBar(SnackBar(content: Text(err ?? 'Return requested')));
   }
 
-  void _openDetails(BorrowModel item) {
-    Navigator.pushNamed(context, '/borrow-details', arguments: item.id);
+  Future<void> _openDetails(BorrowModel item) async {
+    await Navigator.pushNamed(context, '/borrow-details', arguments: item.id);
+    if (mounted) await _controller.load();
   }
 
   @override
