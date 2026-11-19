@@ -51,29 +51,6 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
         .showSnackBar(SnackBar(content: Text(err ?? successMessage)));
   }
 
-  Future<void> _confirmReturnWithPrompt() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Confirm returned item?'),
-        content: const Text('Confirm that the item has been returned to you.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Back'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Confirm return'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    final err = await _controller.confirmReturn();
-    _showResult(err, 'Return confirmed');
-  }
-
   Future<void> _cancelRequest(BorrowModel borrow) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -312,8 +289,12 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _confirmReturnWithPrompt,
-                child: const Text('Confirm return'),
+                onPressed: null,
+                style: ElevatedButton.styleFrom(
+                  disabledBackgroundColor: const Color(0xFFFFF3C4),
+                  disabledForegroundColor: const Color(0xFF8A5A00),
+                ),
+                child: const Text('Pending return'),
               ),
             ),
           ],

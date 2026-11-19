@@ -110,6 +110,24 @@ void main() {
     });
   });
 
+  testWidgets('return request shows a yellow disabled Pending return button', (tester) async {
+    final log = <http.Request>[];
+    await runApp(tester, routesFor('returned_pending', 'paid'), log,
+        const BorrowDetailsScreen(borrowId: 12), () async {
+      final button = tester.widget<ElevatedButton>(
+        find.widgetWithText(ElevatedButton, 'Pending return'),
+      );
+
+      expect(button.onPressed, isNull);
+      expect(
+        button.style?.backgroundColor?.resolve({WidgetState.disabled}),
+        const Color(0xFFFFF3C4),
+      );
+      expect(find.text('Confirm return'), findsNothing);
+      expect(calls(log).where((call) => call.contains('confirm-return')), isEmpty);
+    });
+  });
+
   testWidgets('shows error and Retry when loading fails', (tester) async {
     await runApp(tester, {
       'GET /api/borrows/12': json({'message': 'Borrow record not found'}, 404),

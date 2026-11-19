@@ -37,7 +37,7 @@
  *         name: type
  *         schema:
  *           type: string
- *           enum: [wallet_top_up, rental_payment, deposit_hold, deposit_forfeiture, deposit_refund, borrow_refund]
+ *           enum: [wallet_top_up, rental_payment, rental_payout, deposit_hold, deposit_forfeiture, deposit_refund, borrow_refund]
  *       - in: query
  *         name: status
  *         schema:

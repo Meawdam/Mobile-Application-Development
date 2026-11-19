@@ -81,7 +81,7 @@ class _RequestsReturnsScreenState extends State<RequestsReturnsScreen> {
     );
     if (confirmed != true) return;
     final err = await _controller.confirmReturn(item.id);
-    _showResult(err, 'Return confirmed');
+    _showResult(err, 'Return confirmed. Rental earnings added to your wallet.');
   }
 
   @override

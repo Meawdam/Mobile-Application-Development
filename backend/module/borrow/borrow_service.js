@@ -482,10 +482,10 @@ class BorrowService {
 
     return {
       message: result.deposit_forfeited > 0
-        ? "Return confirmed; the deposit was forfeited"
+        ? "Return confirmed; rental earnings credited to owner and late deposit forfeited"
         : result.refund_pending > 0
-          ? "Return confirmed; deposit refund is awaiting admin processing"
-          : "Return confirmed and asset is now ready for borrowing again",
+          ? "Return confirmed; rental earnings credited to owner and deposit refund is awaiting admin processing"
+          : "Return confirmed; rental earnings credited to owner and asset is ready for borrowing again",
       deposit_forfeited: result.deposit_forfeited,
       refund_pending: result.refund_pending,
       refund_transaction_id: result.refund_transaction_id,

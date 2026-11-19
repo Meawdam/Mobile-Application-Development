@@ -7,6 +7,7 @@ class PaymentTransaction {
   final bool isIncome;
   final bool isPending;
   final bool isRefundable;
+  final String transactionType;
 
   PaymentTransaction({
     this.id = '',
@@ -17,6 +18,7 @@ class PaymentTransaction {
     required this.isIncome,
     required this.isPending,
     this.isRefundable = false,
+    this.transactionType = '',
   });
 
   factory PaymentTransaction.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class PaymentTransaction {
       isIncome: json['isIncome'] ?? false,
       isPending: json['isPending'] ?? false,
       isRefundable: json['isRefundable'] ?? false,
+      transactionType: json['transactionType'] ?? '',
     );
   }
 }

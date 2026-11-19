@@ -143,7 +143,7 @@ class PaymentController {
       } else if (filter == 'Collected') {
         return tx.isIncome && !tx.isPending;
       } else if (filter == 'Refunded') {
-        return !tx.isIncome;
+        return ['deposit_refund', 'borrow_refund'].contains(tx.transactionType);
       }
 
       return true;
@@ -160,7 +160,11 @@ class PaymentController {
     final type = _value(data, ['transaction_type', 'type']).toLowerCase();
     final status = _value(data, ['status']).toLowerCase();
 
-    final isIncome = !['deposit_refund', 'borrow_refund'].contains(type);
+    final isIncome = ![
+      'deposit_refund',
+      'borrow_refund',
+      'rental_payout',
+    ].contains(type);
 
     final isPending = status == 'pending';
     final isRefundable = type == 'deposit_refund' && isPending;
@@ -179,7 +183,9 @@ class PaymentController {
       'user_name',
     ], fallback: '-');
 
-    final time = formatAdminTime(_value(data, ['time', 'created_at', 'transaction_date']));
+    final time = formatAdminTime(
+      _value(data, ['time', 'created_at', 'transaction_date']),
+    );
 
     final amountValue =
         data['amount'] ?? data['total_amount'] ?? data['value'] ?? 0;
@@ -193,6 +199,7 @@ class PaymentController {
       'isIncome': isIncome,
       'isPending': isPending,
       'isRefundable': isRefundable,
+      'transactionType': type,
     });
   }
 

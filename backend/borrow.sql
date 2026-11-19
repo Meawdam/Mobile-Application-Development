@@ -175,6 +175,7 @@ CREATE TABLE `financial_transactions` (
   `transaction_type` enum(
     'wallet_top_up',
     'rental_payment',
+    'rental_payout',
     'deposit_hold',
     'deposit_forfeiture',
     'deposit_refund',
