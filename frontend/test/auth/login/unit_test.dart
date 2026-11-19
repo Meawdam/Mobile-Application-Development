@@ -21,7 +21,7 @@ void main() {
     expect(result, isNotNull);
     expect(result, 'user');
     // admin
-    result = await loginController.login('admin@gmail.com', '1234567890');
+    result = await loginController.login('admin@gmail.com', 'Admin1234');
     expect(result, 'admin');
   });
 
