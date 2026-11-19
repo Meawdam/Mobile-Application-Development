@@ -37,7 +37,12 @@ void main() {
   http.Response json(Object body, [int status = 200]) =>
       http.Response(jsonEncode(body), status);
 
-  Map<String, dynamic> record(int id, String status, String payment, num deposit) {
+  Map<String, dynamic> record(
+    int id,
+    String status,
+    String payment,
+    num deposit,
+  ) {
     return {
       'id': id,
       'asset_id': id + 100,
@@ -90,11 +95,15 @@ void main() {
       final log = <http.Request>[];
       final controller = MyBorrowedController(service: makeService());
 
-      await run({
-        'GET /api/borrows/my': json({
-          'data': [record(1, 'borrowed', 'paid', 500)],
-        }),
-      }, log, controller.load);
+      await run(
+        {
+          'GET /api/borrows/my': json({
+            'data': [record(1, 'borrowed', 'paid', 500)],
+          }),
+        },
+        log,
+        controller.load,
+      );
 
       expect(log.single.headers['Authorization'], 'Bearer test-token');
       expect(controller.items.single.id, 1);
@@ -105,9 +114,15 @@ void main() {
     test('shows the backend error message', () async {
       final controller = MyBorrowedController(service: makeService());
 
-      await run({
-        'GET /api/borrows/my': json({'message': 'Access token required'}, 401),
-      }, [], controller.load);
+      await run(
+        {
+          'GET /api/borrows/my': json({
+            'message': 'Access token required',
+          }, 401),
+        },
+        [],
+        controller.load,
+      );
 
       expect(controller.error, 'Access token required');
     });
@@ -126,12 +141,12 @@ void main() {
 
   group('actions', () {
     MyBorrowedController makeController() => MyBorrowedController(
-          service: makeService(),
-          initialItems: [
-            model(1, 'borrowed', 'paid', 500),
-            model(3, 'requested', 'paid', 100),
-          ],
-        );
+      service: makeService(),
+      initialItems: [
+        model(1, 'borrowed', 'paid', 500),
+        model(3, 'requested', 'paid', 100),
+      ],
+    );
 
     final reload = json({'data': <Object>[]});
 
@@ -139,12 +154,17 @@ void main() {
       final log = <http.Request>[];
       final controller = makeController();
 
-      final err = await run({
-        'PATCH /api/borrows/3/cancel': json({
-          'message': 'Borrow request cancelled and payment refunded to wallet',
-        }),
-        'GET /api/borrows/my': reload,
-      }, log, () => controller.cancel(3));
+      final err = await run(
+        {
+          'PATCH /api/borrows/3/cancel': json({
+            'message':
+                'Borrow request cancelled and payment refunded to wallet',
+          }),
+          'GET /api/borrows/my': reload,
+        },
+        log,
+        () => controller.cancel(3),
+      );
 
       expect(err, isNull);
       expect(log.map((r) => '${r.method} ${r.url.path}'), [
@@ -157,35 +177,50 @@ void main() {
     test('cancel returns the backend message when it fails', () async {
       final controller = makeController();
 
-      final err = await run({
-        'PATCH /api/borrows/3/cancel': json(
-          {'message': 'Borrow request is no longer available to cancel'},
-          409,
-        ),
-      }, [], () => controller.cancel(3));
+      final err = await run(
+        {
+          'PATCH /api/borrows/3/cancel': json({
+            'message': 'Borrow request is no longer available to cancel',
+          }, 409),
+        },
+        [],
+        () => controller.cancel(3),
+      );
 
       expect(err, 'Borrow request is no longer available to cancel');
       expect(controller.items.length, 2);
     });
 
-    test('cancel rejects items that are not pending without calling the API', () async {
-      final log = <http.Request>[];
-      final controller = makeController();
+    test(
+      'cancel accepts approved requests and rejects active borrows',
+      () async {
+        final log = <http.Request>[];
+        final controller = makeController();
 
-      expect(await run({}, log, () => controller.cancel(1)),
-          'Only pending requests can be cancelled');
-      expect(await run({}, log, () => controller.cancel(99)), 'Borrow not found');
-      expect(log, isEmpty);
-    });
+        expect(
+          await run({}, log, () => controller.cancel(1)),
+          'Only requests awaiting receipt can be cancelled',
+        );
+        expect(
+          await run({}, log, () => controller.cancel(99)),
+          'Borrow not found',
+        );
+        expect(log, isEmpty);
+      },
+    );
 
     test('requestReturn calls PATCH /return then reloads', () async {
       final log = <http.Request>[];
       final controller = makeController();
 
-      final err = await run({
-        'PATCH /api/borrows/1/return': json({'message': 'ok'}),
-        'GET /api/borrows/my': reload,
-      }, log, () => controller.requestReturn(1));
+      final err = await run(
+        {
+          'PATCH /api/borrows/1/return': json({'message': 'ok'}),
+          'GET /api/borrows/my': reload,
+        },
+        log,
+        () => controller.requestReturn(1),
+      );
 
       expect(err, isNull);
       expect(log.first.url.path, '/api/borrows/1/return');
@@ -194,8 +229,10 @@ void main() {
     test('requestReturn only works for borrowed items', () async {
       final controller = makeController();
 
-      expect(await run({}, [], () => controller.requestReturn(3)),
-          'Borrow is not active');
+      expect(
+        await run({}, [], () => controller.requestReturn(3)),
+        'Borrow is not active',
+      );
     });
   });
 }

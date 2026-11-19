@@ -152,6 +152,22 @@ class AssetsController {
     }
   }
 
+  async setAvailability(req, res, next) {
+    try {
+      const result = await assetService.setAvailability(
+        req.params.id,
+        req.user.id,
+        req.body?.is_available,
+      );
+      return res.status(200).json({
+        message: result.status === "ready" ? "Asset listed" : "Asset paused",
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async deleteAsset(req, res, next) {
     try {
       const result = await assetService.deleteAsset(

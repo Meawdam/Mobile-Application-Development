@@ -102,9 +102,21 @@ class BorrowDetailsController extends ChangeNotifier {
   // จ่ายเงินแล้วแต่ยังไม่กด Received (แสดงปุ่ม Received)
   bool get canConfirmReceived {
     final b = borrow;
+    return b != null && b.paymentStatus == 'paid' && b.status == 'approved';
+  }
+
+  bool get canCancelRequest {
+    final b = borrow;
     return b != null &&
-        b.paymentStatus == 'paid' &&
-        b.status == 'approved';
+        (b.status == 'requested' || b.status == 'approved') &&
+        (b.paymentStatus == 'unpaid' || b.paymentStatus == 'paid');
+  }
+
+  Future<String?> cancelRequest() async {
+    final current = borrow;
+    if (current == null) return 'Missing borrow';
+    if (!canCancelRequest) return 'This request can no longer be cancelled';
+    return _patchThenReload('/api/borrows/${current.id}/cancel');
   }
 
   // สถานะของ 4 ขั้นใน timeline: Paid, Received, Borrowed, Returned
@@ -140,7 +152,9 @@ class BorrowDetailsController extends ChangeNotifier {
   Future<String?> confirmReceived() async {
     final current = borrow;
     if (current == null) return 'Missing borrow';
-    if (!canConfirmReceived) return 'Pay for this borrow before confirming receipt';
+    if (!canConfirmReceived) {
+      return 'Pay for this borrow before confirming receipt';
+    }
     return _patchThenReload('/api/borrows/${current.id}/confirm-received');
   }
 

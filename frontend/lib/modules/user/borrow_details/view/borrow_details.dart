@@ -51,6 +51,63 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
         .showSnackBar(SnackBar(content: Text(err ?? successMessage)));
   }
 
+  Future<void> _confirmReturnWithPrompt() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm returned item?'),
+        content: const Text('Confirm that the item has been returned to you.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Back'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Confirm return'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final err = await _controller.confirmReturn();
+    _showResult(err, 'Return confirmed');
+  }
+
+  Future<void> _cancelRequest(BorrowModel borrow) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancel borrow request?'),
+        content: const Text(
+          'Any payment for this request will be refunded to your wallet.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep request'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Cancel request'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final token = await _controller.cancelRequest();
+    _showResult(token, 'Request cancelled');
+  }
+
+  Future<void> _payNow(BorrowModel borrow) async {
+    await Navigator.pushNamed(
+      context,
+      '/payment',
+      arguments: {'borrowId': borrow.id},
+    );
+    if (mounted) await _controller.load(borrow.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final borrow = _controller.borrow;
@@ -93,6 +150,33 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if ((borrow.status == 'requested' || borrow.status == 'approved') &&
+              borrow.paymentStatus == 'unpaid') ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _payNow(borrow),
+                child: const Text('Pay now'),
+              ),
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => _cancelRequest(borrow),
+                child: const Text('Cancel request'),
+              ),
+            ),
+          ] else if ((borrow.status == 'requested' ||
+                  borrow.status == 'approved') &&
+              borrow.paymentStatus == 'paid') ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => _cancelRequest(borrow),
+                child: const Text('Cancel request'),
+              ),
+            ),
+          ],
           // Status timeline อยู่บนสุด
           const Text(
             'Status timeline',
@@ -228,10 +312,7 @@ class _BorrowDetailsScreenState extends State<BorrowDetailsScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () async {
-                  final err = await _controller.confirmReturn();
-                  _showResult(err, 'Return confirmed');
-                },
+                onPressed: _confirmReturnWithPrompt,
                 child: const Text('Confirm return'),
               ),
             ),

@@ -57,6 +57,26 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
     );
   }
 
+  Future<void> _toggleListing(AssetModel asset) async {
+    final makeAvailable = asset.status == 'unavailable';
+    final confirmed = await showAppConfirmPopup(
+      context,
+      title: makeAvailable ? 'Relist "${asset.name}"?' : 'Pause listing?',
+      message: makeAvailable
+          ? 'Borrowers will be able to request this item again.'
+          : 'Borrowers will no longer see this item as available.',
+      confirmLabel: makeAvailable ? 'Relist item' : 'Pause listing',
+    );
+    if (!confirmed) return;
+    final err = await _controller.setAvailability(asset.id, makeAvailable);
+    if (!mounted) return;
+    await showAppPopup(
+      context,
+      message: err ?? (makeAvailable ? 'Item relisted' : 'Listing paused'),
+      isSuccess: err == null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -209,11 +229,30 @@ class _MyLendingItemsScreenState extends State<MyLendingItemsScreen> {
                               );
                               await _controller.load();
                             },
-                      trailing: IconButton(
-                        tooltip: 'Delete',
-                        onPressed: () => _showDeleteSheet(asset),
+                      trailing: PopupMenuButton<String>(
+                        tooltip: 'Item actions',
+                        onSelected: (action) => action == 'delete'
+                            ? _showDeleteSheet(asset)
+                            : _toggleListing(asset),
+                        itemBuilder: (context) => [
+                          if (asset.approval == 'approved' &&
+                              (asset.status == 'ready' ||
+                                  asset.status == 'unavailable'))
+                            PopupMenuItem(
+                              value: 'availability',
+                              child: Text(
+                                asset.status == 'unavailable'
+                                    ? 'Relist item'
+                                    : 'Pause listing',
+                              ),
+                            ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Text('Delete item'),
+                          ),
+                        ],
                         icon: const Icon(
-                          Icons.delete_outline,
+                          Icons.more_vert,
                           color: AppColors.blue,
                         ),
                       ),

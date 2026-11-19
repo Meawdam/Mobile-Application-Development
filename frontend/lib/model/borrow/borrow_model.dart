@@ -19,6 +19,7 @@ class BorrowModel {
   final num? fineAmount;
   final String status;
   final String paymentStatus;
+  final String? rejectionReason;
 
   const BorrowModel({
     required this.id,
@@ -39,6 +40,7 @@ class BorrowModel {
     this.fineAmount,
     required this.status,
     required this.paymentStatus,
+    this.rejectionReason,
   });
 
   String get statusLabel => switch (status) {
@@ -77,6 +79,7 @@ class BorrowModel {
       fineAmount: fineAmount,
       status: status ?? this.status,
       paymentStatus: paymentStatus ?? this.paymentStatus,
+      rejectionReason: rejectionReason,
     );
   }
 
@@ -106,6 +109,7 @@ class BorrowModel {
       fineAmount: _asNumOrNull(json['fine_amount']),
       status: json['status']?.toString() ?? '',
       paymentStatus: json['payment_status']?.toString() ?? '',
+      rejectionReason: json['rejection_reason']?.toString(),
     );
   }
 

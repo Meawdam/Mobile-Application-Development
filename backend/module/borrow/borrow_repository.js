@@ -45,7 +45,14 @@ class BorrowRepository {
         b.rental_amount / NULLIF(b.rental_days, 0) AS price_per_day,
         a.return_before AS lending_end_date, a.pickup_point,
         owner.username AS owner_name,
-        borrower.username AS borrower_name
+        borrower.username AS borrower_name,
+        (SELECT JSON_UNQUOTE(JSON_EXTRACT(activity.details, '$.reason'))
+         FROM user_activity_logs activity
+         WHERE activity.user_id = b.borrower_id
+           AND activity.entity_type = 'borrow'
+           AND activity.entity_id = b.id
+           AND activity.action = 'borrow_rejected'
+         ORDER BY activity.id DESC LIMIT 1) AS rejection_reason
       FROM borrow b
       JOIN asset a ON b.asset_id = a.id
       JOIN users owner ON a.owner_id = owner.id

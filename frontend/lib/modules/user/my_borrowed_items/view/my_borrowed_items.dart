@@ -37,6 +37,26 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
   }
 
   Future<void> _cancel(BorrowModel item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancel borrow request?'),
+        content: const Text(
+          'Any payment for this request will be refunded to your wallet.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep request'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Cancel request'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     final err = await _controller.cancel(item.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -46,6 +66,15 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _payNow(BorrowModel item) async {
+    await Navigator.pushNamed(
+      context,
+      '/payment',
+      arguments: {'borrowId': item.id},
+    );
+    if (mounted) await _controller.load();
   }
 
   // กด Request return: ขึ้น popup ให้ยืนยันก่อนส่งคำขอคืน
@@ -89,7 +118,7 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: UserAppBar(
           title: 'My Borrowed Items',
@@ -123,6 +152,7 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
                 Tab(text: 'Borrowing'),
                 Tab(text: 'Pending'),
                 Tab(text: 'Returned'),
+                Tab(text: 'History'),
               ],
             ),
             Expanded(
@@ -142,6 +172,23 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
                                   color: _blue,
                                   onPressed: () => _requestReturn(item),
                                 )
+                              : item.status == 'approved' &&
+                                    item.paymentStatus == 'unpaid'
+                              ? Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    _ActionButton(
+                                      label: 'Pay now',
+                                      color: _blue,
+                                      onPressed: () => _payNow(item),
+                                    ),
+                                    _ActionButton(
+                                      label: 'Cancel',
+                                      color: _red,
+                                      onPressed: () => _cancel(item),
+                                    ),
+                                  ],
+                                )
                               : Text(
                                   item.status == 'approved'
                                       ? 'Approved - open details to confirm receipt'
@@ -152,15 +199,30 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
                         _BorrowList(
                           items: _controller.pending,
                           onOpen: _openDetails,
-                          buttonBuilder: (item) => _ActionButton(
-                            label: 'Cancel',
-                            color: _red,
-                            onPressed: () => _cancel(item),
+                          buttonBuilder: (item) => Wrap(
+                            spacing: 8,
+                            children: [
+                              if (item.paymentStatus == 'unpaid')
+                                _ActionButton(
+                                  label: 'Pay now',
+                                  color: _blue,
+                                  onPressed: () => _payNow(item),
+                                ),
+                              _ActionButton(
+                                label: 'Cancel',
+                                color: _red,
+                                onPressed: () => _cancel(item),
+                              ),
+                            ],
                           ),
                         ),
                         // Returned: วันคืนอยู่ด้านขวาของกล่อง
                         _BorrowList(
                           items: _controller.returned,
+                          onOpen: _openDetails,
+                        ),
+                        _BorrowList(
+                          items: _controller.history,
                           onOpen: _openDetails,
                         ),
                       ],
@@ -221,8 +283,12 @@ class _BorrowList extends StatelessWidget {
                 leading: _BorrowImage(imageUrl: item.assetImageUrl),
                 title: Text(item.assetName ?? 'Item #${item.assetId}'),
                 subtitle: Text(
-                  'Status: ${item.statusLabel}\n'
-                  'Total: ${item.totalAmount ?? '—'} Baht',
+                  [
+                    'Status: ${item.statusLabel}',
+                    if (item.rejectionReason?.trim().isNotEmpty == true)
+                      'Reason: ${item.rejectionReason}',
+                    'Total: ${item.totalAmount ?? '—'} Baht',
+                  ].join('\n'),
                 ),
                 isThreeLine: true,
                 trailing: _dateBox(item),

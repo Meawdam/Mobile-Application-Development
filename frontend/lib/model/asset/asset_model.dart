@@ -33,6 +33,22 @@ class AssetModel {
 
   String get imageUrl => image ?? '';
 
+  AssetModel copyWith({String? status}) => AssetModel(
+    id: id,
+    ownerId: ownerId,
+    ownerUsername: ownerUsername,
+    image: image,
+    name: name,
+    description: description,
+    status: status ?? this.status,
+    approval: approval,
+    approvalMessage: approvalMessage,
+    downPayment: downPayment,
+    returnBefore: returnBefore,
+    price: price,
+    pickupPoint: pickupPoint,
+  );
+
   factory AssetModel.fromJson(Map<String, dynamic> json) {
     return AssetModel(
       id: _asInt(json['id']),

@@ -37,7 +37,9 @@ Future<MockHttpClient> _openSheet(
   );
   await tester.pumpAndSettle();
 
-  await tester.tap(find.byIcon(Icons.delete_outline));
+  await tester.tap(find.byIcon(Icons.more_vert));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Delete item'));
   await tester.pumpAndSettle();
   return client;
 }
@@ -54,7 +56,9 @@ void main() {
     expect(find.text('Cancel'), findsOneWidget);
   });
 
-  testWidgets('Cancel closes the sheet and does not call DELETE', (tester) async {
+  testWidgets('Cancel closes the sheet and does not call DELETE', (
+    tester,
+  ) async {
     final client = await _openSheet(tester);
 
     await tester.tap(find.text('Cancel'));

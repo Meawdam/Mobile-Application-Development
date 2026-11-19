@@ -30,8 +30,7 @@ class MyLendingController extends ChangeNotifier {
       final token = await _authService.loadToken();
       final headers = <String, String>{
         'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty)
-          'Authorization': 'Bearer $token',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
       };
       final response = await _client.get(
         Uri.parse('http://localhost:3000/api/assets/mine'),
@@ -64,8 +63,7 @@ class MyLendingController extends ChangeNotifier {
       final token = await _authService.loadToken();
       final headers = <String, String>{
         'Content-Type': 'application/json',
-        if (token != null && token.isNotEmpty)
-          'Authorization': 'Bearer $token',
+        if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
       };
       if (token == null || token.isEmpty) return 'Please log in again';
 
@@ -80,6 +78,37 @@ class MyLendingController extends ChangeNotifier {
         return null;
       }
       return _messageFrom(response, 'Unable to delete item');
+    } on Exception {
+      return 'Connection error';
+    }
+  }
+
+  Future<String?> setAvailability(int id, bool isAvailable) async {
+    try {
+      final token = await _authService.loadToken();
+      if (token == null || token.isEmpty) return 'Please log in again';
+
+      final response = await _client.patch(
+        Uri.parse('http://localhost:3000/api/assets/$id/availability'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'is_available': isAvailable}),
+      );
+      if (response.statusCode != 200) {
+        return _messageFrom(response, 'Unable to update listing');
+      }
+
+      final index = items.indexWhere((asset) => asset.id == id);
+      if (index >= 0) {
+        items = List.of(items)
+          ..[index] = items[index].copyWith(
+            status: isAvailable ? 'ready' : 'unavailable',
+          );
+        notifyListeners();
+      }
+      return null;
     } on Exception {
       return 'Connection error';
     }

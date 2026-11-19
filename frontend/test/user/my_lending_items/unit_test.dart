@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/modules/user/my_lending_items/controller/my_lending_controller.dart';
 import 'package:http/http.dart' as http;
@@ -36,7 +38,9 @@ void main() {
 
   test('load shows the backend message on failure', () async {
     final controller = makeController(
-      MockClient((request) async => jsonResponse({'message': 'Invalid token'}, 403)),
+      MockClient(
+        (request) async => jsonResponse({'message': 'Invalid token'}, 403),
+      ),
     );
 
     await controller.load();
@@ -55,39 +59,43 @@ void main() {
     expect(controller.error, 'Connection error');
   });
 
-  test('deleteAsset calls DELETE /api/assets/:id and removes the item', () async {
-    late http.Request deleteRequest;
-    final controller = makeController(
-      MockClient((request) async {
-        if (request.method == 'DELETE') {
-          deleteRequest = request;
-          return jsonResponse({'message': 'Asset deleted successfully'});
-        }
-        return jsonResponse({
-          'data': [assetJson(id: 1), assetJson(id: 2, name: 'My tripod')],
-        });
-      }),
-    );
-    await controller.load();
+  test(
+    'deleteAsset calls DELETE /api/assets/:id and removes the item',
+    () async {
+      late http.Request deleteRequest;
+      final controller = makeController(
+        MockClient((request) async {
+          if (request.method == 'DELETE') {
+            deleteRequest = request;
+            return jsonResponse({'message': 'Asset deleted successfully'});
+          }
+          return jsonResponse({
+            'data': [assetJson(id: 1), assetJson(id: 2, name: 'My tripod')],
+          });
+        }),
+      );
+      await controller.load();
 
-    final error = await controller.deleteAsset(1);
+      final error = await controller.deleteAsset(1);
 
-    expect(error, isNull);
-    expect(deleteRequest.url.path, '/api/assets/1');
-    expect(deleteRequest.headers['Authorization'], 'Bearer test-token');
-    expect(controller.items.map((a) => a.id), [2]);
-  });
+      expect(error, isNull);
+      expect(deleteRequest.url.path, '/api/assets/1');
+      expect(deleteRequest.headers['Authorization'], 'Bearer test-token');
+      expect(controller.items.map((a) => a.id), [2]);
+    },
+  );
 
   test('deleteAsset returns the backend message and keeps the item', () async {
     final controller = makeController(
       MockClient((request) async {
         if (request.method == 'DELETE') {
-          return jsonResponse(
-            {'message': 'Cannot delete an asset that has borrow history'},
-            409,
-          );
+          return jsonResponse({
+            'message': 'Cannot delete an asset that has borrow history',
+          }, 409);
         }
-        return jsonResponse({'data': [assetJson(id: 1)]});
+        return jsonResponse({
+          'data': [assetJson(id: 1)],
+        });
       }),
     );
     await controller.load();
@@ -97,4 +105,30 @@ void main() {
     expect(error, 'Cannot delete an asset that has borrow history');
     expect(controller.items.map((a) => a.id), [1]);
   });
+
+  test(
+    'setAvailability pauses the listing and updates its local status',
+    () async {
+      late http.Request patch;
+      final controller = makeController(
+        MockClient((request) async {
+          if (request.method == 'PATCH') {
+            patch = request;
+            return jsonResponse({'message': 'Listing paused'});
+          }
+          return jsonResponse({
+            'data': [assetJson(id: 1)],
+          });
+        }),
+      );
+      await controller.load();
+
+      final error = await controller.setAvailability(1, false);
+
+      expect(error, isNull);
+      expect(patch.url.path, '/api/assets/1/availability');
+      expect(jsonDecode(patch.body), {'is_available': false});
+      expect(controller.items.single.status, 'unavailable');
+    },
+  );
 }

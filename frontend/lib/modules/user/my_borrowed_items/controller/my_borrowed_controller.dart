@@ -56,6 +56,10 @@ class MyBorrowedController extends ChangeNotifier {
   List<BorrowModel> get returned =>
       items.where((b) => b.status == 'returned_confirmed').toList();
 
+  List<BorrowModel> get history => items
+      .where((b) => b.status == 'cancelled' || b.status == 'rejected')
+      .toList();
+
   // ส่ง request พร้อม token (รูปแบบเดียวกับ LoginController: เรียก http ตรงๆ)
   Future<http.Response> _send(String method, String path) async {
     final token = await authService.loadToken();
@@ -119,8 +123,8 @@ class MyBorrowedController extends ChangeNotifier {
     final index = items.indexWhere((item) => item.id == borrowId);
     if (index == -1) return 'Borrow not found';
     final borrow = items[index];
-    if (borrow.status != 'requested') {
-      return 'Only pending requests can be cancelled';
+    if (borrow.status != 'requested' && borrow.status != 'approved') {
+      return 'Only requests awaiting receipt can be cancelled';
     }
     return _patchThenReload('/api/borrows/$borrowId/cancel');
   }

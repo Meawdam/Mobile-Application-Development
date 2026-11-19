@@ -34,6 +34,9 @@ void main() {
 
         await tester.tap(find.text('Confirm'));
         await tester.pumpAndSettle();
+        expect(find.text('Confirm returned item?'), findsOneWidget);
+        await tester.tap(find.text('Confirm return'));
+        await tester.pumpAndSettle();
 
         expect(find.text('Return confirmed'), findsOneWidget);
         expect(

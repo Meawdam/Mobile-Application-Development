@@ -49,38 +49,10 @@ class _RequestsReturnsScreenState extends State<RequestsReturnsScreen> {
 
   // กด Reject: ขึ้น popup ให้กรอกเหตุผล (backend บังคับต้องมีเหตุผล)
   Future<void> _reject(BorrowModel item) async {
-    final reasonController = TextEditingController();
     final reason = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Reject request'),
-        content: TextField(
-          controller: reasonController,
-          maxLength: 500,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            labelText: 'Reason',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _red,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () =>
-                Navigator.pop(dialogContext, reasonController.text),
-            child: const Text('Reject'),
-          ),
-        ],
-      ),
+      builder: (dialogContext) => const _RejectReasonDialog(),
     );
-    // reasonController.dispose();
     if (reason == null) return;
 
     final err = await _controller.reject(item.id, reason);
@@ -88,6 +60,26 @@ class _RequestsReturnsScreenState extends State<RequestsReturnsScreen> {
   }
 
   Future<void> _confirmReturn(BorrowModel item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm returned item?'),
+        content: Text(
+          'Confirm that "${item.assetName ?? 'this item'}" has been returned.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Back'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Confirm return'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     final err = await _controller.confirmReturn(item.id);
     _showResult(err, 'Return confirmed');
   }
@@ -262,4 +254,49 @@ class _ActionButton extends StatelessWidget {
       child: Text(label),
     );
   }
+}
+
+class _RejectReasonDialog extends StatefulWidget {
+  const _RejectReasonDialog();
+
+  @override
+  State<_RejectReasonDialog> createState() => _RejectReasonDialogState();
+}
+
+class _RejectReasonDialogState extends State<_RejectReasonDialog> {
+  final _reasonController = TextEditingController();
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Reject request'),
+    content: TextField(
+      controller: _reasonController,
+      maxLength: 500,
+      maxLines: 3,
+      decoration: const InputDecoration(
+        labelText: 'Reason',
+        border: OutlineInputBorder(),
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Cancel'),
+      ),
+      ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _red,
+          foregroundColor: Colors.white,
+        ),
+        onPressed: () => Navigator.pop(context, _reasonController.text),
+        child: const Text('Reject'),
+      ),
+    ],
+  );
 }

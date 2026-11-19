@@ -178,6 +178,80 @@ class AssetRepository {
     }
   }
 
+  async setAvailability(id, ownerId, isAvailable) {
+    const connection = await db.getConnection();
+    const nextStatus = isAvailable ? "ready" : "unavailable";
+    try {
+      await connection.beginTransaction();
+      const [assets] = await connection.query(
+        `SELECT id, status, approval FROM asset
+         WHERE id = ? AND owner_id = ? FOR UPDATE`,
+        [id, ownerId],
+      );
+      if (assets.length === 0) {
+        await connection.rollback();
+        return null;
+      }
+
+      const asset = assets[0];
+      if (asset.status === "borrowed") {
+        const err = new Error("Cannot change availability while the asset is borrowed");
+        err.status = 409;
+        throw err;
+      }
+      if (asset.approval !== "approved") {
+        const err = new Error("Only approved assets can be paused or resumed");
+        err.status = 409;
+        throw err;
+      }
+      if (asset.status === nextStatus) {
+        await connection.commit();
+        return { id: Number(id), status: nextStatus };
+      }
+
+      const [activeBorrows] = await connection.query(
+        `SELECT id FROM borrow
+         WHERE asset_id = ?
+           AND status IN ('requested', 'approved', 'borrowed', 'returned_pending')
+         LIMIT 1`,
+        [id],
+      );
+      if (activeBorrows.length > 0) {
+        const err = new Error("Resolve active borrow requests before changing availability");
+        err.status = 409;
+        throw err;
+      }
+
+      const [result] = await connection.query(
+        "UPDATE asset SET status = ? WHERE id = ? AND owner_id = ?",
+        [nextStatus, id, ownerId],
+      );
+      if (result.affectedRows === 0) {
+        await connection.rollback();
+        return null;
+      }
+      await logActivities(
+        [{
+          userId: ownerId,
+          actorId: ownerId,
+          category: "rental",
+          action: isAvailable ? "asset_relisted" : "asset_unlisted",
+          entityType: "asset",
+          entityId: Number(id),
+          message: isAvailable ? "Asset returned to the marketplace" : "Asset paused from the marketplace",
+        }],
+        connection,
+      );
+      await connection.commit();
+      return { id: Number(id), status: nextStatus };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
   async updateApproval(id, ownerId, adminId, approval, approvalMessage) {
     const connection = await db.getConnection();
     try {
@@ -235,7 +309,9 @@ class AssetRepository {
         [id],
       );
       if (borrowHistory.length > 0) {
-        const err = new Error("Cannot delete an asset with borrow history");
+        const err = new Error(
+          "This item has borrow history and cannot be deleted. Pause its listing instead.",
+        );
         err.status = 409;
         throw err;
       }

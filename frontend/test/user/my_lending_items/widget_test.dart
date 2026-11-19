@@ -46,7 +46,7 @@ void main() {
     expect(find.text('My camera'), findsOneWidget);
     expect(find.text('My tripod'), findsOneWidget);
     expect(find.textContaining('Waiting for admin approval'), findsOneWidget);
-    expect(find.byIcon(Icons.delete_outline), findsNWidgets(2));
+    expect(find.byIcon(Icons.more_vert), findsNWidgets(2));
     expect(find.text('Add Item'), findsOneWidget);
   });
 

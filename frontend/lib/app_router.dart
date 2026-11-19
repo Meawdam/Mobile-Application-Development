@@ -19,7 +19,8 @@ int? _readIntArg(Object? arguments) {
   if (arguments is int) return arguments;
   if (arguments is String) return int.tryParse(arguments);
   if (arguments is Map) {
-    final value = arguments['id'] ?? arguments['assetId'];
+    final value =
+        arguments['id'] ?? arguments['assetId'] ?? arguments['borrowId'];
     if (value is int) return value;
     if (value != null) return int.tryParse(value.toString());
   }
@@ -50,9 +51,7 @@ Route<dynamic> onGenerateAppRoute(RouteSettings settings) {
             : null,
       );
     case '/borrow-details':
-      page = BorrowDetailsScreen(
-        borrowId: _readIntArg(settings.arguments),
-      );
+      page = BorrowDetailsScreen(borrowId: _readIntArg(settings.arguments));
     case '/add-item':
       page = const AddItemScreen();
     case '/wallet':

@@ -24,15 +24,18 @@ Future<void> runApp(
     const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
     (call) async => call.method == 'read' ? 'test-token' : null,
   );
-  await http.runWithClient(() async {
-    await tester.pumpWidget(MaterialApp(home: screen));
-    await tester.pumpAndSettle();
-    await body();
-  }, () => MockClient((request) async {
-        log.add(request);
-        return routes['${request.method} ${request.url.path}'] ??
-            http.Response('{}', 404);
-      }));
+  await http.runWithClient(
+    () async {
+      await tester.pumpWidget(MaterialApp(home: screen));
+      await tester.pumpAndSettle();
+      await body();
+    },
+    () => MockClient((request) async {
+      log.add(request);
+      return routes['${request.method} ${request.url.path}'] ??
+          http.Response('{}', 404);
+    }),
+  );
 }
 
 http.Response json(Object body, [int status = 200]) =>
@@ -48,15 +51,15 @@ List<String> calls(List<http.Request> log) =>
     log.map((r) => '${r.method} ${r.url.path}').toList();
 
 Map<String, dynamic> record(int id, String status, String payment) => {
-      'id': id,
-      'asset_id': id + 100,
-      'asset_name': 'Item $id',
-      'borrower_name': 'borrower$id',
-      'status': status,
-      'payment_status': payment,
-      'rental_days': 1,
-      'planned_return_date': '2026-11-20',
-    };
+  'id': id,
+  'asset_id': id + 100,
+  'asset_name': 'Item $id',
+  'borrower_name': 'borrower$id',
+  'status': status,
+  'payment_status': payment,
+  'rental_days': 1,
+  'planned_return_date': '2026-11-20',
+};
 
 void main() {
   final list = json({
@@ -67,29 +70,44 @@ void main() {
     ],
   });
 
-  testWidgets('Waiting for Response: blue Approve, red Reject, red Cancel text', (tester) async {
-    await runApp(tester, {'GET /api/borrows/owner': list}, [], const RequestsReturnsScreen(), () async {
-      expect(find.text('Item 1'), findsOneWidget);
-      expect(bg(tester, 'Approve'), const Color(0xFF2F4BFF));
-      expect(bg(tester, 'Reject'), const Color.fromARGB(255, 223, 42, 42));
+  testWidgets(
+    'Waiting for Response: blue Approve, red Reject, red Cancel text',
+    (tester) async {
+      await runApp(
+        tester,
+        {'GET /api/borrows/owner': list},
+        [],
+        const RequestsReturnsScreen(),
+        () async {
+          expect(find.text('Item 1'), findsOneWidget);
+          expect(bg(tester, 'Approve'), const Color(0xFF2F4BFF));
+          expect(bg(tester, 'Reject'), const Color.fromARGB(255, 223, 42, 42));
 
-      // คำขอที่ผู้ยืมยกเลิก: ข้อความ Cancel สีแดงด้านขวา ไม่มีปุ่ม
-      final cancel = tester.widget<Text>(find.text('Cancel'));
-      expect(cancel.style?.color, const Color.fromARGB(255, 223, 42, 42));
-    });
-  });
+          // คำขอที่ผู้ยืมยกเลิก: ข้อความ Cancel สีแดงด้านขวา ไม่มีปุ่ม
+          final cancel = tester.widget<Text>(find.text('Cancel'));
+          expect(cancel.style?.color, const Color.fromARGB(255, 223, 42, 42));
+        },
+      );
+    },
+  );
 
   testWidgets('Approve calls the API', (tester) async {
     final log = <http.Request>[];
-    await runApp(tester, {
-      'GET /api/borrows/owner': list,
-      'PATCH /api/borrows/1/approve': json({'message': 'ok'}),
-    }, log, const RequestsReturnsScreen(), () async {
-      await tester.tap(find.text('Approve'));
-      await tester.pumpAndSettle();
+    await runApp(
+      tester,
+      {
+        'GET /api/borrows/owner': list,
+        'PATCH /api/borrows/1/approve': json({'message': 'ok'}),
+      },
+      log,
+      const RequestsReturnsScreen(),
+      () async {
+        await tester.tap(find.text('Approve'));
+        await tester.pumpAndSettle();
 
-      expect(calls(log).contains('PATCH /api/borrows/1/approve'), isTrue);
-    });
+        expect(calls(log).contains('PATCH /api/borrows/1/approve'), isTrue);
+      },
+    );
   });
 
   testWidgets('Reject asks for a reason and sends it', (tester) async {
@@ -97,48 +115,79 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     final log = <http.Request>[];
-    await runApp(tester, {
-      'GET /api/borrows/owner': list,
-      'PATCH /api/borrows/1/reject': json({'message': 'ok'}),
-    }, log, const RequestsReturnsScreen(), () async {
-      await tester.tap(find.text('Reject'));
-      await tester.pumpAndSettle();
-      expect(find.text('Reject request'), findsOneWidget);
+    await runApp(
+      tester,
+      {
+        'GET /api/borrows/owner': list,
+        'PATCH /api/borrows/1/reject': json({'message': 'ok'}),
+      },
+      log,
+      const RequestsReturnsScreen(),
+      () async {
+        await tester.tap(find.text('Reject'));
+        await tester.pumpAndSettle();
+        expect(find.text('Reject request'), findsOneWidget);
 
-      await tester.enterText(find.byType(TextField), 'Item is broken');
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Reject').last);
-      await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), 'Item is broken');
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Reject').last);
+        await tester.pumpAndSettle();
 
-      final reject = log.firstWhere((r) => r.url.path == '/api/borrows/1/reject');
-      expect(jsonDecode(reject.body), {'reason': 'Item is broken'});
-    });
+        final reject = log.firstWhere(
+          (r) => r.url.path == '/api/borrows/1/reject',
+        );
+        expect(jsonDecode(reject.body), {'reason': 'Item is broken'});
+      },
+    );
   });
 
   testWidgets('Reject without a reason does not call the API', (tester) async {
     final log = <http.Request>[];
-    await runApp(tester, {'GET /api/borrows/owner': list}, log, const RequestsReturnsScreen(), () async {
-      await tester.tap(find.text('Reject'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Reject').last);
-      await tester.pumpAndSettle();
+    await runApp(
+      tester,
+      {'GET /api/borrows/owner': list},
+      log,
+      const RequestsReturnsScreen(),
+      () async {
+        await tester.tap(find.text('Reject'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Reject').last);
+        await tester.pumpAndSettle();
 
-      expect(calls(log).where((c) => c.startsWith('PATCH')), isEmpty);
-      expect(find.text('A reason is required to reject a request'), findsOneWidget);
-    });
+        expect(calls(log).where((c) => c.startsWith('PATCH')), isEmpty);
+        expect(
+          find.text('A reason is required to reject a request'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 
-  testWidgets('Borrowed Items: blue Confirm button confirms the return', (tester) async {
+  testWidgets('Borrowed Items: blue Confirm button confirms the return', (
+    tester,
+  ) async {
     final log = <http.Request>[];
-    await runApp(tester, {
-      'GET /api/borrows/owner': list,
-      'PATCH /api/borrows/3/confirm-return': json({'message': 'ok'}),
-    }, log, const RequestsReturnsScreen(), () async {
-      expect(bg(tester, 'Confirm'), const Color(0xFF2F4BFF));
+    await runApp(
+      tester,
+      {
+        'GET /api/borrows/owner': list,
+        'PATCH /api/borrows/3/confirm-return': json({'message': 'ok'}),
+      },
+      log,
+      const RequestsReturnsScreen(),
+      () async {
+        expect(bg(tester, 'Confirm'), const Color(0xFF2F4BFF));
 
-      await tester.tap(find.text('Confirm'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Confirm'));
+        await tester.pumpAndSettle();
+        expect(find.text('Confirm returned item?'), findsOneWidget);
+        await tester.tap(find.text('Confirm return'));
+        await tester.pumpAndSettle();
 
-      expect(calls(log).contains('PATCH /api/borrows/3/confirm-return'), isTrue);
-    });
+        expect(
+          calls(log).contains('PATCH /api/borrows/3/confirm-return'),
+          isTrue,
+        );
+      },
+    );
   });
 }

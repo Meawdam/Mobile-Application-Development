@@ -177,6 +177,9 @@ void main() {
 
           await tester.tap(find.text('Cancel'));
           await tester.pumpAndSettle();
+          expect(find.text('Cancel borrow request?'), findsOneWidget);
+          await tester.tap(find.text('Cancel request'));
+          await tester.pumpAndSettle();
 
           expect(calls(log).contains('PATCH /api/borrows/2/cancel'), isTrue);
           expect(
