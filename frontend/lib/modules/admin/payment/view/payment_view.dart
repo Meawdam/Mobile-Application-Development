@@ -7,7 +7,10 @@ import '../../dashboard/controller/dashboard_controller.dart';
 import '../../dashboard/model/dashboard_model.dart';
 
 class PaymentScreen extends StatefulWidget {
-  const PaymentScreen({super.key});
+  final PaymentController? paymentController;
+  final DashboardController? dashboardController;
+
+  const PaymentScreen({super.key, this.paymentController, this.dashboardController});
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
@@ -19,8 +22,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   static const _green = Color.fromARGB(255, 72, 230, 83);
   static const _onLight = Color(0xFF172554);
 
-  final PaymentController _paymentController = PaymentController();
-  final DashboardController _dashboardController = DashboardController();
+  late final PaymentController _paymentController;
+  late final DashboardController _dashboardController;
   List<PaymentTransaction> _transactions = [];
   List<PaymentTransaction> _pendingRefundTransactions = [];
   DashboardStats? _stats;
@@ -31,6 +34,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   void initState() {
     super.initState();
+    _paymentController = widget.paymentController ?? PaymentController();
+    _dashboardController = widget.dashboardController ?? DashboardController();
     _load();
   }
 

@@ -5,7 +5,9 @@ import 'package:frontend/modules/admin/approve_items/controller/approve_items_co
 import 'package:frontend/modules/admin/approve_items/model/approve_item_model.dart';
 
 class ApproveItemsPage extends StatefulWidget {
-  const ApproveItemsPage({super.key});
+  final ApproveItemsController? controller;
+
+  const ApproveItemsPage({super.key, this.controller});
 
   @override
   State<ApproveItemsPage> createState() => _ApproveItemsPageState();
@@ -30,7 +32,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
   @override
   void initState() {
     super.initState();
-    controller = ApproveItemsController();
+    controller = widget.controller ?? ApproveItemsController();
     controller.addListener(_refresh);
     _loadItems();
   }
@@ -53,7 +55,7 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
   void dispose() {
     noteController.dispose();
     controller.removeListener(_refresh);
-    controller.dispose();
+    if (widget.controller == null) controller.dispose();
     super.dispose();
   }
 
@@ -68,91 +70,101 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (sheetContext, setSheetState) => SafeArea(
-          child: Container(
-            height: MediaQuery.of(context).size.height * 0.88,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF5F5F5),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                Container(
-                  width: 42,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(10),
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.88,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 42,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 12, 10, 12),
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Item Details',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 12, 10, 12),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Item Details',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(sheetContext),
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    child: _buildDetails(item, setSheetState),
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    18,
-                    10,
-                    18,
-                    14 + MediaQuery.of(sheetContext).viewInsets.bottom,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () =>
-                              _decide(item.id, item.name, false, sheetContext, setSheetState),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: _red,
-                            side: const BorderSide(color: _red),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: const Text('Reject'),
+                        IconButton(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.close),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () =>
-                              _decide(item.id, item.name, true, sheetContext, setSheetState),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _green,
-                            foregroundColor: _onLight,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: const Text('Approve'),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  const Divider(height: 1),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: _buildDetails(item, setSheetState),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      18,
+                      10,
+                      18,
+                      14 + MediaQuery.of(sheetContext).viewInsets.bottom,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => _decide(
+                              item.id,
+                              item.name,
+                              false,
+                              sheetContext,
+                              setSheetState,
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: _red,
+                              side: const BorderSide(color: _red),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text('Reject'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => _decide(
+                              item.id,
+                              item.name,
+                              true,
+                              sheetContext,
+                              setSheetState,
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _green,
+                              foregroundColor: _onLight,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text('Approve'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         );
       },
     );
@@ -163,17 +175,32 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Center(
-          child: Container(
-            width: 110,
-            height: 110,
-            decoration: BoxDecoration(
-              color: _blueTint,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(
-              Icons.inventory_2_outlined,
-              size: 55,
-              color: _blue,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: SizedBox(
+              width: 180,
+              height: 180,
+              child: item.imageUrl.isEmpty
+                  ? const ColoredBox(
+                      color: _blueTint,
+                      child: Icon(
+                        Icons.inventory_2_outlined,
+                        size: 64,
+                        color: _blue,
+                      ),
+                    )
+                  : Image.network(
+                      item.imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const ColoredBox(
+                        color: _blueTint,
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          size: 56,
+                          color: _blue,
+                        ),
+                      ),
+                    ),
             ),
           ),
         ),
@@ -211,11 +238,16 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: _reasonError ? _red : const Color(0xFFDCE5F2)),
+              borderSide: BorderSide(
+                color: _reasonError ? _red : const Color(0xFFDCE5F2),
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: _reasonError ? _red : _blue, width: 1.5),
+              borderSide: BorderSide(
+                color: _reasonError ? _red : _blue,
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -362,7 +394,10 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                   Container(
                     width: 48,
                     height: 48,
-                    decoration: BoxDecoration(color: _blueTint, borderRadius: BorderRadius.circular(15)),
+                    decoration: BoxDecoration(
+                      color: _blueTint,
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                     child: const Icon(Icons.inventory_2_outlined, color: _blue),
                   ),
                   const SizedBox(width: 13),
@@ -370,16 +405,55 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Approve items', style: TextStyle(fontSize: 21, color: _onLight, fontWeight: FontWeight.w800)),
+                        Text(
+                          'Approve items',
+                          style: TextStyle(
+                            fontSize: 21,
+                            color: _onLight,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                         SizedBox(height: 4),
-                        Text('Review new listings before they appear to users.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        Text(
+                          'Review new listings before they appear to users.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                    decoration: BoxDecoration(color: const Color(0xFFFFF6DF), borderRadius: BorderRadius.circular(14)),
-                    child: Column(children: [Text('${controller.pendingCount}', style: const TextStyle(fontSize: 18, color: Color(0xFF9A6700), fontWeight: FontWeight.w800)), const Text('PENDING', style: TextStyle(fontSize: 9, letterSpacing: .5, color: Color(0xFF9A6700), fontWeight: FontWeight.w800))]),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF6DF),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          '${controller.pendingCount}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Color(0xFF9A6700),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const Text(
+                          'PENDING',
+                          style: TextStyle(
+                            fontSize: 9,
+                            letterSpacing: .5,
+                            color: Color(0xFF9A6700),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -409,14 +483,35 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                       child: Container(
                         margin: const EdgeInsets.all(20),
                         padding: const EdgeInsets.all(28),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0xFFE1E8F2))),
-                        child: const Column(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.task_alt_rounded, size: 48, color: Color(0xFF16845B)),
-                          SizedBox(height: 12),
-                          Text('You’re all caught up', style: TextStyle(fontSize: 17, color: _onLight, fontWeight: FontWeight.w800)),
-                          SizedBox(height: 4),
-                          Text('There are no items waiting for review.', style: TextStyle(color: Color(0xFF64748B))),
-                        ]),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: const Color(0xFFE1E8F2)),
+                        ),
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.task_alt_rounded,
+                              size: 48,
+                              color: Color(0xFF16845B),
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              'You’re all caught up',
+                              style: TextStyle(
+                                fontSize: 17,
+                                color: _onLight,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'There are no items waiting for review.',
+                              style: TextStyle(color: Color(0xFF64748B)),
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   : ListView.builder(
@@ -440,12 +535,32 @@ class _ApproveItemsPageState extends State<ApproveItemsPage> {
                               padding: const EdgeInsets.all(14),
                               child: Row(
                                 children: [
-                                  CircleAvatar(
-                                    radius: 24,
-                                    backgroundColor: _blueTint,
-                                    child: const Icon(
-                                      Icons.inventory_2_outlined,
-                                      color: _blue,
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: SizedBox(
+                                      width: 52,
+                                      height: 52,
+                                      child: item.imageUrl.isEmpty
+                                          ? const ColoredBox(
+                                              color: _blueTint,
+                                              child: Icon(
+                                                Icons.inventory_2_outlined,
+                                                color: _blue,
+                                              ),
+                                            )
+                                          : Image.network(
+                                              item.imageUrl,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) =>
+                                                  const ColoredBox(
+                                                    color: _blueTint,
+                                                    child: Icon(
+                                                      Icons
+                                                          .broken_image_outlined,
+                                                      color: _blue,
+                                                    ),
+                                                  ),
+                                            ),
                                     ),
                                   ),
                                   const SizedBox(width: 13),

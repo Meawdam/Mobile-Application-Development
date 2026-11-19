@@ -27,10 +27,23 @@ void main() {
       isIncome: true,
       isPending: false,
     ),
+    PaymentTransaction(
+      id: 'payout-1',
+      title: 'Rental payout',
+      user: 'Owner',
+      time: '2026-11-19',
+      amount: '-฿1,500.00',
+      isIncome: false,
+      isPending: false,
+      transactionType: 'rental_payout',
+    ),
   ];
 
   test('Pending Refund filter returns refundable transactions', () {
-    final result = controller.filterTransactions(transactions, 'Pending Refund');
+    final result = controller.filterTransactions(
+      transactions,
+      'Pending Refund',
+    );
 
     expect(result.map((transaction) => transaction.id), ['refund-1']);
   });
@@ -39,6 +52,13 @@ void main() {
     final result = controller.filterTransactions(transactions, 'Collected');
 
     expect(result.map((transaction) => transaction.id), ['payment-1']);
+  });
+
+  test('owner rental payouts are expenses, not refunds', () {
+    final payout = transactions.last;
+
+    expect(payout.isIncome, isFalse);
+    expect(controller.filterTransactions([payout], 'Refunded'), isEmpty);
   });
 
   test('Amount validation only accepts positive values', () {

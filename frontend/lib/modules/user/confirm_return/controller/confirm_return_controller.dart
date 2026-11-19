@@ -1,32 +1,48 @@
-import 'package:flutter/foundation.dart';
+import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+
+import 'package:frontend/services/auth_service.dart';
 import '../../shared/model/lending_item_model.dart';
 import '../../shared/model/return_request_model.dart';
 
 /// ผลของการยืนยันรับของคืน: success=สำเร็จ, notFound=ไม่พบคำขอ,
 /// forbidden=ไม่ใช่เจ้าของ, alreadyConfirmed=ยืนยันไปแล้ว,
-/// notRequested=ผู้ยืมยังไม่ได้แจ้งคืน
+/// notRequested=ผู้ยืมยังไม่ได้แจ้งคืน, failed=เรียก backend ไม่สำเร็จ
 enum ConfirmReturnResult {
   success,
   notFound,
   forbidden,
   alreadyConfirmed,
   notRequested,
+  failed,
 }
 
 /// ควบคุมหน้ายืนยันรับของคืน: เจ้าของกดยืนยันว่าได้ของคืนแล้ว
+/// - โหลดรายการ:  GET   /api/borrows/lending
+/// - ยืนยันคืน:    PATCH /api/borrows/:id/confirm-return
 /// กฎตรงกับ backend: ต้องเป็นเจ้าของ และสถานะต้องเป็น returned_pending
 class ConfirmReturnController extends ChangeNotifier {
   ConfirmReturnController(
     List<ReturnRequest> requests, {
     required this.currentUserId,
     List<LendingItem> lendingItems = const [],
+    http.Client? client,
+    Authservice? authService,
   }) : _requests = List.of(requests),
-       _lendingItems = List.of(lendingItems);
+       _lendingItems = List.of(lendingItems),
+       _client = client ?? http.Client(),
+       _authService = authService ?? Authservice();
 
   final String currentUserId;
   final List<ReturnRequest> _requests;
   final List<LendingItem> _lendingItems;
+  final http.Client _client;
+  final Authservice _authService;
+
+  bool loading = false;
+  String? error;
 
   List<ReturnRequest> get requests => List.unmodifiable(_requests);
   List<LendingItem> get lendingItems => List.unmodifiable(_lendingItems);
@@ -48,8 +64,52 @@ class ConfirmReturnController extends ChangeNotifier {
       )
       .fold(0, (sum, r) => sum + r.fineAmount);
 
+  /// โหลดรายการยืมของไอเทมที่เราเป็นเจ้าของ จาก GET /api/borrows/lending
+  Future<void> load() async {
+    loading = true;
+    error = null;
+    notifyListeners();
+
+    try {
+      final token = await _authService.loadToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty)
+          'Authorization': 'Bearer $token',
+      };
+      final response = await _client.get(
+        Uri.parse('http://localhost:3000/api/borrows/lending'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = _dataFrom(response);
+        _requests
+          ..clear()
+          ..addAll(
+            data is List
+                ? data.whereType<Map<String, dynamic>>().map(
+                    // รายการนี้เป็นของเราเองอยู่แล้ว backend ไม่ส่ง owner_id มา
+                    (m) => ReturnRequest.fromMap({
+                      ...m,
+                      'owner_id': m['owner_id'] ?? currentUserId,
+                    }),
+                  )
+                : const <ReturnRequest>[],
+          );
+      } else {
+        error = _messageFrom(response, 'Unable to load requests');
+      }
+    } on Exception {
+      error = 'Connection error';
+    }
+
+    loading = false;
+    notifyListeners();
+  }
+
   /// ยืนยันรับของคืน คืนผลเป็น ConfirmReturnResult
-  ConfirmReturnResult confirmReturn(String requestId) {
+  Future<ConfirmReturnResult> confirmReturn(String requestId) async {
     final index = _requests.indexWhere((r) => r.id == requestId);
     if (index == -1) return ConfirmReturnResult.notFound;
 
@@ -62,16 +122,83 @@ class ConfirmReturnController extends ChangeNotifier {
       return ConfirmReturnResult.notRequested;
     }
 
-    _requests[index] = request.copyWith(status: BorrowStatus.returnedConfirmed);
+    error = null;
+    var result = ConfirmReturnResult.failed;
+    try {
+      final token = await _authService.loadToken();
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null && token.isNotEmpty)
+          'Authorization': 'Bearer $token',
+      };
+      if (token == null || token.isEmpty) {
+        error = 'Please log in again';
+      } else {
+        final response = await _client.patch(
+          Uri.parse('http://localhost:3000/api/borrows/$requestId/confirm-return'),
+          headers: headers,
+        );
 
-    final lendingIndex =
-        _lendingItems.indexWhere((i) => i.id == request.assetId);
-    if (lendingIndex != -1) {
-      _lendingItems[lendingIndex] =
-          _lendingItems[lendingIndex].copyWith(status: ItemStatus.ready);
+        switch (response.statusCode) {
+          case 200:
+            result = ConfirmReturnResult.success;
+          case 403:
+            result = ConfirmReturnResult.forbidden;
+          case 404:
+            result = ConfirmReturnResult.notFound;
+          case 400:
+            final message = _messageFrom(response, '');
+            result = message.toLowerCase().contains('already')
+                ? ConfirmReturnResult.alreadyConfirmed
+                : ConfirmReturnResult.notRequested;
+          case 409:
+            result = ConfirmReturnResult.notRequested;
+          default:
+            error = _messageFrom(response, 'Unable to confirm return');
+        }
+      }
+    } on Exception {
+      error = 'Connection error';
     }
 
+    if (result == ConfirmReturnResult.success) {
+      _requests[index] = request.copyWith(
+        status: BorrowStatus.returnedConfirmed,
+      );
+      final lendingIndex = _lendingItems.indexWhere(
+        (i) => i.id == request.assetId,
+      );
+      if (lendingIndex != -1) {
+        _lendingItems[lendingIndex] = _lendingItems[lendingIndex].copyWith(
+          status: ItemStatus.ready,
+        );
+      }
+    }
     notifyListeners();
-    return ConfirmReturnResult.success;
+    return result;
+  }
+
+  /// ดึงข้อความ error จาก body รูปแบบ { "message": "..." } ของ backend
+  String _messageFrom(http.Response response, String fallback) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map && decoded['message'] is String) {
+        return decoded['message'] as String;
+      }
+    } catch (_) {
+      // body ไม่ใช่ JSON ใช้ข้อความสำรอง
+    }
+    return fallback;
+  }
+
+  /// ดึงฟิลด์ "data" จาก response รูปแบบ { "data": ... }
+  dynamic _dataFrom(http.Response response) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map) return decoded['data'];
+    } catch (_) {
+      // body ไม่ใช่ JSON
+    }
+    return null;
   }
 }

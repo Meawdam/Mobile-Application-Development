@@ -22,6 +22,7 @@ router.post(
   assetsController.createAsset,
 );
 router.patch('/:id', authenticateToken, assetsController.updateAsset);
+router.patch('/:id/availability', authenticateToken, assetsController.setAvailability);
 router.delete('/:id', authenticateToken, assetsController.deleteAsset);
 router.patch(
   '/:id/approve',

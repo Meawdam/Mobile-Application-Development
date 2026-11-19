@@ -29,6 +29,9 @@ class AdminRepository {
       `SELECT
         COALESCE(SUM(CASE
           WHEN transaction_type = 'rental_payment' AND status = 'completed'
+          THEN amount ELSE 0 END), 0) -
+        COALESCE(SUM(CASE
+          WHEN transaction_type = 'rental_payout' AND status = 'completed'
           THEN amount ELSE 0 END), 0) AS collected_revenue,
         COALESCE(SUM(CASE
           WHEN transaction_type = 'deposit_hold' AND status = 'pending'

@@ -1,7 +1,10 @@
+import 'package:frontend/utils/date_utils.dart';
+
 class BorrowModel {
   final int id;
   final int assetId;
   final String? assetName;
+  final String? assetImageUrl;
   final String? ownerName;
   final String? borrowerName;
   final String? pickupPoint;
@@ -16,11 +19,13 @@ class BorrowModel {
   final num? fineAmount;
   final String status;
   final String paymentStatus;
+  final String? rejectionReason;
 
   const BorrowModel({
     required this.id,
     required this.assetId,
     this.assetName,
+    this.assetImageUrl,
     this.ownerName,
     this.borrowerName,
     this.pickupPoint,
@@ -35,13 +40,31 @@ class BorrowModel {
     this.fineAmount,
     required this.status,
     required this.paymentStatus,
+    this.rejectionReason,
   });
+
+  String get statusLabel => switch (status) {
+    'requested' => 'Awaiting owner approval',
+    'approved' => 'Approved',
+    'borrowed' => 'Borrowed',
+    'returned_pending' => 'Return requested',
+    'returned_confirmed' => 'Returned',
+    'rejected' => 'Request declined',
+    'cancelled' => 'Cancelled',
+    _ =>
+      status
+          .split('_')
+          .where((word) => word.isNotEmpty)
+          .map((word) => '${word[0].toUpperCase()}${word.substring(1)}')
+          .join(' '),
+  };
 
   BorrowModel copyWith({String? status, String? paymentStatus}) {
     return BorrowModel(
       id: id,
       assetId: assetId,
       assetName: assetName,
+      assetImageUrl: assetImageUrl,
       ownerName: ownerName,
       borrowerName: borrowerName,
       pickupPoint: pickupPoint,
@@ -56,6 +79,7 @@ class BorrowModel {
       fineAmount: fineAmount,
       status: status ?? this.status,
       paymentStatus: paymentStatus ?? this.paymentStatus,
+      rejectionReason: rejectionReason,
     );
   }
 
@@ -64,6 +88,7 @@ class BorrowModel {
       id: _asInt(json['id']),
       assetId: _asInt(json['asset_id']),
       assetName: json['asset_name']?.toString(),
+      assetImageUrl: json['asset_image']?.toString(),
       ownerName: json['owner_name']?.toString(),
       borrowerName: json['borrower_name']?.toString(),
       pickupPoint: json['pickup_point']?.toString(),
@@ -84,6 +109,7 @@ class BorrowModel {
       fineAmount: _asNumOrNull(json['fine_amount']),
       status: json['status']?.toString() ?? '',
       paymentStatus: json['payment_status']?.toString() ?? '',
+      rejectionReason: json['rejection_reason']?.toString(),
     );
   }
 
@@ -102,7 +128,7 @@ class BorrowModel {
   static String? _asDate(dynamic value) {
     if (value == null) return null;
     final raw = value.toString();
-    if (raw.length >= 10) return raw.substring(0, 10);
-    return raw;
+    final date = AppDateUtils.tryParseYmd(raw);
+    return date == null ? raw : AppDateUtils.formatYmd(date);
   }
 }

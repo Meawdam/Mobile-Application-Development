@@ -45,7 +45,14 @@ class BorrowRepository {
         b.rental_amount / NULLIF(b.rental_days, 0) AS price_per_day,
         a.return_before AS lending_end_date, a.pickup_point,
         owner.username AS owner_name,
-        borrower.username AS borrower_name
+        borrower.username AS borrower_name,
+        (SELECT JSON_UNQUOTE(JSON_EXTRACT(activity.details, '$.reason'))
+         FROM user_activity_logs activity
+         WHERE activity.user_id = b.borrower_id
+           AND activity.entity_type = 'borrow'
+           AND activity.entity_id = b.id
+           AND activity.action = 'borrow_rejected'
+         ORDER BY activity.id DESC LIMIT 1) AS rejection_reason
       FROM borrow b
       JOIN asset a ON b.asset_id = a.id
       JOIN users owner ON a.owner_id = owner.id
@@ -355,7 +362,7 @@ class BorrowRepository {
 
       const borrow = borrows[0];
       if (
-        !["requested", "approved"].includes(borrow.status) ||
+        borrow.status !== "approved" ||
         borrow.payment_status !== "paid" ||
         borrow.asset_status !== "ready"
       ) {
@@ -368,7 +375,7 @@ class BorrowRepository {
          SET status = 'borrowed',
              borrow_date = COALESCE(pickup_date, CURRENT_DATE()),
              received_at = NOW()
-         WHERE id = ? AND borrower_id = ? AND status IN ('requested', 'approved')
+         WHERE id = ? AND borrower_id = ? AND status = 'approved'
            AND payment_status = 'paid'`,
         [id, borrowerId],
       );
@@ -799,7 +806,7 @@ class BorrowRepository {
            FROM borrow b
            JOIN asset a ON a.id = b.asset_id
            WHERE b.payment_status = 'paid'
-             AND b.status IN ('borrowed', 'returned_pending')
+             AND b.status = 'borrowed'
              AND b.planned_return_date < CURRENT_DATE()
            ORDER BY b.id
            LIMIT ?
@@ -891,9 +898,8 @@ class BorrowRepository {
     try {
       await connection.beginTransaction();
       const [borrows] = await connection.query(
-        `SELECT b.id, b.borrower_id, b.deposit_amount, b.status,
-          b.payment_status, b.planned_return_date,
-          b.planned_return_date < CURRENT_DATE() AS return_deadline_passed,
+        `SELECT b.id, b.borrower_id, b.rental_amount, b.deposit_amount, b.status,
+          b.payment_status,
           a.owner_id, a.status AS asset_status
          FROM borrow b
          JOIN asset a ON a.id = b.asset_id
@@ -911,15 +917,6 @@ class BorrowRepository {
       if (borrow.status !== "returned_pending") {
         await connection.rollback();
         return false;
-      }
-
-      if (borrow.return_deadline_passed && borrow.payment_status === "paid") {
-        const forfeited = await this._forfeitDeposit(connection, borrow);
-        if (!forfeited) {
-          await connection.rollback();
-          return false;
-        }
-        borrow.payment_status = "forfeited";
       }
 
       const depositAmountCents = parseAmountCents(borrow.deposit_amount);
@@ -956,6 +953,60 @@ class BorrowRepository {
         err.status = 409;
         throw err;
       }
+
+      const rentalAmountCents = parseAmountCents(borrow.rental_amount);
+      if (
+        rentalAmountCents === null ||
+        rentalAmountCents > MAX_STORED_AMOUNT_CENTS ||
+        !["paid", "forfeited"].includes(borrow.payment_status)
+      ) {
+        const err = new Error("Paid rental amount is unavailable for owner payout");
+        err.status = 409;
+        throw err;
+      }
+      const [rentalPayments] = await connection.query(
+        `SELECT amount FROM financial_transactions
+         WHERE borrow_id = ? AND transaction_type = 'rental_payment'
+           AND status = 'completed'
+         FOR UPDATE`,
+        [id],
+      );
+      if (
+        rentalPayments.length === 0 ||
+        parseAmountCents(rentalPayments[0].amount) !== rentalAmountCents
+      ) {
+        throw new Error(
+          `Completed rental payment missing or mismatched for borrow ${id}`,
+        );
+      }
+      const [owners] = await connection.query(
+        "SELECT wallet_balance FROM users WHERE id = ? FOR UPDATE",
+        [ownerId],
+      );
+      const ownerBalanceCents = parseAmountCents(owners[0]?.wallet_balance);
+      if (
+        ownerBalanceCents === null ||
+        ownerBalanceCents + rentalAmountCents > MAX_STORED_AMOUNT_CENTS
+      ) {
+        const err = new Error(
+          "Asset owner's wallet balance exceeds the supported range",
+        );
+        err.status = 409;
+        throw err;
+      }
+      const rentalAmount = formatAmountCents(rentalAmountCents);
+      await connection.query(
+        "UPDATE users SET wallet_balance = wallet_balance + ? WHERE id = ?",
+        [rentalAmount, ownerId],
+      );
+      await connection.query(
+        `INSERT INTO financial_transactions
+          (user_id, actor_id, borrow_id, transaction_type, amount, status,
+           description, processed_at)
+         VALUES (?, ?, ?, 'rental_payout', ?, 'completed',
+           'Rental earnings credited to asset owner', NOW())`,
+        [ownerId, ownerId, id, rentalAmount],
+      );
 
       if (refundAmountCents === 0 && depositForfeitedCents === 0) {
         await connection.query(
@@ -998,6 +1049,7 @@ class BorrowRepository {
               : "Return confirmed; no deposit refund due",
           borrowId: id,
           details: {
+            rental_paid_to_owner: amountCentsToNumber(rentalAmountCents),
             deposit_forfeited: amountCentsToNumber(depositForfeitedCents),
             deposit_refund_pending: amountCentsToNumber(refundAmountCents),
           },
@@ -1007,6 +1059,7 @@ class BorrowRepository {
 
       await connection.commit();
       return {
+        rental_paid: amountCentsToNumber(rentalAmountCents),
         deposit_forfeited: amountCentsToNumber(depositForfeitedCents),
         refund_pending: amountCentsToNumber(refundAmountCents),
         refund_transaction_id: refundTransactionId,

@@ -3,19 +3,25 @@ import 'package:flutter/services.dart';
 
 import 'package:frontend/modules/user/edit_item/controller/edit_item_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
+import 'package:frontend/widgets/app_popup.dart';
 import 'package:frontend/widgets/date_picker_field.dart';
+import 'package:frontend/widgets/user_app_bar.dart';
 
 class EditItemScreen extends StatefulWidget {
   final int? assetId;
 
-  const EditItemScreen({super.key, this.assetId});
+  /// ใส่ controller จากภายนอกได้ (ใช้ตอนทำ widget test) ถ้าไม่ใส่จะสร้างเอง
+  final EditItemController? controller;
+
+  const EditItemScreen({super.key, this.assetId, this.controller});
 
   @override
   State<EditItemScreen> createState() => _EditItemScreenState();
 }
 
 class _EditItemScreenState extends State<EditItemScreen> {
-  final _controller = EditItemController();
+  late final EditItemController _controller =
+      widget.controller ?? EditItemController();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _priceController = TextEditingController();
@@ -71,16 +77,22 @@ class _EditItemScreenState extends State<EditItemScreen> {
     final message = switch (result) {
       EditItemResult.success => 'Changes saved',
       EditItemResult.missingFields => 'Please complete all fields',
-      EditItemResult.missingLendingEndDate => 'Please choose a lending end date',
+      EditItemResult.missingLendingEndDate =>
+        'Please choose a lending end date',
       EditItemResult.invalidPrice => 'Price must be a whole number',
       EditItemResult.invalidDeposit => 'Deposit must be a valid number',
       EditItemResult.failed => _controller.error ?? 'Unable to save changes',
     };
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     if (result == EditItemResult.success) {
-      Navigator.of(context).pop();
+      // ปิดหน้านี้ก่อน แล้วโชว์ป๊อปอัปบนหน้าที่กลับไป
+      final navigator = Navigator.of(context);
+      navigator.pop();
+      showAppPopupOn(navigator, message: message);
+      return;
     }
+
+    await showAppPopup(context, message: message, isSuccess: false);
   }
 
   @override
@@ -89,114 +101,126 @@ class _EditItemScreenState extends State<EditItemScreen> {
     final lastSelectable = today.add(const Duration(days: 365 * 2));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Item')),
+      appBar: const UserAppBar(title: 'Edit Item'),
       body: widget.assetId == null
           ? const Center(child: Text('No item selected'))
           : _controller.loading && _controller.asset == null
-              ? const Center(child: CircularProgressIndicator())
-              : _controller.error != null && _controller.asset == null
-                  ? Center(child: Text(_controller.error!))
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: SizedBox(
-                              height: 160,
-                              width: double.infinity,
-                              child: _controller.asset?.imageUrl.isNotEmpty == true
-                                  ? Image.network(
-                                      _controller.asset!.imageUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          const ColoredBox(
-                                        color: Color(0xFFE8ECF4),
-                                        child: Icon(Icons.broken_image_outlined),
-                                      ),
-                                    )
-                                  : const ColoredBox(
-                                      color: Color(0xFFE8ECF4),
-                                      child: Icon(Icons.image, size: 48),
-                                    ),
+          ? const Center(child: CircularProgressIndicator())
+          : _controller.error != null && _controller.asset == null
+          ? Center(child: Text(_controller.error!))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      height: 160,
+                      width: double.infinity,
+                      child: _controller.asset?.imageUrl.isNotEmpty == true
+                          ? Image.network(
+                              _imageSrc(_controller.asset!.imageUrl),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const ColoredBox(
+                                    color: Color(0xFFE8ECF4),
+                                    child: Icon(Icons.broken_image_outlined),
+                                  ),
+                            )
+                          : const ColoredBox(
+                              color: Color(0xFFE8ECF4),
+                              child: Icon(Icons.image, size: 48),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _nameController,
-                            decoration: const InputDecoration(
-                              labelText: 'Item Name',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _descriptionController,
-                            maxLines: 3,
-                            decoration: const InputDecoration(
-                              labelText: 'Item Details & Condition',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _priceController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'Price (Baht / Day)',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _depositController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            decoration: const InputDecoration(
-                              labelText: 'Deposit (Baht)',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextField(
-                            controller: _pickupController,
-                            maxLines: 2,
-                            decoration: const InputDecoration(
-                              labelText: 'Pickup & return location',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          DatePickerField(
-                            label: 'Lending end date',
-                            value: _controller.lendingEndDate,
-                            firstDate: today,
-                            lastDate: lastSelectable,
-                            showCalendarIcon: true,
-                            enabled: !_controller.submitting,
-                            onPicked: _controller.setLendingEndDate,
-                          ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed:
-                                  _controller.submitting ? null : _save,
-                              child: Text(
-                                _controller.submitting
-                                    ? 'Saving...'
-                                    : 'Save changes',
-                              ),
-                            ),
-                          ),
-                        ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _nameController,
+                    enabled: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Item Name',
+                      filled: true,
+                      fillColor: Color(0xFFF1F3F5),
+                      labelStyle: TextStyle(color: Color(0xFF667085)),
+                      border: OutlineInputBorder(),
+                      disabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFD9DEE7)),
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _descriptionController,
+                    enabled: false,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Item Details & Condition',
+                      filled: true,
+                      fillColor: Color(0xFFF1F3F5),
+                      labelStyle: TextStyle(color: Color(0xFF667085)),
+                      border: OutlineInputBorder(),
+                      disabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFD9DEE7)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _priceController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: 'Price (Baht / Day)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _depositController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: 'Deposit (Baht)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _pickupController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Pickup & return location',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  DatePickerField(
+                    label: 'Lending end date',
+                    value: _controller.lendingEndDate,
+                    firstDate: today,
+                    lastDate: lastSelectable,
+                    showCalendarIcon: true,
+                    enabled: !_controller.submitting,
+                    onPicked: _controller.setLendingEndDate,
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _controller.submitting ? null : _save,
+                      child: Text(
+                        _controller.submitting ? 'Saving...' : 'Save changes',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }
+
+/// Backend stores images as relative paths (e.g. /uploads/xxx.jpg);
+/// build the full URL here so the image loads directly from the server.
+String _imageSrc(String path) =>
+    path.startsWith('http') ? path : 'http://localhost:3000$path';

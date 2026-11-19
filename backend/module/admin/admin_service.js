@@ -3,6 +3,7 @@ const adminRepository = require("./admin_repository");
 const transactionTypes = new Set([
   "wallet_top_up",
   "rental_payment",
+  "rental_payout",
   "deposit_hold",
   "deposit_forfeiture",
   "deposit_refund",

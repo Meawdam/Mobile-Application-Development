@@ -214,6 +214,21 @@ class AssetService {
         };
     }
 
+    async setAvailability(id, ownerId, isAvailable) {
+        if (typeof isAvailable !== "boolean") {
+            const err = new Error("is_available must be a boolean");
+            err.status = 400;
+            throw err;
+        }
+        const result = await assetRepository.setAvailability(id, ownerId, isAvailable);
+        if (!result) {
+            const err = new Error("Asset not found");
+            err.status = 404;
+            throw err;
+        }
+        return result;
+    }
+
     async approveAsset(id, adminId, {approval, approval_message}) {
         if (!["approved", "not approve"].includes(approval)) {
             const err = new Error("Approval status must be approved or not approve");

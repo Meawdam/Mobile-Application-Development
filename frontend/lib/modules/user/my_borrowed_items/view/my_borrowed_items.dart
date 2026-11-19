@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:frontend/model/borrow/borrow_model.dart';
 import 'package:frontend/modules/user/my_borrowed_items/controller/my_borrowed_controller.dart';
 import 'package:frontend/utils/date_utils.dart';
+import 'package:frontend/widgets/user_app_bar.dart';
+
+const _blue = Color(0xFF2F4BFF);
+const _red = Color.fromARGB(255, 223, 42, 42);
 
 class MyBorrowedItemsScreen extends StatefulWidget {
   const MyBorrowedItemsScreen({super.key});
@@ -33,28 +37,91 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
   }
 
   Future<void> _cancel(BorrowModel item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancel borrow request?'),
+        content: const Text(
+          'Any payment for this request will be refunded to your wallet.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep request'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Cancel request'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     final err = await _controller.cancel(item.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(err ?? 'Request cancelled')),
+      SnackBar(
+        content: Text(
+          err ?? 'Request cancelled. Your payment was refunded to your wallet',
+        ),
+      ),
     );
   }
 
+  Future<void> _payNow(BorrowModel item) async {
+    await Navigator.pushNamed(
+      context,
+      '/payment',
+      arguments: {'borrowId': item.id},
+    );
+    if (mounted) await _controller.load();
+  }
+
+  // กด Request return: ขึ้น popup ให้ยืนยันก่อนส่งคำขอคืน
   Future<void> _requestReturn(BorrowModel item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm return'),
+        content: Text(
+          'Do you want to request to return "${item.assetName ?? 'this item'}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _blue,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
     final err = await _controller.requestReturn(item.id);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(err ?? 'Return requested')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(err ?? 'Return requested')));
+  }
+
+  Future<void> _openDetails(BorrowModel item) async {
+    await Navigator.pushNamed(context, '/borrow-details', arguments: item.id);
+    if (mounted) await _controller.load();
   }
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('My Borrowed Items'),
+        appBar: UserAppBar(
+          title: 'My Borrowed Items',
           actions: [
             IconButton(
               onPressed: _controller.load,
@@ -85,49 +152,81 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
                 Tab(text: 'Borrowing'),
                 Tab(text: 'Pending'),
                 Tab(text: 'Returned'),
+                Tab(text: 'History'),
               ],
             ),
             Expanded(
               child: _controller.loading
                   ? const Center(child: CircularProgressIndicator())
                   : _controller.error != null
-                      ? Center(child: Text(_controller.error!))
-                      : TabBarView(
-                          children: [
-                            _BorrowList(
-                              items: _controller.borrowing,
-                              onOpen: (item) => Navigator.pushNamed(
-                                context,
-                                '/borrow-details',
-                                arguments: item.id,
-                              ),
-                              actionLabel: 'Request return',
-                              onAction: (item) async {
-                                if (item.status == 'borrowed') {
-                                  await _requestReturn(item);
-                                }
-                              },
-                            ),
-                            _BorrowList(
-                              items: _controller.pending,
-                              onOpen: (item) => Navigator.pushNamed(
-                                context,
-                                '/borrow-details',
-                                arguments: item.id,
-                              ),
-                              actionLabel: 'Cancel',
-                              onAction: _cancel,
-                            ),
-                            _BorrowList(
-                              items: _controller.returned,
-                              onOpen: (item) => Navigator.pushNamed(
-                                context,
-                                '/borrow-details',
-                                arguments: item.id,
-                              ),
-                            ),
-                          ],
+                  ? Center(child: Text(_controller.error!))
+                  : TabBarView(
+                      children: [
+                        // Borrowing: วันคืนอยู่ด้านขวาของกล่อง + ปุ่ม Request return สีน้ำเงิน
+                        _BorrowList(
+                          items: _controller.borrowing,
+                          onOpen: _openDetails,
+                          buttonBuilder: (item) => item.status == 'borrowed'
+                              ? _ActionButton(
+                                  label: 'Request return',
+                                  color: _blue,
+                                  onPressed: () => _requestReturn(item),
+                                )
+                              : item.status == 'approved' &&
+                                    item.paymentStatus == 'unpaid'
+                              ? Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    _ActionButton(
+                                      label: 'Pay now',
+                                      color: _blue,
+                                      onPressed: () => _payNow(item),
+                                    ),
+                                    _ActionButton(
+                                      label: 'Cancel',
+                                      color: _red,
+                                      onPressed: () => _cancel(item),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  item.status == 'approved'
+                                      ? 'Approved - open details to confirm receipt'
+                                      : 'Waiting for owner to confirm return',
+                                ),
                         ),
+                        // Pending: วันคืนอยู่ด้านซ้ายของกล่อง + ปุ่ม Cancel สีแดง
+                        _BorrowList(
+                          items: _controller.pending,
+                          onOpen: _openDetails,
+                          buttonBuilder: (item) => Wrap(
+                            spacing: 8,
+                            children: [
+                              if (item.paymentStatus == 'unpaid')
+                                _ActionButton(
+                                  label: 'Pay now',
+                                  color: _blue,
+                                  onPressed: () => _payNow(item),
+                                ),
+                              _ActionButton(
+                                label: 'Cancel',
+                                color: _red,
+                                onPressed: () => _cancel(item),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Returned: วันคืนอยู่ด้านขวาของกล่อง
+                        _BorrowList(
+                          items: _controller.returned,
+                          onOpen: _openDetails,
+                        ),
+                        _BorrowList(
+                          items: _controller.history,
+                          onOpen: _openDetails,
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -139,15 +238,30 @@ class _MyBorrowedItemsScreenState extends State<MyBorrowedItemsScreen> {
 class _BorrowList extends StatelessWidget {
   final List<BorrowModel> items;
   final void Function(BorrowModel item) onOpen;
-  final String? actionLabel;
-  final Future<void> Function(BorrowModel item)? onAction;
+  final Widget Function(BorrowModel item)? buttonBuilder;
 
   const _BorrowList({
     required this.items,
     required this.onOpen,
-    this.actionLabel,
-    this.onAction,
+    this.buttonBuilder,
   });
+
+  // กล่องแสดงวันที่ต้องคืน (หัวข้อเล็ก + วันที่ตัวหนา)
+  Widget _dateBox(BorrowModel item) {
+    final raw = item.plannedReturnDate;
+    final parsed = AppDateUtils.tryParseYmd(raw);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text('Return by', style: TextStyle(fontSize: 11)),
+        Text(
+          parsed == null ? (raw ?? '—') : AppDateUtils.formatDisplay(parsed),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -161,27 +275,93 @@ class _BorrowList extends StatelessWidget {
       separatorBuilder: (context, index) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final item = items[index];
-        final returnDate = item.plannedReturnDate;
-        final parsed = AppDateUtils.tryParseYmd(returnDate);
+        final button = buttonBuilder?.call(item);
         return Card(
-          child: ListTile(
-            title: Text(item.assetName ?? 'Item #${item.assetId}'),
-            subtitle: Text(
-              'Status: ${item.status}\n'
-              'Return: ${parsed == null ? (returnDate ?? '—') : AppDateUtils.formatDisplay(parsed)}\n'
-              'Total: ${item.totalAmount ?? '—'} Baht',
-            ),
-            isThreeLine: true,
-            onTap: () => onOpen(item),
-            trailing: actionLabel != null && onAction != null
-                ? TextButton(
-                    onPressed: () => onAction!(item),
-                    child: Text(actionLabel!),
-                  )
-                : const Icon(Icons.chevron_right),
+          child: Column(
+            children: [
+              ListTile(
+                leading: _BorrowImage(imageUrl: item.assetImageUrl),
+                title: Text(item.assetName ?? 'Item #${item.assetId}'),
+                subtitle: Text(
+                  [
+                    'Status: ${item.statusLabel}',
+                    if (item.rejectionReason?.trim().isNotEmpty == true)
+                      'Reason: ${item.rejectionReason}',
+                    'Total: ${item.totalAmount ?? '—'} Baht',
+                  ].join('\n'),
+                ),
+                isThreeLine: true,
+                trailing: _dateBox(item),
+                onTap: () => onOpen(item),
+              ),
+              if (button != null)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 12, bottom: 8),
+                    child: button,
+                  ),
+                ),
+            ],
           ),
         );
       },
+    );
+  }
+}
+
+// ปุ่มพื้นสีทึบ ข้อความสีขาว
+class _BorrowImage extends StatelessWidget {
+  const _BorrowImage({required this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final path = imageUrl?.trim() ?? '';
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 64,
+        height: 64,
+        child: path.isEmpty
+            ? const ColoredBox(
+                color: Color(0xFFE8ECF4),
+                child: Icon(Icons.inventory_2_outlined),
+              )
+            : Image.network(
+                path.startsWith('http') ? path : 'http://localhost:3000$path',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const ColoredBox(
+                  color: Color(0xFFE8ECF4),
+                  child: Icon(Icons.broken_image_outlined),
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  final String label;
+  final Color color;
+  final VoidCallback onPressed;
+
+  const _ActionButton({
+    required this.label,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+      ),
+      onPressed: onPressed,
+      child: Text(label),
     );
   }
 }

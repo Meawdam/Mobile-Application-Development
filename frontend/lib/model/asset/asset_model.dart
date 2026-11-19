@@ -1,3 +1,5 @@
+import 'package:frontend/utils/date_utils.dart';
+
 class AssetModel {
   final int id;
   final int ownerId;
@@ -10,7 +12,7 @@ class AssetModel {
   final String? approvalMessage;
   final num downPayment;
   final String returnBefore;
-  final int price;
+  final num price;
   final String pickupPoint;
 
   const AssetModel({
@@ -31,6 +33,22 @@ class AssetModel {
 
   String get imageUrl => image ?? '';
 
+  AssetModel copyWith({String? status}) => AssetModel(
+    id: id,
+    ownerId: ownerId,
+    ownerUsername: ownerUsername,
+    image: image,
+    name: name,
+    description: description,
+    status: status ?? this.status,
+    approval: approval,
+    approvalMessage: approvalMessage,
+    downPayment: downPayment,
+    returnBefore: returnBefore,
+    price: price,
+    pickupPoint: pickupPoint,
+  );
+
   factory AssetModel.fromJson(Map<String, dynamic> json) {
     return AssetModel(
       id: _asInt(json['id']),
@@ -44,7 +62,7 @@ class AssetModel {
       approvalMessage: json['approval_message']?.toString(),
       downPayment: _asNum(json['down_payment']),
       returnBefore: _formatDate(json['return_before']),
-      price: _asInt(json['price']),
+      price: _asNum(json['price']),
       pickupPoint: json['pickup_point']?.toString() ?? '',
     );
   }
@@ -63,9 +81,7 @@ class AssetModel {
   static String _formatDate(dynamic value) {
     if (value == null) return '';
     final raw = value.toString();
-    if (raw.length >= 10) {
-      return raw.substring(0, 10);
-    }
-    return raw;
+    final date = AppDateUtils.tryParseYmd(raw);
+    return date == null ? raw : AppDateUtils.formatYmd(date);
   }
 }

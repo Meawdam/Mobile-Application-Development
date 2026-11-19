@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/modules/admin/dashboard/controller/dashboard_controller.dart';
+import 'package:frontend/modules/admin/dashboard/model/dashboard_model.dart';
 import 'package:frontend/modules/admin/dashboard/view/dashboard_view.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockDashboardController extends Mock implements DashboardController {}
 
 void main() {
   testWidgets('Admin dashboard is displayed', (tester) async {
+    final controller = MockDashboardController();
+    when(() => controller.fetchDashboardStats()).thenAnswer(
+      (_) async =>
+          DashboardStats(approvedCount: 3, pendingCount: 2, borrowedCount: 1),
+    );
+
     await tester.pumpWidget(
-      const MaterialApp(home: AdminDashboardScreen()),
+      MaterialApp(home: AdminDashboardScreen(controller: controller)),
     );
     await tester.pumpAndSettle();
 

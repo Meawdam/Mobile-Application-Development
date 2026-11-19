@@ -4,6 +4,7 @@ class ApproveItem {
   final String owner;
   final String time;
   final String description;
+  final String imageUrl;
 
   const ApproveItem({
     required this.id,
@@ -11,6 +12,7 @@ class ApproveItem {
     required this.owner,
     required this.time,
     required this.description,
+    this.imageUrl = '',
   });
 
   factory ApproveItem.fromMap(Map<String, dynamic> map) {
@@ -20,6 +22,7 @@ class ApproveItem {
       owner: map['owner']?.toString() ?? '',
       time: map['time']?.toString() ?? '',
       description: map['description']?.toString() ?? '',
+      imageUrl: map['image_url']?.toString() ?? map['image']?.toString() ?? '',
     );
   }
 
@@ -30,6 +33,7 @@ class ApproveItem {
       'owner': owner,
       'time': time,
       'description': description,
+      'image_url': imageUrl,
     };
   }
 }

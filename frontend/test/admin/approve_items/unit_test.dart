@@ -15,6 +15,7 @@ void main() {
       owner: 'Somchai',
       time: '2026-11-18',
       description: 'Scientific calculator',
+      imageUrl: 'https://example.test/calculator.jpg',
     );
 
     expect(ApproveItem.fromMap(item.toMap()).toMap(), item.toMap());

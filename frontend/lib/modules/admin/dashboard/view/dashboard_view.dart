@@ -2,29 +2,32 @@ import 'package:flutter/material.dart';
 
 import '../controller/dashboard_controller.dart';
 import '../model/dashboard_model.dart';
+import 'package:frontend/utils/app_colors.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   final VoidCallback? onNavigateToApprove;
   final VoidCallback? onNavigateToRecords;
+  final DashboardController? controller;
 
-  const AdminDashboardScreen({super.key, this.onNavigateToApprove, this.onNavigateToRecords});
+  const AdminDashboardScreen({super.key, this.onNavigateToApprove, this.onNavigateToRecords, this.controller});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  static const _blue = Color(0xFF2F4BFF);
+  static const _blue = AppColors.blue;
   static const _navy = Color(0xFF172554);
   static const _muted = Color(0xFF64748B);
   static const _line = Color(0xFFE5EAF2);
 
-  final DashboardController _controller = DashboardController();
+  late final DashboardController _controller;
   late Future<DashboardStats> _statsFuture;
 
   @override
   void initState() {
     super.initState();
+    _controller = widget.controller ?? DashboardController();
     _statsFuture = _controller.fetchDashboardStats();
   }
 
