@@ -38,7 +38,10 @@ void main() {
         await tester.tap(find.text('Confirm return'));
         await tester.pumpAndSettle();
 
-        expect(find.text('Return confirmed'), findsOneWidget);
+        expect(
+          find.text('Return confirmed. Rental earnings added to your wallet.'),
+          findsOneWidget,
+        );
         expect(
           requests.map((request) => '${request.method} ${request.url.path}'),
           containsAllInOrder([
