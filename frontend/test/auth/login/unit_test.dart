@@ -15,8 +15,8 @@ void main() {
     LoginController loginController = LoginController(service: mockAuthService);
     // TodoController todoController = TodoController();
     String? result = await loginController.login(
-      'meawdamxza@gmail.com',
-      '03082005',
+      'james@gmail.com',
+      'User1234',
     );
     expect(result, isNotNull);
     expect(result, 'user');
